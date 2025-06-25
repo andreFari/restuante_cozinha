@@ -169,31 +169,25 @@
         params.append("username", username);
         params.append("password", password);
 
-        try {
-          const response = await fetch(
-            "https://fair-toes-show.loca.lt//api/moloni-login",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: params.toString(),
-            }
-          );
-
-          if (!response.ok) {
-            const errorBody = await response.text();
-            console.error("Moloni API login error response:", errorBody);
-          }
-
-          const data = await response.json();
-          localStorage.setItem("moloni_token", data.access_token);
-          loginStatus.textContent = "Login efetuado com sucesso!";
-          loginStatus.style.color = "green";
-        } catch (err) {
-          loginStatus.textContent = "Erro no login: " + err.message;
+        const response = await fetch("/api/moloni-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+        if (!response.ok) {
+          const errorBody = await response.text();
+          console.error("Moloni API login error response:", errorBody);
+          loginStatus.textContent = "Erro no login: veja o console";
           loginStatus.style.color = "red";
+          return;
         }
+
+        data = await response.json();
+        localStorage.setItem("moloni_token", data.access_token);
+        loginStatus.textContent = "Login efetuado com sucesso!";
+        loginStatus.style.color = "green";
       }
 
       async function emitirFatura(index) {
@@ -206,17 +200,14 @@
         const table = tables[index];
 
         try {
-          const response = await fetch(
-            "https://fair-toes-show.loca.lt//api/emitir-fatura",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: "Bearer " + token,
-              },
-              body: JSON.stringify(table),
-            }
-          );
+          const response = await fetch("/api/emitir-fatura", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify(table),
+          });
 
           const data = await response.json();
 
