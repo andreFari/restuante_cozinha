@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Painel Cozinha</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+
+      header {
+        background-color: #212529;
+        color: white;
+        padding: 1rem 2rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .container {
+        display: flex;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      .table-list {
+        width: 30%;
+        max-width: 300px;
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 6px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+        height: calc(100vh - 100px);
+      }
+
+      .table-item {
+        padding: 12px;
+        margin-bottom: 10px;
+        background-color: #f1f1f1;
+        border-left: 5px solid #198754;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .table-item:hover {
+        background-color: #e2e6ea;
+      }
+
+      .order-details {
+        flex-grow: 1;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 6px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        height: fit-content;
+        max-width: 100%;
+      }
+
+      .section {
+        background-color: #fdfdfd;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        padding: 15px;
+      }
+
+      .section h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 1.1rem;
+        color: #495057;
+      }
+
+      .item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      .item input {
+        margin-right: 10px;
+        transform: scale(1.2);
+      }
+
+      .status {
+        display: inline-block;
+        font-size: 0.9em;
+        padding: 5px 10px;
+        border-radius: 20px;
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+
+      .status.paid {
+        background-color: #d1e7dd;
+        color: #0f5132;
+      }
+
+      .status.unpaid {
+        background-color: #f8d7da;
+        color: #842029;
+      }
+
+      button {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        margin-right: 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: #0b5ed7;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        .table-list {
+          width: 100%;
+          max-height: 300px;
+        }
+
+        .order-details {
+          width: 100%;
+        }
+      }
+      .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .order-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #212529;
+        flex-shrink: 0;
+      }
+
+      .admin-note-short {
+        background-color: #e9ecef;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-size: 0.95rem;
+        max-width: 60%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #495057;
+        cursor: default;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Painel Cozinha</h1>
+    </header>
+
+    <div class="container">
+      <div class="table-list" id="tableList"></div>
+      <div class="order-details" id="orderDetails">
+        <p>Selecione uma mesa para ver os detalhes do pedido.</p>
+      </div>
+    </div>
+
+    <script>
+      const tables = [
+        {
+          id: 1,
+          name: "Mesa 1",
+          open: true,
+          kitchenNote: "Tens que fazer mais uma de frango",
+          order: {
+            status: "unpaid",
+            plates: ["Frango Assado", "Sopa"],
+            extras: ["Batatas Fritas"],
+            drinks: ["Água", "Vinho"],
+            desserts: ["Bolo"],
+            coffee: ["Expresso"],
+          },
+          prepared: {
+            plates: [false, false],
+            extras: [false],
+            drinks: [false, false],
+            desserts: [false],
+            coffee: [false],
+          },
+        },
+        {
+          id: 2,
+          name: "Mesa 2",
+          open: false,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Peixe Grelhado"],
+            extras: [],
+            drinks: ["Cerveja"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [],
+            drinks: [true],
+            desserts: [],
+            coffee: [],
+          },
+        },
+        {
+          id: 3,
+          name: "Mesa 3",
+          open: true,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Bife"],
+            extras: ["Arroz"],
+            drinks: ["Sumo"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [true],
+            drinks: [true],
+            desserts: [],
+            coffee: [],
+          },
+        },
+      ];
+
+      const tableList = document.getElementById("tableList");
+      const orderDetails = document.getElementById("orderDetails");
+
+      function renderTables() {
+        tableList.innerHTML = "";
+
+        tables.forEach((table, index) => {
+          if (!table.open) return;
+
+          const order = table.order;
+          const prep = table.prepared;
+
+          const hasUnprepared = Object.keys(prep).some((section) =>
+            prep[section].some((prepared) => !prepared)
+          );
+
+          if (order.status !== "paid" || hasUnprepared) {
+            const div = document.createElement("div");
+            div.className = `table-item open`;
+            div.textContent = `${table.name} ${
+              table.kitchenNote ? `- (${table.kitchenNote})` : ""
+            }`;
+            div.onclick = () => renderOrderDetails(index);
+            tableList.appendChild(div);
+          }
+        });
+      }
+
+      function renderOrderDetails(index) {
+        const table = tables[index];
+        const order = table.order;
+        const prepared = table.prepared;
+
+        function renderSection(title, items, prepState, key) {
+          if (items.length === 0) return "";
+          return `
+      <div class="section">
+        <h3>${title}</h3>
+        ${items
+          .map(
+            (item, i) => `
+          <div class="item">
+            <input type="checkbox" ${
+              prepState[i] ? "checked" : ""
+            } onchange="togglePrepared(${index}, '${key}', ${i})">
+            <label>${item}</label>
+          </div>`
+          )
+          .join("")}
+      </div>
+    `;
+        }
+
+        orderDetails.innerHTML = `
+  <div class="order-header">
+    <div class="order-title">${table.name} - ${
+          table.open ? "Aberta" : "Fechada"
+        }</div>
+    <div class="admin-note-short" title="${
+      table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
+    }">
+      ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
+    </div>
+  </div>
+  <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">${
+          order.status === "paid" ? "Pago" : "Por Pagar"
+        }</div>
+
+${renderSection("Pratos", order.plates, prepared.plates, "plates")}
+${renderSection("Extras", order.extras, prepared.extras, "extras")}
+${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
+${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
+${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
+
+<div class="section">
+  <h3>Informar Admin</h3>
+  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
+    Pratos feitos, falta sobremesas e/ou cafés 
+  </button>
+  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
+    Este pedido não tem sobremesas ou cafés 
+  </button>
+  <button onclick="setKitchenNote(${index}, '' )" style="background-color: #6c757d;">
+    Limpar Nota
+  </button>
+</div>
+`;
+      }
+
+      window.togglePrepared = function (tableIndex, section, itemIndex) {
+        tables[tableIndex].prepared[section][itemIndex] =
+          !tables[tableIndex].prepared[section][itemIndex];
+        renderOrderDetails(tableIndex);
+      };
+
+      window.setKitchenNote = function (tableIndex, note) {
+        tables[tableIndex].kitchenNote = note;
+        renderTables();
+        renderOrderDetails(tableIndex);
+      };
+
+      renderTables();
+    </script>
+  </body>
+</html>

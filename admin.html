@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Painel de Admin / Recessão</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f2f2f2;
+      }
+
+      header {
+        background: #444;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+      }
+
+      .container {
+        display: flex;
+        padding: 20px;
+      }
+
+      .table-lists {
+        width: 30%;
+        padding-right: 20px;
+      }
+
+      .table-section {
+        margin-bottom: 30px;
+      }
+
+      .table-section h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .table-item {
+        background: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+      }
+
+      .table-item.open {
+        border-left: 5px solid green;
+      }
+      .table-item.closed {
+        border-left: 5px solid red;
+      }
+
+      .order-details {
+        flex-grow: 1;
+        padding-left: 20px;
+      }
+
+      .section {
+        background: white;
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+
+      .section h3 {
+        margin-top: 0;
+      }
+
+      .item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+
+      .item input {
+        margin-right: 10px;
+      }
+
+      .status {
+        font-size: 0.9em;
+        padding: 5px 10px;
+        margin-bottom: 10px;
+        display: inline-block;
+        border-radius: 4px;
+      }
+
+      .status.paid {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.unpaid {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .btn {
+        padding: 6px 12px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      .btn:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Painel de Admin / Recessão</h1>
+    </header>
+
+    <div class="container">
+      <div class="table-lists">
+        <div class="table-section">
+          <h3>Mesas Abertas</h3>
+          <div id="openTables"></div>
+        </div>
+
+        <div class="table-section">
+          <h3>Mesas Fechadas</h3>
+          <div id="closedTables"></div>
+        </div>
+      </div>
+
+      <div class="order-details" id="orderDetails">
+        <p>Selecione uma mesa para ver os detalhes do pedido</p>
+      </div>
+    </div>
+    <button class="btn" onclick="emitirFatura(1)">Emitir Fatura</button>
+    <script>
+      function emitirFatura(index) {
+        const table = tables[index];
+        fetch("/api/emitir-fatura", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer YOUR_ACCESS_TOKEN_HERE",
+          },
+          body: JSON.stringify(table),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.pdfUrl) {
+              window.open(data.pdfUrl, "_blank");
+            } else {
+              alert("Erro ao emitir fatura.");
+              console.error(data);
+            }
+          });
+      }
+      const tables = [
+        {
+          id: 1,
+          name: "Mesa 1",
+          open: true,
+          kitchenNote: "Falta sobremesas e ou cafés e ou bebidas",
+          order: {
+            status: "unpaid",
+            plates: ["Frango Assado", "Sopa"],
+            extras: ["Batatas Fritas"],
+            drinks: ["Água", "Vinho"],
+            desserts: ["Bolo"],
+            coffee: ["Expresso"],
+          },
+          prepared: {
+            plates: [true, true],
+            extras: [true],
+            drinks: [false, false],
+            desserts: [false],
+            coffee: [false],
+          },
+        },
+        {
+          id: 2,
+          name: "Mesa 2",
+          open: false,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Peixe Grelhado"],
+            extras: [],
+            drinks: ["Cerveja"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [],
+            drinks: [true],
+            desserts: [],
+            coffee: [],
+          },
+        },
+        {
+          id: 3,
+          name: "Mesa 3",
+          open: true,
+          kitchenNote: "Pratos feitos, falta cafés e ou bebidas",
+          order: {
+            status: "paid",
+            plates: ["Bife"],
+            extras: ["Arroz"],
+            drinks: ["Sumo"],
+            desserts: [],
+            coffee: ["Expresso"],
+          },
+          prepared: {
+            plates: [true],
+            extras: [true],
+            drinks: [false],
+            desserts: [],
+            coffee: [false],
+          },
+        },
+        {
+          id: 4,
+          name: "Mesa 4",
+          open: true,
+          kitchenNote: "",
+          order: {
+            status: "unpaid",
+            plates: ["Pizza"],
+            extras: [],
+            drinks: ["Água"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [false],
+            extras: [],
+            drinks: [false],
+            desserts: [],
+            coffee: [],
+          },
+        },
+        {
+          id: 5,
+          name: "Mesa 5",
+          open: true,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Lasanha"],
+            extras: ["Salada"],
+            drinks: ["Vinho"],
+            desserts: ["Tiramisù"],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [true],
+            drinks: [false],
+            desserts: [false],
+            coffee: [],
+          },
+        },
+        {
+          id: 6,
+          name: "Mesa 6",
+          open: true,
+          kitchenNote: "",
+          order: {
+            status: "unpaid",
+            plates: ["Hambúrguer"],
+            extras: ["Batata Doce"],
+            drinks: ["Coca-Cola"],
+            desserts: [],
+            coffee: ["Descafeinado"],
+          },
+          prepared: {
+            plates: [false],
+            extras: [false],
+            drinks: [false],
+            desserts: [],
+            coffee: [false],
+          },
+        },
+      ];
+
+      const openTablesDiv = document.getElementById("openTables");
+      const closedTablesDiv = document.getElementById("closedTables");
+      const orderDetails = document.getElementById("orderDetails");
+
+      function renderTables() {
+        openTablesDiv.innerHTML = "";
+        closedTablesDiv.innerHTML = "";
+
+        tables.forEach((table, index) => {
+          const div = document.createElement("div");
+          div.className = `table-item ${table.open ? "open" : "closed"}`;
+          div.innerHTML = `
+        <strong>${table.name}</strong> - ${table.open ? "Aberta" : "Fechada"}
+        ${
+          table.kitchenNote
+            ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+            : ""
+        }
+      `;
+
+          div.onclick = () => renderOrderDetails(index);
+
+          if (table.open) {
+            openTablesDiv.appendChild(div);
+          } else {
+            closedTablesDiv.appendChild(div);
+          }
+        });
+      }
+
+      function renderOrderDetails(index) {
+        const table = tables[index];
+        const order = table.order;
+        const prepared = table.prepared;
+
+        function renderSection(title, items, prepState, key) {
+          if (items.length === 0) return "";
+          return `
+        <div class="section">
+          <h3>${title}</h3>
+          ${items
+            .map(
+              (item, i) => `
+            <div class="item">
+              <input type="checkbox" ${prepState[i] ? "checked" : ""} 
+                onchange="togglePrepared(${index}, '${key}', ${i})">
+              <label>${item}</label>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `;
+        }
+
+        orderDetails.innerHTML = `
+      <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+
+      <div class="section">
+        <label><strong>Nota da cozinha :</strong></label><br>
+        <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+          table.kitchenNote
+        }</textarea>
+        <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+      </div>
+
+      <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
+        ${order.status === "paid" ? "Pago" : "Por Pagar"}
+      </div>
+      <button class="btn" onclick="togglePaid(${index})">
+        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+      </button>
+
+      <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+        ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+      </button>
+
+      ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
+      ${renderSection("Extras", order.extras, prepared.extras, "extras")}
+      ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
+      ${renderSection(
+        "Sobremesas",
+        order.desserts,
+        prepared.desserts,
+        "desserts"
+      )}
+      ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
+    `;
+      }
+
+      window.togglePrepared = function (tableIndex, section, itemIndex) {
+        tables[tableIndex].prepared[section][itemIndex] =
+          !tables[tableIndex].prepared[section][itemIndex];
+        renderOrderDetails(tableIndex);
+      };
+
+      window.togglePaid = function (index) {
+        const order = tables[index].order;
+        order.status = order.status === "paid" ? "unpaid" : "paid";
+        renderOrderDetails(index);
+        renderTables();
+      };
+
+      window.toggleOpenClose = function (index) {
+        tables[index].open = !tables[index].open;
+        // If closing a table, clear kitchen note? (Optional)
+        // tables[index].kitchenNote = tables[index].open ? tables[index].kitchenNote : "";
+        renderOrderDetails(index);
+        renderTables();
+      };
+
+      window.saveKitchenNote = function (index) {
+        const textarea = document.getElementById("kitchenNote");
+        tables[index].kitchenNote = textarea.value.trim();
+        renderTables();
+      };
+
+      renderTables();
+    </script>
+  </body>
+</html>
