@@ -24,7 +24,6 @@ app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.redirect("/login.html");
 });
-
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
 
@@ -35,15 +34,14 @@ app.get("/callback", async (req, res) => {
   try {
     const response = await axios.post(
       "https://auth.moloni.pt/oauth/token",
-      null,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+        redirect_uri: REDIRECT_URI,
+      }).toString(),
       {
-        params: {
-          grant_type: "authorization_code",
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          code,
-          redirect_uri: REDIRECT_URI,
-        },
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
@@ -51,17 +49,17 @@ app.get("/callback", async (req, res) => {
     );
 
     const data = response.data;
-
-    res.send(`
-      <h1>Access Token Received</h1>
-      <p><strong>Access Token:</strong> ${data.access_token}</p>
-      <p><strong>Refresh Token:</strong> ${data.refresh_token}</p>
-      <p>You can now use this token to call Moloni API endpoints.</p>
-    `);
+    res.redirect(`/login.html?access_token=${data.access_token}`);
   } catch (error) {
+    console.error("Error exchanging token:", error.toJSON?.() || error.message);
+
+    console.error(
+      "Error exchanging token:",
+      error?.response?.data || error.message
+    );
     res.send(
       `Error fetching access token: ${
-        error.response?.data?.error_description || error.message
+        error?.response?.data?.error_description || error.message
       }`
     );
   }
@@ -119,9 +117,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const response = await axios.post(
       "https://api.moloni.pt/v1/invoices/insert/?access_token=" + token,
       {
-        company_id: 123456, // Substituir pelo ID real da empresa
-        customer_id: 789, // Substituir por um cliente válido
-        document_set_id: 1010, // Substituir por um documento válido
+        customer_id: 999999990, // Substituir por um cliente válido
+        document_set_id: 843174, // Substituir por um documento válido
         products: table.order.plates.map((name, i) => ({
           name,
           qty: 1,

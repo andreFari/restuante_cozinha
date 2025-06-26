@@ -109,21 +109,22 @@
   </head>
 
   <body>
-    <header>
+    <header
+      style="display: flex; justify-content: space-between; align-items: center"
+    >
       <h1>Painel de Admin / Recessão</h1>
+      <div style="text-align: right">
+        <a
+          href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=245919082_testes_api&redirect_uri=https://76a1-92-250-28-11.ngrok-free.app/callback"
+          class="btn"
+          style="margin-right: 10px"
+        >
+          Login com Moloni
+        </a>
+      </div>
+
+      <div id="tokenDisplay" style="color: #ccc; font-size: 0.8em"></div>
     </header>
-
-    <!-- Moloni Login Section -->
-    <div class="login-section">
-      <h2>Login Moloni</h2>
-      <input id="clientId" type="text" placeholder="Client ID" />
-      <input id="clientSecret" type="text" placeholder="Client Secret" />
-      <input id="username" type="text" placeholder="Username" />
-      <input id="password" type="password" placeholder="Password" />
-      <button class="btn" onclick="loginMoloni()">Login</button>
-      <p id="loginStatus"></p>
-    </div>
-
     <div class="container">
       <div class="table-lists">
         <div class="table-section">
@@ -169,10 +170,11 @@
           password,
         };
 
+        const formData = new URLSearchParams(params).toString();
         const response = await fetch("/api/moloni-login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(params),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData,
         });
         if (!response.ok) {
           const errorBody = await response.text();
@@ -466,6 +468,28 @@
       };
 
       renderTables();
+      // Store token from URL if present
+      const tokenFromURL = new URLSearchParams(window.location.search).get(
+        "access_token"
+      );
+      if (tokenFromURL) {
+        localStorage.setItem("moloni_token", tokenFromURL);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        ); // clean URL
+      }
+
+      // Display stored token (if exists)
+      const tokenDisplayDiv = document.getElementById("tokenDisplay");
+      const storedToken = localStorage.getItem("moloni_token");
+      if (storedToken) {
+        tokenDisplayDiv.textContent =
+          "Token armazenado: " + storedToken.substring(0, 25) + "...";
+      } else {
+        tokenDisplayDiv.textContent = "Nenhum token armazenado.";
+      }
     </script>
   </body>
 </html>
