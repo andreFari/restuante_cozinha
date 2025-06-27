@@ -32,15 +32,19 @@ app.get("/callback", async (req, res) => {
   }
 
   try {
+    const params = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code,
+      redirect_uri: REDIRECT_URI,
+    });
+
+    console.log("Sending token request with:", params.toString());
+
     const response = await axios.post(
       "https://auth.moloni.pt/oauth/token",
-      new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        code,
-        redirect_uri: REDIRECT_URI,
-      }).toString(),
+      params.toString(),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -52,7 +56,6 @@ app.get("/callback", async (req, res) => {
     res.redirect(`/login.html?access_token=${data.access_token}`);
   } catch (error) {
     console.error("Error exchanging token:", error.toJSON?.() || error.message);
-
     console.error(
       "Error exchanging token:",
       error?.response?.data || error.message
