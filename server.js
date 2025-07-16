@@ -59,10 +59,9 @@ console.error("Raw error:", error.toJSON?.() || error.message);
       }
     );
 
-    const { access_token } = response.data;
-    console.log("Authorization code received:", code);
-    // Redirect to login.html and pass the access token
-    return res.redirect(`/login.html?error=${encodeURIComponent('Erro ao obter token')}`);
+ const { access_token } = response.data;
+console.log("Authorization code received:", code);
+return res.redirect(`/login.html?access_token=${access_token}`);
 
   } catch (error) {
     console.error(
