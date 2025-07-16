@@ -480,7 +480,20 @@
           window.location.pathname
         ); // clean URL
       }
+window.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const accessToken = params.get("access_token");
+  const error = params.get("error");
 
+  if (accessToken) {
+    localStorage.setItem("moloni_token", accessToken);
+    document.getElementById("tokenDisplay").textContent = "✅ Login efetuado!";
+  }
+
+  if (error) {
+    alert("Erro durante o login com Moloni: " + error);
+  }
+});
       // Display stored token (if exists)
       const tokenDisplayDiv = document.getElementById("tokenDisplay");
       const storedToken = localStorage.getItem("moloni_token");
