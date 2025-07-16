@@ -62,7 +62,8 @@ console.error("Raw error:", error.toJSON?.() || error.message);
     const { access_token } = response.data;
     console.log("Authorization code received:", code);
     // Redirect to login.html and pass the access token
-    res.redirect(`/login.html?access_token=${access_token}`);
+    return res.redirect(`/login.html?error=${encodeURIComponent('Erro ao obter token')}`);
+
   } catch (error) {
     console.error(
       "Token exchange error:",
