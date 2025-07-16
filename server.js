@@ -32,37 +32,30 @@ app.get("/callback", async (req, res) => {
   const { code } = req.query;
 
   if (!code) return res.send("No authorization code received.");
-console.log("Exchanging code for token with data:", {
-  client_id: CLIENT_ID,
-  client_secret: CLIENT_SECRET,
-  code,
-  redirect_uri: REDIRECT_URI,
-});
+
+  console.log("Exchanging code for token with data:", {
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    code,
+    redirect_uri: REDIRECT_URI,
+  });
+
   try {
-    const params = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code,
-      redirect_uri: REDIRECT_URI,
+    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+        redirect_uri: REDIRECT_URI,
+      },
     });
 
-    console.log("Token request params:", params.toString());
-console.error("Raw error:", error.toJSON?.() || error.message);
-    const response = await axios.post(
-      "https://auth.moloni.pt/oauth/token",
-      params.toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
+    const { access_token } = response.data;
+    console.log("Authorization code received:", code);
+    console.log("Access token received:", access_token);
 
- const { access_token } = response.data;
-console.log("Authorization code received:", code);
-return res.redirect(`/login.html?access_token=${access_token}`);
-
+    return res.redirect(`/login.html?access_token=${access_token}`);
   } catch (error) {
     console.error(
       "Token exchange error:",
