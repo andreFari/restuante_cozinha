@@ -32,7 +32,12 @@ app.get("/callback", async (req, res) => {
   const { code } = req.query;
 
   if (!code) return res.send("No authorization code received.");
-
+console.log("Exchanging code for token with data:", {
+  client_id: CLIENT_ID,
+  client_secret: CLIENT_SECRET,
+  code,
+  redirect_uri: REDIRECT_URI,
+});
   try {
     const params = new URLSearchParams({
       grant_type: "authorization_code",
@@ -43,7 +48,7 @@ app.get("/callback", async (req, res) => {
     });
 
     console.log("Token request params:", params.toString());
-
+console.error("Raw error:", error.toJSON?.() || error.message);
     const response = await axios.post(
       "https://auth.moloni.pt/oauth/token",
       params.toString(),
@@ -69,7 +74,7 @@ app.get("/callback", async (req, res) => {
       .status(500)
       .send(
         `Error fetching access token: ${
-          error.response?.data?.error_description || error.message
+          JSON.stringify(error.response?.data || error.message)
         }`
       );
   }
