@@ -31,11 +31,10 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
-const MOLONI_COMPANY_ID = Number(process.env.MOLONI_COMPANY_ID || 0);
-const MOLONI_DOCUMENT_SET_ID = Number(process.env.MOLONI_DOCUMENT_SET_ID || 0);
+const MOLONI_COMPANY_ID = CLIENT_ID;
+const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
 const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
-
 // ----- APP -----
 const app = express();
 app.use(bodyParser.json());
