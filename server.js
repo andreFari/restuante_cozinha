@@ -157,7 +157,7 @@ app.get("/callback", async (req, res) => {
         },
       }
     );
-
+    console.log("[Moloni Response]", data);
     const { access_token, refresh_token, expires_in } = data;
     moloniTokens = {
       access_token,
