@@ -471,11 +471,12 @@
         const params = new URLSearchParams(window.location.search);
         const accessToken = params.get("access_token");
         const error = params.get("error");
-
+        const refreshToken = params.get("refresh_token");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
 
         if (accessToken) {
           localStorage.setItem("moloni_token", accessToken);
+          localStorage.setItem("refresh_token", refreshToken);
           tokenDisplayDiv.textContent = "✅ Token armazenado!";
           window.history.replaceState(
             {},
@@ -484,9 +485,11 @@
           );
         } else {
           const storedToken = localStorage.getItem("moloni_token");
+          const tokenrefresh = localStorage.getItem("refresh_token");
           if (storedToken) {
             tokenDisplayDiv.textContent =
-              "Token armazenado: " + storedToken.substring(0, 25) + "...";
+              "Token armazenado: " + storedToken.substring(0, 25) + "refresh";
+            tokenrefresh;
           } else {
             tokenDisplayDiv.textContent = "Nenhum token armazenado.";
           }
