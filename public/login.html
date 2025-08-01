@@ -145,6 +145,19 @@
     <button class="btn" onclick="emitirFatura(1)">Emitir Fatura</button>
 
     <script>
+      async function parseJsonOrThrow(response) {
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error(
+            `Resposta não-JSON (${response.status} ${
+              response.statusText
+            }): ${text.slice(0, 300)}`
+          );
+        }
+      }
+
       async function loginMoloni() {
         const clientId = document.getElementById("clientId").value.trim();
         const clientSecret = document
@@ -171,20 +184,39 @@
         };
 
         const formData = new URLSearchParams(params).toString();
+
         const response = await fetch("/api/moloni-login", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+          body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            username,
+            password,
+          }),
         });
+
         if (!response.ok) {
-          const errorBody = await response.text();
-          console.error("Moloni API login error response:", errorBody);
-          loginStatus.textContent = "Erro no login: veja o console";
+          const raw = await response.text();
+          console.error("Moloni login falhou:", response.status, raw);
+          loginStatus.textContent = "Erro no login.";
           loginStatus.style.color = "red";
           return;
         }
 
-        data = await response.json();
+        let data;
+        try {
+          data = await parseJsonOrThrow(response);
+        } catch (err) {
+          console.error(err.message);
+          loginStatus.textContent = "Erro a processar resposta do servidor.";
+          loginStatus.style.color = "red";
+          return;
+        }
+
         localStorage.setItem("moloni_token", data.access_token);
         loginStatus.textContent = "Login efetuado com sucesso!";
         loginStatus.style.color = "green";
@@ -204,17 +236,36 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Accept: "application/json",
               Authorization: "Bearer " + token,
             },
             body: JSON.stringify(table),
           });
 
-          const data = await response.json();
+          if (response.status === 204) {
+            alert("Fatura emitida sem conteúdo de resposta.");
+            return;
+          }
+          if (!response.ok) {
+            const raw = await response.text();
+            console.error("Erro emitir fatura:", response.status, raw);
+            alert("Erro ao emitir fatura.");
+            return;
+          }
+
+          let data;
+          try {
+            data = await parseJsonOrThrow(response);
+          } catch (err) {
+            console.error(err.message);
+            alert("Resposta inválida do servidor.");
+            return;
+          }
 
           if (data.pdfUrl) {
             window.open(data.pdfUrl, "_blank");
           } else {
-            alert("Erro ao emitir fatura.");
+            alert("Erro ao emitir fatura (sem pdfUrl).");
             console.error(data);
           }
         } catch (error) {
@@ -364,13 +415,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-        <strong>${table.name}</strong> - ${table.open ? "Aberta" : "Fechada"}
-        ${
-          table.kitchenNote
-            ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-            : ""
-        }
-      `;
+              <strong>${table.name}</strong> - ${
+            table.open ? "Aberta" : "Fechada"
+          }
+              ${
+                table.kitchenNote
+                  ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                  : ""
+              }
+            `;
 
           div.onclick = () => renderOrderDetails(index);
 
@@ -390,56 +443,56 @@
         function renderSection(title, items, prepState, key) {
           if (items.length === 0) return "";
           return `
-        <div class="section">
-          <h3>${title}</h3>
-          ${items
-            .map(
-              (item, i) => `
-            <div class="item">
-              <input type="checkbox" ${prepState[i] ? "checked" : ""} 
-                onchange="togglePrepared(${index}, '${key}', ${i})">
-              <label>${item}</label>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `;
+              <div class="section">
+                <h3>${title}</h3>
+                ${items
+                  .map(
+                    (item, i) => `
+                  <div class="item">
+                    <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                      onchange="togglePrepared(${index}, '${key}', ${i})">
+                    <label>${item}</label>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+            `;
         }
 
         orderDetails.innerHTML = `
-      <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+            <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
 
-      <div class="section">
-        <label><strong>Nota da cozinha :</strong></label><br>
-        <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-          table.kitchenNote
-        }</textarea>
-        <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-      </div>
+            <div class="section">
+              <label><strong>Nota da cozinha :</strong></label><br>
+              <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+                table.kitchenNote
+              }</textarea>
+              <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+            </div>
 
-      <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
-        ${order.status === "paid" ? "Pago" : "Por Pagar"}
-      </div>
-      <button class="btn" onclick="togglePaid(${index})">
-        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-      </button>
+            <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
+              ${order.status === "paid" ? "Pago" : "Por Pagar"}
+            </div>
+            <button class="btn" onclick="togglePaid(${index})">
+              Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+            </button>
 
-      <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-        ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-      </button>
+            <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+              ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+            </button>
 
-      ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
-      ${renderSection("Extras", order.extras, prepared.extras, "extras")}
-      ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
-      ${renderSection(
-        "Sobremesas",
-        order.desserts,
-        prepared.desserts,
-        "desserts"
-      )}
-      ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
-    `;
+            ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
+            ${renderSection("Extras", order.extras, prepared.extras, "extras")}
+            ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
+            ${renderSection(
+              "Sobremesas",
+              order.desserts,
+              prepared.desserts,
+              "desserts"
+            )}
+            ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
+          `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
@@ -469,40 +522,52 @@
 
       window.addEventListener("DOMContentLoaded", () => {
         const params = new URLSearchParams(window.location.search);
-        const accessToken = params.get("access_token");
+        const code = params.get("code");
         const error = params.get("error");
-        const refreshToken = params.get("refresh_token");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
 
-        if (accessToken) {
-          localStorage.setItem("moloni_token", accessToken);
-          localStorage.setItem("refresh_token", refreshToken);
-          tokenDisplayDiv.textContent = "✅ Token armazenado!";
-          window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-          );
+        if (code) {
+          // Trocar o code por tokens via teu backend
+          fetch("/api/moloni-exchange-code", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ code }),
+          })
+            .then(async (r) => {
+              if (!r.ok) throw new Error(await r.text());
+              return r.json();
+            })
+            .then(({ access_token, refresh_token }) => {
+              localStorage.setItem("moloni_token", access_token);
+              localStorage.setItem("refresh_token", refresh_token);
+              tokenDisplayDiv.textContent = "✅ Token armazenado!";
+              history.replaceState({}, document.title, location.pathname);
+            })
+            .catch((e) => {
+              console.error("Erro a trocar code:", e);
+              tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+            });
         } else {
           const storedToken = localStorage.getItem("moloni_token");
-          const tokenrefresh = localStorage.getItem("refresh_token");
           if (storedToken) {
             tokenDisplayDiv.textContent =
-              "Token armazenado: " + storedToken.substring(0, 25) + "refresh";
-            tokenrefresh;
+              "Token armazenado: " + storedToken.substring(0, 25) + "…";
           } else {
             tokenDisplayDiv.textContent = "Nenhum token armazenado.";
           }
+
+          if (error) {
+            alert(
+              "Erro durante o login com Moloni: " + decodeURIComponent(error)
+            );
+            tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+          }
         }
 
-        if (error) {
-          alert(
-            "Erro durante o login com Moloni: " + decodeURIComponent(error)
-          );
-          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
-        }
-
-        renderTables(); // Safe to call here
+        renderTables();
       });
     </script>
   </body>

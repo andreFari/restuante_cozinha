@@ -152,10 +152,9 @@ app.post("/api/moloni-login", async (req, res) => {
       }
     );
 
-    res.json(response.data);
-  } catch (error) {
-    console.error("Moloni login error:", error.response?.data || error.message);
-    res.status(400).send(error.response?.data || "Erro desconhecido");
+    res.status(200).json({ access_token, refresh_token, expires_in });
+  } catch (e) {
+    res.status(400).json({ error: "moloni_login_failed", detail: String(e) });
   }
 });
 
@@ -179,10 +178,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
       }
     );
 
-    res.json({ pdfUrl: response.data.pdf_url || "https://moloni.pt/fake.pdf" });
-  } catch (error) {
-    console.error("Emit invoice error:", error.response?.data || error.message);
-    res.status(500).json({ error: error.response?.data || error.message });
+    res.status(200).json({ pdfUrl });
+  } catch (e) {
+    res.status(400).json({ error: "emitir_fatura_failed", detail: String(e) });
   }
 });
 
