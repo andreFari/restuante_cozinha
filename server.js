@@ -4,7 +4,9 @@ import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import qs from "querystring"; // or 'qs' package if you prefer
+import express from "express";
 import querystring from "querystring";
+
 /**
  * Servidor Express para integrar com a API Moloni
  * - OAuth: troca de code por tokens no /callback
