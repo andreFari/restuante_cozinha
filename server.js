@@ -138,6 +138,7 @@ app.get("/api/moloni-companies", async (req, res) => {
 // Recebe o authorization code e troca por tokens
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
+  console.log("[Callback] Código recebido:", code); // 👈 ADICIONA ISTO
   if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
 
   try {
