@@ -49,7 +49,7 @@ app.use(express.static(__dirname));
 
 // Alias conveniente: /login.html → login(1).html
 app.get("/login.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "login(1).html"));
+  res.sendFile(path.join(__dirname, "login.html"));
 });
 
 // Redirect raiz para o login
