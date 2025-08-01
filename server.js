@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import qs from "querystring"; // or 'qs' package if you prefer
+
 import querystring from "querystring";
 /**
  * Servidor Express para integrar com a API Moloni
