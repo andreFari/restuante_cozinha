@@ -31,7 +31,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
-const MOLONI_COMPANY_ID = CLIENT_ID;
+const MOLONI_COMPANY_ID = Number(CLIENT_ID);
 const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
 const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
@@ -116,7 +116,21 @@ app.get("/auth", (req, res) => {
   // Depois do login, a Moloni deverá redirecionar para o REDIRECT_URI com um 'code' (authorization code).
   return res.redirect(redirect.toString());
 });
-
+// Add this to your backend to list all companies
+app.get("/api/moloni-companies", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+    const { data } = await axios.get(
+      "https://api.moloni.pt/v1/companies/getAll/",
+      {
+        params: { access_token },
+      }
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: "companies_failed", detail: e.message });
+  }
+});
 // Recebe o authorization code e troca por tokens
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
