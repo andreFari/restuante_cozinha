@@ -35,8 +35,6 @@ app.get("/", (req, res) => {
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
 
-  if (!code) return res.send("No authorization code received.");
-
   console.log("Exchanging code for token with data:", {
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
@@ -55,13 +53,13 @@ app.get("/callback", async (req, res) => {
       },
     });
 
-  const { access_token, refresh_token, expires_in } = response.data;
-// Guardar os tokens e o tempo de expiração (agora + expires_in)
-moloniTokens = {
-  access_token,
-  refresh_token,
-  expires_at: Date.now() + expires_in * 1000, // expires_in vem em segundos
-};
+    const { access_token, refresh_token, expires_in } = response.data;
+    // Guardar os tokens e o tempo de expiração (agora + expires_in)
+    moloniTokens = {
+      access_token,
+      refresh_token,
+      expires_at: Date.now() + expires_in * 1000, // expires_in vem em segundos
+    };
     console.log("Tokens armazenados:", moloniTokens);
     console.log("Authorization code received:", code);
     console.log("Access token received:", access_token);
@@ -77,9 +75,9 @@ moloniTokens = {
     res
       .status(500)
       .send(
-        `Error fetching access token: ${
-          JSON.stringify(error.response?.data || error.message)
-        }`
+        `Error fetching access token: ${JSON.stringify(
+          error.response?.data || error.message
+        )}`
       );
   }
 });
@@ -95,7 +93,9 @@ async function getValidAccessToken() {
 
   // Caso precise de renovar
   if (!moloniTokens.refresh_token) {
-    throw new Error("Refresh token inexistente. O utilizador precisa de se autenticar novamente.");
+    throw new Error(
+      "Refresh token inexistente. O utilizador precisa de se autenticar novamente."
+    );
   }
 
   try {
@@ -119,7 +119,10 @@ async function getValidAccessToken() {
     console.log("Token renovado automaticamente.");
     return moloniTokens.access_token;
   } catch (error) {
-    console.error("Erro ao renovar o token:", error.response?.data || error.message);
+    console.error(
+      "Erro ao renovar o token:",
+      error.response?.data || error.message
+    );
     throw new Error("Não foi possível renovar o token.");
   }
 }
@@ -158,8 +161,7 @@ app.post("/api/moloni-login", async (req, res) => {
 
 // Emit invoice
 app.post("/api/emitir-fatura", async (req, res) => {
-const token = await getValidAccessToken(); // <-- Aqui vai buscar sempre o token válido
-
+  const token = await getValidAccessToken(); // <-- Aqui vai buscar sempre o token válido
 
   const table = req.body;
 
