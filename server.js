@@ -1,11 +1,10 @@
-import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import qs from "querystring"; // or 'qs' package if you prefer
-
+import querystring from "querystring";
 /**
  * Servidor Express para integrar com a API Moloni
  * - OAuth: troca de code por tokens no /callback
@@ -43,7 +42,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+const qs = require("querystring");
 // servir ficheiros estáticos (inclui login(1).html)
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -112,10 +111,11 @@ async function getValidAccessToken() {
 // (opcional) endpoint para iniciar o fluxo OAuth (utiliza o painel de autenticação da Moloni)
 app.get("/auth", (req, res) => {
   // Dependendo da configuração da Moloni, o endpoint de autorização pode variar.
-  // Mantemos este redirect genérico — ajusta se necessário conforme a tua app OAuth na Moloni.
-  const redirect = new URL("https://moloni.pt/login/");
-  // Depois do login, a Moloni deverá redirecionar para o REDIRECT_URI com um 'code' (authorization code).
-  return res.redirect(redirect.toString());
+  const redirect = new URL("https://api.moloni.pt/v1/authorize/");
+  redirect.searchParams.set("response_type", "code");
+  redirect.searchParams.set("client_id", CLIENT_ID);
+  redirect.searchParams.set("redirect_uri", REDIRECT_URI);
+  res.redirect(redirect.toString());
 });
 // Add this to your backend to list all companies
 app.get("/api/moloni-companies", async (req, res) => {
@@ -181,8 +181,6 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
-
-  const qs = require("querystring"); // ou 'qs' pacote para querystring
 
   try {
     const response = await axios.post(
