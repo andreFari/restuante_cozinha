@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import qs from "querystring"; // or 'qs' package if you prefer
 import querystring from "querystring";
 /**
  * Servidor Express para integrar com a API Moloni
@@ -42,7 +42,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const qs = require("querystring");
+
 // servir ficheiros estáticos (inclui login(1).html)
 app.use(express.static(path.join(__dirname, "public")));
 
