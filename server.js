@@ -45,7 +45,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // servir ficheiros estáticos (inclui login(1).html)
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Alias conveniente: /login.html → login(1).html
 app.get("/login.html", (req, res) => {
