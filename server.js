@@ -175,18 +175,26 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     return res.status(400).json({ error: "Missing code" });
   }
 
+  const qs = require("querystring"); // ou 'qs' pacote para querystring
+
   try {
-    const { data } = await axios.get("https://api.moloni.pt/v1/grant/", {
-      params: {
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/grant/",
+      qs.stringify({
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         code,
         redirect_uri: REDIRECT_URI,
-      },
-    });
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
-    const { access_token, refresh_token, expires_in } = data;
+    const { access_token, refresh_token, expires_in } = response.data;
 
     moloniTokens = {
       access_token,
