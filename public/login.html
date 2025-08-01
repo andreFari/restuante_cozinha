@@ -115,7 +115,7 @@
       <h1>Painel de Admin / Recessão</h1>
       <div style="text-align: right">
         <a
-          href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=245919082_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
+          href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=249928302_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
           class="btn"
           style="margin-right: 10px"
         >
@@ -461,43 +461,46 @@
         renderTables();
       };
 
-  
-      
-         window.saveKitchenNote = function (index) {
+      window.saveKitchenNote = function (index) {
         const textarea = document.getElementById("kitchenNote");
         tables[index].kitchenNote = textarea.value.trim();
         renderTables();
       };
 
-window.addEventListener("DOMContentLoaded", () => {
-  const params = new URLSearchParams(window.location.search);
-  const accessToken = params.get("access_token");
-  const error = params.get("error");
+      window.addEventListener("DOMContentLoaded", () => {
+        const params = new URLSearchParams(window.location.search);
+        const accessToken = params.get("access_token");
+        const error = params.get("error");
 
-  const tokenDisplayDiv = document.getElementById("tokenDisplay");
+        const tokenDisplayDiv = document.getElementById("tokenDisplay");
 
-  if (accessToken) {
-    localStorage.setItem("moloni_token", accessToken);
-    tokenDisplayDiv.textContent = "✅ Token armazenado!";
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } else {
-    const storedToken = localStorage.getItem("moloni_token");
-    if (storedToken) {
-      tokenDisplayDiv.textContent =
-        "Token armazenado: " + storedToken.substring(0, 25) + "...";
-    } else {
-      tokenDisplayDiv.textContent = "Nenhum token armazenado.";
-    }
-  }
+        if (accessToken) {
+          localStorage.setItem("moloni_token", accessToken);
+          tokenDisplayDiv.textContent = "✅ Token armazenado!";
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+        } else {
+          const storedToken = localStorage.getItem("moloni_token");
+          if (storedToken) {
+            tokenDisplayDiv.textContent =
+              "Token armazenado: " + storedToken.substring(0, 25) + "...";
+          } else {
+            tokenDisplayDiv.textContent = "Nenhum token armazenado.";
+          }
+        }
 
-  if (error) {
-    alert("Erro durante o login com Moloni: " + decodeURIComponent(error));
-    tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
-  }
+        if (error) {
+          alert(
+            "Erro durante o login com Moloni: " + decodeURIComponent(error)
+          );
+          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+        }
 
-  renderTables(); // Safe to call here
-});
-   
+        renderTables(); // Safe to call here
+      });
     </script>
   </body>
 </html>
