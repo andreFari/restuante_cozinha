@@ -4,46 +4,127 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import qs from "querystring";
+
+/**
+ * Servidor Express para integrar com a API Moloni
+ * - OAuth: troca de code por tokens no /callback
+ * - Refresh automático do access_token
+ * - /api/emitir-fatura: cria fatura e devolve link do PDF
+ * - /api/moloni-companies: lista empresas (para identificar company_id)
+ *
+ * Variáveis de ambiente necessárias (.env):
+ *   PORT=3000
+ *   CLIENT_ID=...
+ *   CLIENT_SECRET=...
+ *   REDIRECT_URI=http://SEU_HOST:3000/callback
+ *   MOLONI_COMPANY_ID=123456
+ *   MOLONI_DOCUMENT_SET_ID=11111
+ *   MOLONI_CUSTOMER_ID=22222
+ *   MOLONI_TAX_ID=33333
+ */
 
 dotenv.config();
-let moloniTokens = {
-  access_token: null,
-  refresh_token: null,
-  expires_at: null, // timestamp em milissegundos
-};
-const app = express();
-const port = process.env.PORT || 3000;
 
-const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
-const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
-const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
+// ----- ENV -----
+const PORT = process.env.PORT || 3000;
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
+
+const MOLONI_COMPANY_ID = Number(process.env.MOLONI_COMPANY_ID || 0);
+const MOLONI_DOCUMENT_SET_ID = Number(process.env.MOLONI_DOCUMENT_SET_ID || 0);
+const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
+const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
+
+// ----- APP -----
+const app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Middleware
-app.use(express.static(path.join(__dirname, "public")));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+// servir ficheiros estáticos (inclui login(1).html)
+app.use(express.static(__dirname));
 
-// Routes
-app.get("/", (req, res) => {
-  res.redirect("/login.html");
+// Alias conveniente: /login.html → login(1).html
+app.get("/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "login(1).html"));
 });
 
-app.get("/callback", async (req, res) => {
-  const { code } = req.query;
+// Redirect raiz para o login
+app.get("/", (req, res) => res.redirect("/login.html"));
 
-  console.log("Exchanging code for token with data:", {
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    code,
-    redirect_uri: REDIRECT_URI,
-  });
+// ----- Gestão de Tokens (em memória) -----
+let moloniTokens = {
+  access_token: null,
+  refresh_token: null,
+  expires_at: null, // timestamp (ms)
+};
+
+/**
+ * Devolve um access_token válido; renova automaticamente via refresh_token quando necessário.
+ */
+async function getValidAccessToken() {
+  // token válido com 60s de margem
+  if (
+    moloniTokens.access_token &&
+    moloniTokens.expires_at &&
+    moloniTokens.expires_at > Date.now() + 60000
+  ) {
+    return moloniTokens.access_token;
+  }
+
+  if (!moloniTokens.refresh_token) {
+    throw new Error(
+      "Refresh token inexistente. É necessário autenticar novamente (OAuth)."
+    );
+  }
 
   try {
-    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
+    const { data } = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "refresh_token",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        refresh_token: moloniTokens.refresh_token,
+      },
+    });
+
+    const { access_token, refresh_token, expires_in } = data;
+    moloniTokens = {
+      access_token,
+      refresh_token,
+      expires_at: Date.now() + Number(expires_in) * 1000,
+    };
+    console.log("[Moloni] Token renovado.");
+    return moloniTokens.access_token;
+  } catch (error) {
+    console.error(
+      "[Moloni] Falha ao renovar token:",
+      error.response?.data || error.message
+    );
+    throw new Error("Não foi possível renovar o token.");
+  }
+}
+
+// ----- OAuth -----
+// (opcional) endpoint para iniciar o fluxo OAuth (utiliza o painel de autenticação da Moloni)
+app.get("/auth", (req, res) => {
+  // Dependendo da configuração da Moloni, o endpoint de autorização pode variar.
+  // Mantemos este redirect genérico — ajusta se necessário conforme a tua app OAuth na Moloni.
+  const redirect = new URL("https://moloni.pt/login/");
+  // Depois do login, a Moloni deverá redirecionar para o REDIRECT_URI com um 'code' (authorization code).
+  return res.redirect(redirect.toString());
+});
+
+// Recebe o authorization code e troca por tokens
+app.get("/callback", async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
+
+  try {
+    const { data } = await axios.get("https://api.moloni.pt/v1/grant/", {
       params: {
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
@@ -53,138 +134,129 @@ app.get("/callback", async (req, res) => {
       },
     });
 
-    const { access_token, refresh_token, expires_in } = response.data;
-    // Guardar os tokens e o tempo de expiração (agora + expires_in)
+    const { access_token, refresh_token, expires_in } = data;
     moloniTokens = {
       access_token,
       refresh_token,
-      expires_at: Date.now() + expires_in * 1000, // expires_in vem em segundos
+      expires_at: Date.now() + Number(expires_in) * 1000,
     };
-    console.log("Tokens armazenados:", moloniTokens);
-    console.log("Authorization code received:", code);
-    console.log("Access token received:", access_token);
+    console.log("[Moloni] Tokens obtidos via authorization_code.");
 
-    return res.redirect(`/login.html?access_token=${access_token}`);
+    // volta ao login com flag (podes ler isto no front)
+    return res.redirect("/login.html?authorized=1");
   } catch (error) {
     console.error(
-      "Token exchange error:",
-      error.response?.status,
+      "[Moloni] Erro a trocar code por token:",
       error.response?.data || error.message
     );
-
-    res
-      .status(500)
-      .send(
-        `Error fetching access token: ${JSON.stringify(
-          error.response?.data || error.message
-        )}`
-      );
+    return res.status(500).json({
+      error: "oauth_exchange_failed",
+      detail: error.response?.data || String(error),
+    });
   }
 });
-async function getValidAccessToken() {
-  // Verifica se o token existe e ainda não expirou (dá margem de 1 min)
-  if (
-    moloniTokens.access_token &&
-    moloniTokens.expires_at &&
-    moloniTokens.expires_at > Date.now() + 60000
-  ) {
-    return moloniTokens.access_token;
-  }
 
-  // Caso precise de renovar
-  if (!moloniTokens.refresh_token) {
-    throw new Error(
-      "Refresh token inexistente. O utilizador precisa de se autenticar novamente."
-    );
-  }
-
+// ----- API: emitir fatura -----
+app.post("/api/emitir-fatura", async (req, res) => {
   try {
-    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
-      params: {
-        grant_type: "refresh_token",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        refresh_token: moloniTokens.refresh_token,
+    // valida envs base
+    if (
+      !MOLONI_COMPANY_ID ||
+      !MOLONI_DOCUMENT_SET_ID ||
+      !MOLONI_CUSTOMER_ID ||
+      !MOLONI_TAX_ID
+    ) {
+      return res.status(500).json({
+        error: "config_invalida",
+        detail:
+          "Faltam IDs (company, document_set, customer, tax) nas variáveis de ambiente.",
+      });
+    }
+
+    const access_token = await getValidAccessToken();
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const mesa = req.body || {};
+
+    // 1) inserir fatura (JSON + json=true; access_token em query GET)
+    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
+
+    const payload = {
+      company_id: MOLONI_COMPANY_ID,
+      date: today,
+      expiration_date: today,
+      document_set_id: MOLONI_DOCUMENT_SET_ID,
+      customer_id: MOLONI_CUSTOMER_ID,
+      status: 1, // 1 = fechado
+      products: (mesa.order?.plates || []).map((name) => ({
+        name, // idealmente, usa product_id de artigos já existentes
+        qty: 1,
+        price: 10, // substitui pelo teu preço real
+        taxes: [{ tax_id: MOLONI_TAX_ID }],
+      })),
+    };
+
+    const insertResp = await axios.post(insertUrl, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
 
-    const { access_token, refresh_token, expires_in } = response.data;
+    // document_id devolvido pela inserção
+    const document_id =
+      insertResp?.data?.document_id ||
+      insertResp?.data?.document?.document_id ||
+      insertResp?.data?.documentId;
+    if (!document_id) {
+      return res
+        .status(502)
+        .json({ error: "insert_sem_document_id", detail: insertResp.data });
+    }
 
-    moloniTokens = {
-      access_token,
-      refresh_token,
-      expires_at: Date.now() + expires_in * 1000,
-    };
-
-    console.log("Token renovado automaticamente.");
-    return moloniTokens.access_token;
-  } catch (error) {
-    console.error(
-      "Erro ao renovar o token:",
-      error.response?.data || error.message
-    );
-    throw new Error("Não foi possível renovar o token.");
-  }
-}
-
-// Login via username/password (not recommended for production)
-app.post("/api/moloni-login", async (req, res) => {
-  const { client_id, client_secret, username, password } = req.body;
-
-  if (!client_id || !client_secret || !username || !password) {
-    return res.status(400).json({ error: "Faltam parâmetros" });
-  }
-
-  try {
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/grant/",
-      qs.stringify({
-        grant_type: "password",
-        client_id,
-        client_secret,
-        username,
-        password,
-      }),
+    // 2) link do PDF
+    const pdfResp = await axios.get(
+      "https://api.moloni.pt/v1/documents/getPDFLink/",
       {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+        params: {
+          access_token,
+          company_id: MOLONI_COMPANY_ID,
+          document_id,
         },
       }
     );
 
-    res.status(200).json({ access_token, refresh_token, expires_in });
+    const pdfUrl = pdfResp?.data?.url || pdfResp?.data;
+    return res.status(200).json({ pdfUrl, document_id });
   } catch (e) {
-    res.status(400).json({ error: "moloni_login_failed", detail: String(e) });
+    const status = e.response?.status || 500;
+    return res.status(status).json({
+      error: "emitir_fatura_failed",
+      detail: e.response?.data || String(e),
+    });
   }
 });
 
-// Emit invoice
-app.post("/api/emitir-fatura", async (req, res) => {
-  const token = await getValidAccessToken(); // <-- Aqui vai buscar sempre o token válido
-
-  const table = req.body;
-
+// util: lista empresas (para encontrares o company_id)
+app.get("/api/moloni-companies", async (req, res) => {
   try {
-    const response = await axios.post(
-      `https://api.moloni.pt/v1/invoices/insert/?access_token=${token}`,
+    const access_token = await getValidAccessToken();
+    const { data } = await axios.get(
+      "https://api.moloni.pt/v1/companies/getAll/",
       {
-        customer_id: 999999990, // ⚠️ Use a valid customer ID
-        document_set_id: 843174, // ⚠️ Use a valid document set ID
-        products: table.order.plates.map((name) => ({
-          name,
-          qty: 1,
-          price: 10,
-        })),
+        params: { access_token },
       }
     );
-
-    res.status(200).json({ pdfUrl });
+    return res.json(data);
   } catch (e) {
-    res.status(400).json({ error: "emitir_fatura_failed", detail: String(e) });
+    const status = e.response?.status || 500;
+    return res.status(status).json({
+      error: "companies_failed",
+      detail: e.response?.data || String(e),
+    });
   }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// start
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
