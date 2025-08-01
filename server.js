@@ -137,7 +137,7 @@ app.get("/callback", async (req, res) => {
   if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
 
   try {
-    const { data } = await axios.get("https://api.moloni.pt/v1/grant/", {
+    const { data } = await axios.post("https://api.moloni.pt/v1/grant/", {
       params: {
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
