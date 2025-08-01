@@ -168,7 +168,43 @@ app.get("/callback", async (req, res) => {
     });
   }
 });
+app.post("/api/moloni-exchange-code", async (req, res) => {
+  const { code } = req.body;
 
+  if (!code) {
+    return res.status(400).json({ error: "Missing code" });
+  }
+
+  try {
+    const { data } = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+        redirect_uri: REDIRECT_URI,
+      },
+    });
+
+    const { access_token, refresh_token, expires_in } = data;
+
+    moloniTokens = {
+      access_token,
+      refresh_token,
+      expires_at: Date.now() + Number(expires_in) * 1000,
+    };
+
+    console.log("[Moloni] Tokens obtained via /api/moloni-exchange-code");
+
+    return res.json({ access_token, refresh_token });
+  } catch (error) {
+    console.error(
+      "Moloni exchange error:",
+      error.response?.data || error.message
+    );
+    return res.status(500).json({ error: "Failed to exchange code" });
+  }
+});
 // ----- API: emitir fatura -----
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
