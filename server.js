@@ -202,7 +202,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
         },
       }
     );
-
+    console.log("Moloni raw response data:", response.data);
     const { access_token, refresh_token, expires_in } = response.data;
 
     moloniTokens = {
