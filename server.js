@@ -217,7 +217,8 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
   } catch (error) {
     console.error(
       "Moloni exchange error:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
+      error.response?.status
     );
     return res.status(500).json({ error: "Failed to exchange code" });
   }
