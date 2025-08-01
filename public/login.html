@@ -522,6 +522,7 @@
 
       window.addEventListener("DOMContentLoaded", () => {
         const params = new URLSearchParams(window.location.search);
+
         const code = params.get("code");
         const error = params.get("error");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
@@ -567,7 +568,14 @@
           }
         }
 
-        renderTables();
+        if (error) {
+          alert(
+            "Erro durante o login com Moloni: " + decodeURIComponent(error)
+          );
+          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+        }
+
+        renderTables(); // Safe to call here
       });
     </script>
   </body>
