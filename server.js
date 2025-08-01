@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
+import qs from "querystring"; // or 'qs' package if you prefer
 
 /**
  * Servidor Express para integrar com a API Moloni
@@ -137,15 +138,21 @@ app.get("/callback", async (req, res) => {
   if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
 
   try {
-    const { data } = await axios.post("https://api.moloni.pt/v1/grant/", {
-      params: {
+    const { data } = await axios.post(
+      "https://api.moloni.pt/v1/grant/",
+      qs.stringify({
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         code,
         redirect_uri: REDIRECT_URI,
-      },
-    });
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
     const { access_token, refresh_token, expires_in } = data;
     moloniTokens = {
