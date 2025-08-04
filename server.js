@@ -31,7 +31,7 @@ dotenv.config();
 // ----- ENV -----
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
-const CLIENT_SECRET = process.env.MOLONI_CLIENT_ID;
+const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
 const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
 
 const MOLONI_COMPANY_ID = Number(CLIENT_ID);
@@ -202,6 +202,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
         },
       }
     );
+    console.log("Moloni raw response data:", response.data);
     console.log("Moloni raw response data:", response.data);
     const { access_token, refresh_token, expires_in } = response.data;
 
