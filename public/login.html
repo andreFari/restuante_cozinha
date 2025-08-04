@@ -216,7 +216,7 @@
           loginStatus.style.color = "red";
           return;
         }
-
+        localStorage.setItem("refresh_token", data.refresh_token);
         localStorage.setItem("moloni_token", data.access_token);
         loginStatus.textContent = "Login efetuado com sucesso!";
         loginStatus.style.color = "green";
