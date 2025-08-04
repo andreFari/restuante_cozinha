@@ -143,7 +143,7 @@ app.get("/callback", async (req, res) => {
   try {
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      qs.stringify({
+      querystring.stringify({
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
