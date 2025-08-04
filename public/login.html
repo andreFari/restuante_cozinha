@@ -529,9 +529,9 @@
           // Trocar o code por tokens via teu backend
           fetch("/api/moloni-exchange-code", {
             method: "POST",
-            body: new URLSearchParams({ code }),
+            body: JSON.stringify({ code }), // ✅ JSON body
             headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
+              "Content-Type": "application/json", // ✅ JSON
               Accept: "application/json",
             },
           })

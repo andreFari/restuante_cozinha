@@ -187,7 +187,8 @@ app.get("/callback", async (req, res) => {
 // Endpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
-  console.log("Received body:", req.body);
+  console.log("Headers received:", req.headers);
+  console.log("Raw body (as received):", req.body); // <- Make sure this is `{ code: ... }`
 
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
