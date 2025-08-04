@@ -203,16 +203,17 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
       redirect_uri: REDIRECT_URI,
     })
   );
+  const params = new URLSearchParams();
+  params.append("grant_type", "authorization_code");
+  params.append("client_id", CLIENT_ID);
+  params.append("client_secret", CLIENT_SECRET);
+  params.append("code", code);
+  params.append("redirect_uri", REDIRECT_URI);
+
   try {
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      querystring.stringify({
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        code,
-        redirect_uri: REDIRECT_URI,
-      }),
+      params.toString(),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
