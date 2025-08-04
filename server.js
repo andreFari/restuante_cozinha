@@ -157,6 +157,7 @@ app.get("/callback", async (req, res) => {
         },
       }
     );
+    console.log("[Moloni Response]", JSON.stringify(data, null, 2));
     console.log("[Moloni Response]", data);
     const { access_token, refresh_token, expires_in } = data;
     moloniTokens = {
@@ -165,6 +166,11 @@ app.get("/callback", async (req, res) => {
       expires_at: Date.now() + Number(expires_in) * 1000,
     };
     console.log("[Moloni] Tokens obtidos via authorization_code.");
+
+    // ✅ Optional: log if refresh_token is missing
+    if (!refresh_token) {
+      console.warn("[Moloni] ⚠️ Atenção: refresh_token está vazio ou nulo!");
+    }
 
     // volta ao login com flag (podes ler isto no front)
     return res.redirect("/login.html?authorized=1");
