@@ -39,9 +39,9 @@ const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 // ----- APP -----
 const app = express();
+app.use(express.urlencoded({ extended: true })); // 🟢 Handles form data first
+app.use(express.json()); // 🟢 Then JSON
 app.use(express.json());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,10 +188,20 @@ app.get("/callback", async (req, res) => {
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
   console.log("Received body:", req.body);
+
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
-
+  console.log(
+    "Sending POST body:",
+    querystring.stringify({
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code,
+      redirect_uri: REDIRECT_URI,
+    })
+  );
   try {
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
