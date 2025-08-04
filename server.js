@@ -28,7 +28,7 @@ import qs from "querystring";
 dotenv.config();
 
 // ----- ENV -----
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000 || 3000 || 1000;
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
 const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
