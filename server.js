@@ -5,8 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import express from "express";
-import qs from "qs";
-import querystring from "querystring";
+import qs from "querystring";
 
 /**
  * Servidor Express para integrar com a API Moloni
@@ -209,7 +208,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
         },
       }
     );
-
+    console.log("Moloni POST data:", response);
     console.log("Moloni raw response data:", response.data);
 
     const { access_token, refresh_token, expires_in } = response.data;
