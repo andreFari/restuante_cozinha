@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import express from "express";
-import qs from "querystring";
+import qs from "qs";
 
 /**
  * Servidor Express para integrar com a API Moloni
