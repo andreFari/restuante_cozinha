@@ -134,11 +134,10 @@ app.get("/api/moloni-companies", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: "companies_failed", detail: e.message });
   }
-});
-// Recebe o authorization code e troca por tokens
+}); // Recebe o authorization code e troca por tokens
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
-  console.log("[Callback] Código recebido:", code); // 👈 ADICIONA ISTO
+  console.log("[Callback] Código recebido:", code);
   if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
 
   try {
@@ -157,34 +156,35 @@ app.get("/callback", async (req, res) => {
         },
       }
     );
+
     console.log("[Moloni Response]", JSON.stringify(data, null, 2));
-    console.log("[Moloni Response]", data);
+
     const { access_token, refresh_token, expires_in } = data;
     moloniTokens = {
       access_token,
       refresh_token,
       expires_at: Date.now() + Number(expires_in) * 1000,
     };
-    console.log("[Moloni] Tokens obtidos via authorization_code.");
 
-    // ✅ Optional: log if refresh_token is missing
     if (!refresh_token) {
       console.warn("[Moloni] ⚠️ Atenção: refresh_token está vazio ou nulo!");
     }
 
-    // volta ao login com flag (podes ler isto no front)
     return res.redirect("/login.html?authorized=1");
   } catch (error) {
-    console.error(
-      "[Moloni] Erro a trocar code por token:",
-      error.response?.data || error.message
-    );
+    console.error("[Moloni] Erro a trocar code por token:", {
+      status: error?.response?.status,
+      data: error?.response?.data,
+    });
+
     return res.status(500).json({
       error: "oauth_exchange_failed",
       detail: error.response?.data || String(error),
     });
   }
 });
+
+// Endpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
 
@@ -208,8 +208,9 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
         },
       }
     );
+
     console.log("Moloni raw response data:", response.data);
-    console.log("Moloni raw response data:", response.data);
+
     const { access_token, refresh_token, expires_in } = response.data;
 
     moloniTokens = {
@@ -218,15 +219,13 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
       expires_at: Date.now() + Number(expires_in) * 1000,
     };
 
-    console.log("[Moloni] Tokens obtained via /api/moloni-exchange-code");
-
     return res.json({ access_token, refresh_token });
   } catch (error) {
-    console.error(
-      "Moloni exchange error:",
-      error.response?.data || error.message,
-      error.response?.status
-    );
+    console.error("[Moloni] Erro completo:", {
+      status: error?.response?.status,
+      data: error?.response?.data,
+      headers: error?.response?.headers,
+    });
     return res.status(500).json({ error: "Failed to exchange code" });
   }
 });
