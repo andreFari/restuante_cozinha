@@ -40,6 +40,7 @@ const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 // ----- APP -----
 const app = express();
+app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -187,7 +188,7 @@ app.get("/callback", async (req, res) => {
 // Endpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
-
+  console.log("Received body:", req.body);
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
