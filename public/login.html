@@ -121,7 +121,7 @@
         </a>
       </div>
 
-      <div id="tokenDisplay" style="color: #ccc; font-size: 0.8em"></div>
+      <div id="tokenDisplay" style="color: #ccc"></div>
     </header>
     <div class="container">
       <div class="table-lists">
@@ -524,7 +524,7 @@
         const code = params.get("code");
         const error = params.get("error");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
-
+        console.log("Code da URL:", code);
         if (code) {
           fetch("/api/moloni-exchange-code", {
             method: "POST",
@@ -535,6 +535,7 @@
           })
             .then((res) => res.json())
             .then(({ access_token, refresh_token }) => {
+              console.log("Tokens recebidos:", access_token, refresh_token);
               localStorage.setItem("moloni_token", access_token);
               localStorage.setItem("refresh_token", refresh_token);
               history.replaceState({}, "", "/login.html");
@@ -561,14 +562,7 @@
           }
         }
 
-        if (error) {
-          alert(
-            "Erro durante o login com Moloni: " + decodeURIComponent(error)
-          );
-          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
-        }
-
-        renderTables(); // Safe to call here
+        renderTables(); // Se existir, senão ignora
       });
     </script>
   </body>

@@ -223,7 +223,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
-
+  console.log("Código recebido via URL:", code);
   try {
     const qs = new URLSearchParams({
       grant_type: "authorization_code",
