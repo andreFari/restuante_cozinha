@@ -47,7 +47,8 @@ app.use(express.json()); // Handles JSON bodies
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+const morgan = require("morgan");
+app.use(morgan("dev"));
 // servir ficheiros estáticos (inclui login(1).html)
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -357,12 +358,15 @@ app.post("/api/emitir-fatura", async (req, res) => {
     if (!Array.isArray(payload.products) || payload.products.length === 0) {
       console.error("❌ Nenhum produto para enviar!");
     }
-
-    const insertResp = await axios.post(insertUrl, payload, {
+    console.log("🔍 Stringified JSON:", JSON.stringify(payload));
+    const insertResp = await axios({
+      method: "post",
+      url: insertUrl,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
+      data: JSON.stringify(payload), // <- Força JSON literal!
     });
     console.dir(products, { depth: null });
     // document_id devolvido pela inserção
