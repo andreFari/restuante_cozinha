@@ -320,7 +320,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
           ],
         })),
     };
-    console.log("Body da requisição para Moloni:", payload);
+    console.log(
+      "Body da requisição para Moloni (JSON):",
+      JSON.stringify(payload, null, 2)
+    );
+
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",
