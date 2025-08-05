@@ -38,7 +38,7 @@ const COMPANY_ID = process.env.COMPANY_ID;
 
 const MOLONI_COMPANY_ID = Number(COMPANY_ID);
 const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
-const MOLONI_CUSTOMER_ID = 9999;
+const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 // ----- APP -----
 const app = express();
