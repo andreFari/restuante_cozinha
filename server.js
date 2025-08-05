@@ -40,9 +40,8 @@ const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 // ----- APP -----
 const app = express();
-app.use(express.urlencoded({ extended: true })); // 🟢 Handles form data first
-app.use(express.json()); // 🟢 Then JSON
-app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Handles form-encoded bodies (e.g. from forms)
+app.use(express.json()); // Handles JSON bodies
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -230,10 +229,13 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
 });*/ app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const { code } = req.body;
+
     if (!code) {
       return res.status(400).json({ error: "Missing code" });
     }
-    console.log("Código recebido:", code);
+
+    console.log("==> Código recebido:", code);
+    console.log("==> Redirecionamento:", REDIRECT_URI);
 
     const params = new URLSearchParams();
     params.append("grant_type", "authorization_code");
@@ -242,7 +244,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     params.append("code", code);
     params.append("redirect_uri", REDIRECT_URI);
 
-    console.log("Enviando para Moloni:", params.toString());
+    console.log("==> Corpo enviado para Moloni:", params.toString());
 
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
@@ -254,20 +256,23 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
       }
     );
 
-    console.log("Resposta Moloni:", response.data);
+    console.log("✅ Resposta Moloni:", response.data);
 
     const { access_token, refresh_token, expires_in } = response.data;
 
     moloniTokens = {
       access_token,
       refresh_token,
-      expires_at: Date.now() + expires_in * 1000,
+      expires_at: Date.now() + Number(expires_in) * 1000,
     };
-
-    res.json({ access_token, refresh_token });
+    return res.json(response.data);
+    // return res.json({ access_token, refresh_token });
   } catch (error) {
-    console.error("[Moloni] Erro:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to exchange code" });
+    console.error("[Moloni] ❌ Erro:", error.response?.data || error.message);
+    return res.status(500).json({
+      error: "Failed to exchange code",
+      detail: error.response?.data || error.message,
+    });
   }
 });
 // ----- API: emitir fatura -----
