@@ -315,7 +315,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         price: 10,
         taxes: [
           {
-            tax_id: MOLONI_TAX_ID,
+            tax_id: Number(MOLONI_TAX_ID),
           },
         ],
       }));
@@ -343,17 +343,14 @@ app.post("/api/emitir-fatura", async (req, res) => {
     console.log("✅ Produtos finais:", payload.products);
     console.log("👉 Tipo do campo products:", typeof payload.products);
     console.log("👉 É array válido?", Array.isArray(payload.products));
-    const insertResp = await axios.post(
-      insertUrl,
-      JSON.parse(JSON.stringify(payload)),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      }
-    );
-
+    console.dir(payload.products, { depth: null });
+    const insertResp = await axios.post(insertUrl, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+    console.dir(products, { depth: null });
     // document_id devolvido pela inserção
     const document_id =
       insertResp?.data?.document_id ||
