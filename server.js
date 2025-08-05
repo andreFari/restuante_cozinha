@@ -291,7 +291,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     // 1) inserir fatura (JSON + json=true; access_token em query GET)
     const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
-
+    console.log("📦 ENV document_set_id:", MOLONI_DOCUMENT_SET_ID);
     const payload = {
       company_id: MOLONI_COMPANY_ID,
       date: today,
@@ -299,10 +299,16 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_set_id: MOLONI_DOCUMENT_SET_ID,
       customer_id: MOLONI_CUSTOMER_ID,
       status: 1, // 1 = getValidAccessToken
-      products: (mesa.order?.plates || []).map((name) => ({
-        name, // idealmente, usa product_id de artigos já existentes
+      products: [
+        ...(mesa.order?.plates || []),
+        ...(mesa.order?.drinks || []),
+        ...(mesa.order?.desserts || []),
+        ...(mesa.order?.extras || []),
+        ...(mesa.order?.coffee || []),
+      ].map((name) => ({
+        name,
         qty: 1,
-        price: 10, // substitui pelo teu preço real
+        price: 10,
         taxes: [{ tax_id: MOLONI_TAX_ID }],
       })),
     };
