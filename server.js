@@ -136,6 +136,17 @@ app.get("/api/moloni-companies", async (req, res) => {
     res.status(500).json({ error: "companies_failed", detail: e.message });
   }
 }); // Recebe o authorization code e troca por tokens
+
+app.get("/callback", (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.status(400).send("Falta o parâmetro 'code'.");
+  }
+
+  res.redirect(`/login.html?code=${encodeURIComponent(code)}`);
+});
+/*
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
   console.log("[Callback] Código recebido:", code);
@@ -175,7 +186,7 @@ app.get("/callback", async (req, res) => {
       detail: error.response?.data || error.message,
     });
   }
-});
+});*/
 /* AntigoEndpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
