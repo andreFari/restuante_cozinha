@@ -376,7 +376,7 @@ app.get("/api/moloni-companies", async (req, res) => {
 });
 app.get("/api/moloni-document-sets", async (req, res) => {
   try {
-    const access_token = await getValidAccessToken(); // Usa o teu token válido
+    const access_token = await getValidAccessToken();
     const company_id = MOLONI_COMPANY_ID;
 
     if (!access_token || !company_id) {
@@ -388,10 +388,11 @@ app.get("/api/moloni-document-sets", async (req, res) => {
 
     const response = await axios.post(
       "https://api.moloni.pt/v1/documentSets/getAll/",
-      { company_id },
+      {}, // corpo vazio
       {
         params: {
           access_token,
+          company_id,
         },
       }
     );
@@ -416,6 +417,7 @@ app.get("/api/moloni-document-sets", async (req, res) => {
     });
   }
 });
+
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
