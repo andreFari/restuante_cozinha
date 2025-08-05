@@ -358,16 +358,24 @@ app.post("/api/emitir-fatura", async (req, res) => {
     if (!Array.isArray(payload.products) || payload.products.length === 0) {
       console.error("❌ Nenhum produto para enviar!");
     }
+
     console.log("🔍 Stringified JSON:", JSON.stringify(payload));
-    const insertResp = await axios({
-      method: "post",
-      url: insertUrl,
+    const formData = new URLSearchParams();
+    formData.append("company_id", MOLONI_COMPANY_ID);
+    formData.append("date", today);
+    formData.append("expiration_date", today);
+    formData.append("document_set_id", MOLONI_DOCUMENT_SET_ID);
+    formData.append("customer_id", MOLONI_CUSTOMER_ID);
+    formData.append("status", 1);
+    formData.append("products", JSON.stringify(products)); // ✅ stringified!
+
+    const insertResp = await axios.post(insertUrl, formData.toString(), {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      data: JSON.stringify(payload), // <- Força JSON literal!
     });
+
     console.dir(products, { depth: null });
     // document_id devolvido pela inserção
     const document_id =
