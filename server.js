@@ -138,7 +138,7 @@ app.get("/api/moloni-companies", async (req, res) => {
 
 app.get("/callback", (req, res) => {
   const { code } = req.query;
-
+  console.log("Body recebido:", req.body);
   if (!code) {
     return res.status(400).send("Falta o parâmetro 'code'.");
   }
@@ -229,7 +229,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
 });*/ app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const { code } = req.body;
-
+    console.log("Body recebido:", req.body);
     if (!code) {
       return res.status(400).json({ error: "Missing code" });
     }
