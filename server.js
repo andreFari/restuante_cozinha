@@ -576,7 +576,56 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
     });
   }
 });
+app.get("/api/moloni-customers", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
 
+    const { data } = await axios.post(
+      "https://api.moloni.pt/v1/customers/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
+      { params: { access_token, json: true } }
+    );
+
+    const simplificados = data.map((c) => ({
+      id: c.customer_id,
+      nome: c.name,
+      contribuinte: c.vat,
+    }));
+
+    return res.status(200).json(simplificados);
+  } catch (e) {
+    return res.status(500).json({
+      error: "failed_fetch_customers",
+      detail: e.response?.data || String(e),
+    });
+  }
+});
+
+app.get("/api/moloni-taxes", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+
+    const { data } = await axios.post(
+      "https://api.moloni.pt/v1/taxes/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
+      { params: { access_token, json: true } }
+    );
+
+    const simplificados = data.map((t) => ({
+      id: t.tax_id,
+      nome: t.name,
+      valor: t.value,
+      ativo: t.active,
+    }));
+
+    return res.status(200).json(simplificados);
+  } catch (e) {
+    return res.status(500).json({
+      error: "failed_fetch_taxes",
+      detail: e.response?.data || String(e),
+    });
+  }
+});
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
