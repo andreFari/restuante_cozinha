@@ -228,7 +228,8 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     });
     return res.status(500).json({ error: "Failed to exchange code" });
   }
-});*/ app.post("/api/moloni-exchange-code", async (req, res) => {
+});*/
+app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const { code } = req.body;
     console.log("Body recebido:", req.body);
@@ -373,7 +374,48 @@ app.get("/api/moloni-companies", async (req, res) => {
     });
   }
 });
+app.get("/api/moloni-document-sets", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken(); // Usa o teu token válido
+    const company_id = MOLONI_COMPANY_ID;
 
+    if (!access_token || !company_id) {
+      return res.status(500).json({
+        error: "missing_credentials",
+        detail: "Access token ou company_id em falta.",
+      });
+    }
+
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/documentSets/getAll/",
+      { company_id },
+      {
+        params: {
+          access_token,
+        },
+      }
+    );
+
+    const conjuntos = response.data;
+
+    const dadosFiltrados = conjuntos.map((set) => ({
+      id: set.document_set_id,
+      nome: set.name,
+      tipo: set.type,
+    }));
+
+    return res.status(200).json(dadosFiltrados);
+  } catch (error) {
+    console.error(
+      "Erro ao obter document sets:",
+      error.response?.data || error.message
+    );
+    return res.status(500).json({
+      error: "failed_fetch_document_sets",
+      detail: error.response?.data || error.message,
+    });
+  }
+});
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
