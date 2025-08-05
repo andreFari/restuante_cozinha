@@ -29,7 +29,8 @@ import qs from "qs"; // ✅ garante que tens esta linha no topo do ficheiro
 dotenv.config();
 
 // ----- ENV -----
-const PORT = process.env.PORT || 10000 || 3000 || 1000;
+const PORT = process.env.PORT || 10000;
+
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
 const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
@@ -248,7 +249,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
 
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params,
+      params.toString(),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
