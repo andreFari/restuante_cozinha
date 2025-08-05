@@ -149,7 +149,7 @@ app.get("/callback", async (req, res) => {
     params.append("redirect_uri", REDIRECT_URI);
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params.toString(),
+      params,
       {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       }
@@ -211,7 +211,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params.toString(),
+      params,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
