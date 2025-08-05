@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
+import { URLSearchParams } from "url"; // necessário em ambientes Node
 
 import express from "express";
 import querystring from "querystring";
@@ -135,53 +136,57 @@ app.get("/api/moloni-companies", async (req, res) => {
     res.status(500).json({ error: "companies_failed", detail: e.message });
   }
 }); // Recebe o authorization code e troca por tokens
+
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
+
   console.log("[Callback] Código recebido:", code);
-  if (!code) return res.status(400).send("Falta o parâmetro 'code'.");
+
+  if (!code) {
+    return res.status(400).send("Falta o parâmetro 'code'.");
+  }
+
+  const params = new URLSearchParams();
+  params.append("grant_type", "authorization_code");
+  params.append("client_id", CLIENT_ID);
+  params.append("client_secret", CLIENT_SECRET);
+  params.append("code", code);
+  params.append("redirect_uri", REDIRECT_URI);
 
   try {
-    const params = new URLSearchParams();
-    params.append("grant_type", "authorization_code");
-    params.append("client_id", CLIENT_ID);
-    params.append("client_secret", CLIENT_SECRET);
-    params.append("code", code);
-    params.append("redirect_uri", REDIRECT_URI);
-    const { data } = await axios.post(
+    const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
       params,
       {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       }
     );
 
-    console.log("[Moloni Response]", JSON.stringify(data, null, 2));
+    console.log("[Moloni Response]", response.data);
 
-    const { access_token, refresh_token, expires_in } = data;
+    const { access_token, refresh_token, expires_in } = response.data;
+
     moloniTokens = {
       access_token,
       refresh_token,
       expires_at: Date.now() + Number(expires_in) * 1000,
     };
 
-    if (!refresh_token) {
-      console.warn("[Moloni] ⚠️ Atenção: refresh_token está vazio ou nulo!");
-    }
-
-    return res.redirect("/login.html?authorized=1");
+    res.redirect("/login.html?authorized=1");
   } catch (error) {
     console.error("[Moloni] Erro a trocar code por token:", {
       status: error?.response?.status,
       data: error?.response?.data,
     });
 
-    return res.status(500).json({
+    res.status(500).json({
       error: "oauth_exchange_failed",
-      detail: error.response?.data || String(error),
+      detail: error.response?.data || error.message,
     });
   }
 });
-
 // Endpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
