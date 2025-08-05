@@ -227,14 +227,15 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     });
     return res.status(500).json({ error: "Failed to exchange code" });
   }
-});*/
-app.post("/api/moloni-exchange-code", async (req, res) => {
+});*/ app.post("/api/moloni-exchange-code", async (req, res) => {
+  console.log("Body recebido:", req.body);
   const { code } = req.body;
+  console.log("POST /api/moloni-exchange-code - code recebido:", code);
 
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
-  console.log("Código recebido via URL:", code);
+
   try {
     const qs = new URLSearchParams({
       grant_type: "authorization_code",
