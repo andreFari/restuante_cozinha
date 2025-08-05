@@ -164,8 +164,6 @@ app.get("/callback", async (req, res) => {
       refresh_token,
       expires_at: Date.now() + Number(expires_in) * 1000,
     };
-
-    res.redirect("/login.html?authorized=1");
   } catch (error) {
     console.error("[Moloni] Erro a trocar code por token:", {
       status: error?.response?.status,
@@ -219,7 +217,6 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     return res.status(500).json({ error: "Failed to exchange code" });
   }
 });*/
-
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
 
