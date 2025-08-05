@@ -284,7 +284,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
           "Faltam IDs (company, document_set, customer, tax) nas variáveis de ambiente.",
       });
     }
-
+    console.log("🟢 Body recebido:", req.body);
     const access_token = await getValidAccessToken();
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const mesa = req.body || {};
@@ -298,7 +298,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       expiration_date: today,
       document_set_id: MOLONI_DOCUMENT_SET_ID,
       customer_id: MOLONI_CUSTOMER_ID,
-      status: 1, // 1 = fechado
+      status: 1, // 1 = getValidAccessToken
       products: (mesa.order?.plates || []).map((name) => ({
         name, // idealmente, usa product_id de artigos já existentes
         qty: 1,
@@ -306,7 +306,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         taxes: [{ tax_id: MOLONI_TAX_ID }],
       })),
     };
-    console.log("Body da requisição para Moloni:", qs);
+    console.log("Body da requisição para Moloni:", payload);
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",
