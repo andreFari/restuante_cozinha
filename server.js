@@ -238,24 +238,15 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     console.log("==> Código recebido:", code);
     console.log("==> Redirecionamento:", REDIRECT_URI);
 
-    const params = new URLSearchParams();
-    params.append("grant_type", "authorization_code");
-    params.append("client_id", CLIENT_ID);
-    params.append("client_secret", CLIENT_SECRET);
-    params.append("code", code);
-    params.append("redirect_uri", REDIRECT_URI);
-
-    console.log("==> Corpo enviado para Moloni:", params);
-
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/grant/",
-      params.toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
+    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code: code,
+        redirect_uri: REDIRECT_URI,
+      },
+    });
 
     console.log("✅ Resposta Moloni:", response.data);
 
