@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { URLSearchParams } from "url"; // necessário em ambientes Node
 
 import express from "express";
-import querystring from "querystring";
+import qs from "qs"; // ✅ garante que tens esta linha no topo do ficheiro
 
 /**
  * Servidor Express para integrar com a API Moloni
@@ -139,24 +139,24 @@ app.get("/api/moloni-companies", async (req, res) => {
 
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
-
   console.log("[Callback] Código recebido:", code);
 
   if (!code) {
     return res.status(400).send("Falta o parâmetro 'code'.");
   }
 
-  const params = new URLSearchParams();
-  params.append("grant_type", "authorization_code");
-  params.append("client_id", CLIENT_ID);
-  params.append("client_secret", CLIENT_SECRET);
-  params.append("code", code);
-  params.append("redirect_uri", REDIRECT_URI);
+  const postData = qs.stringify({
+    grant_type: "authorization_code",
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    code: code,
+    redirect_uri: REDIRECT_URI,
+  });
 
   try {
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params,
+      postData,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -198,7 +198,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
   }
   console.log(
     "Sending POST body:",
-    querystring.stringify({
+    qs.stringify({
       grant_type: "authorization_code",
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
