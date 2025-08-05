@@ -329,11 +329,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
     }
 
     const payload = {
-      company_id: MOLONI_COMPANY_ID,
+      company_id: Number(MOLONI_COMPANY_ID),
       date: today,
       expiration_date: today,
-      document_set_id: MOLONI_DOCUMENT_SET_ID,
-      customer_id: MOLONI_CUSTOMER_ID,
+      document_set_id: Number(MOLONI_DOCUMENT_SET_ID),
+      customer_id: Number(MOLONI_CUSTOMER_ID),
       status: 1,
       products,
     };
@@ -353,6 +353,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
     console.log("👉 Tipo do campo products:", typeof payload.products);
     console.log("👉 É array válido?", Array.isArray(payload.products));
     console.dir(payload.products, { depth: null });
+
+    if (!Array.isArray(payload.products) || payload.products.length === 0) {
+      console.error("❌ Nenhum produto para enviar!");
+    }
+
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",
