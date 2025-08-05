@@ -136,7 +136,6 @@ app.get("/api/moloni-companies", async (req, res) => {
     res.status(500).json({ error: "companies_failed", detail: e.message });
   }
 }); // Recebe o authorization code e troca por tokens
-
 app.get("/callback", async (req, res) => {
   const { code } = req.query;
   console.log("[Callback] Código recebido:", code);
@@ -145,24 +144,16 @@ app.get("/callback", async (req, res) => {
     return res.status(400).send("Falta o parâmetro 'code'.");
   }
 
-  const postData = qs.stringify({
-    grant_type: "authorization_code",
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    code: code,
-    redirect_uri: REDIRECT_URI,
-  });
-
   try {
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/grant/",
-      postData,
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
+    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code: code,
+        redirect_uri: REDIRECT_URI,
+      },
+    });
 
     console.log("[Moloni Response]", response.data);
 
@@ -191,40 +182,24 @@ app.get("/callback", async (req, res) => {
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
   console.log("Headers received:", req.headers);
-  console.log("Raw body (as received):", req.body); // <- Make sure this is `{ code: ... }`
+  console.log("Raw body (as received):", req.body);
 
   if (!code) {
     return res.status(400).json({ error: "Missing code" });
   }
-  console.log(
-    "Sending POST body:",
-    qs.stringify({
-      grant_type: "authorization_code",
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code,
-      redirect_uri: REDIRECT_URI,
-    })
-  );
-  const params = new URLSearchParams();
-  params.append("grant_type", "authorization_code");
-  params.append("client_id", CLIENT_ID);
-  params.append("client_secret", CLIENT_SECRET);
-  params.append("code", code);
-  params.append("redirect_uri", REDIRECT_URI);
 
   try {
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/grant/",
-      params,
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
-    console.log("Moloni POST data:", response);
-    console.log("Moloni raw response data:", response.data);
+    const response = await axios.get("https://api.moloni.pt/v1/grant/", {
+      params: {
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+        redirect_uri: REDIRECT_URI,
+      },
+    });
+
+    console.log("Moloni GET response data:", response.data);
 
     const { access_token, refresh_token, expires_in } = response.data;
 
