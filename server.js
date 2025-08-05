@@ -178,7 +178,7 @@ app.get("/callback", async (req, res) => {
     });
   }
 });
-// Endpoint usado pelo front para trocar code por token
+/* AntigoEndpoint usado pelo front para trocar code por token
 app.post("/api/moloni-exchange-code", async (req, res) => {
   const { code } = req.body;
   console.log("Headers received:", req.headers);
@@ -216,6 +216,47 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
       data: error?.response?.data,
       headers: error?.response?.headers,
     });
+    return res.status(500).json({ error: "Failed to exchange code" });
+  }
+});*/
+
+app.post("/api/moloni-exchange-code", async (req, res) => {
+  const { code } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: "Missing code" });
+  }
+
+  try {
+    const qs = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code,
+      redirect_uri: REDIRECT_URI,
+    });
+
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/grant/",
+      qs.toString(),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    console.log("Moloni POST response data:", response.data);
+
+    const { access_token, refresh_token, expires_in } = response.data;
+
+    moloniTokens = {
+      access_token,
+      refresh_token,
+      expires_at: Date.now() + Number(expires_in) * 1000,
+    };
+
+    return res.json({ access_token, refresh_token });
+  } catch (error) {
+    console.error("[Moloni] Erro:", error.response?.data || error.message);
     return res.status(500).json({ error: "Failed to exchange code" });
   }
 });
