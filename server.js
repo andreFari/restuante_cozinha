@@ -337,6 +337,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
       status: 1,
       products,
     };
+    console.log(
+      "Company IDIDIDID:",
+      MOLONI_COMPANY_ID,
+      typeof MOLONI_COMPANY_ID
+    );
     console.dir(payload, { depth: null });
 
     console.log("✅ Produtos finais:", payload.products);
