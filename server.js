@@ -4,7 +4,7 @@ import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { URLSearchParams } from "url"; // necessário em ambientes Node
-
+import morgan from "morgan";
 import express from "express";
 import qs from "qs"; // ✅ garante que tens esta linha no topo do ficheiro
 
@@ -47,7 +47,7 @@ app.use(express.json()); // Handles JSON bodies
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const morgan = require("morgan");
+
 app.use(morgan("dev"));
 // servir ficheiros estáticos (inclui login(1).html)
 app.use(express.static(path.join(__dirname, "public")));
