@@ -388,11 +388,11 @@ app.get("/api/moloni-document-sets", async (req, res) => {
 
     const response = await axios.post(
       "https://api.moloni.pt/v1/documentSets/getAll/",
-      {}, // corpo vazio
+      { company_id }, // ✅ Enviado no body como JSON
       {
         params: {
-          access_token,
-          company_id,
+          access_token, // ✅ Enviado na query string
+          json: true, // ✅ Para ativar modo JSON
         },
       }
     );
