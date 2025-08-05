@@ -244,7 +244,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     params.append("code", code);
     params.append("redirect_uri", REDIRECT_URI);
 
-    console.log("==> Corpo enviado para Moloni:", params.toString());
+    console.log("==> Corpo enviado para Moloni:", params);
 
     const response = await axios.post(
       "https://api.moloni.pt/v1/grant/",
@@ -313,7 +313,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         taxes: [{ tax_id: MOLONI_TAX_ID }],
       })),
     };
-    console.log("Body da requisição para Moloni:", qs.toString());
+    console.log("Body da requisição para Moloni:", qs);
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",

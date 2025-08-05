@@ -181,7 +181,7 @@
           password,
         };
 
-        const formData = new URLSearchParams(params).toString();
+        const formData = new URLSearchParams(params);
 
         const response = await fetch("/api/moloni-login", {
           method: "POST",
