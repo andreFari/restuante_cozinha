@@ -294,43 +294,65 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
     console.log("📦 ENV document_set_id:", MOLONI_DOCUMENT_SET_ID);
     console.log("✅ Taxa usada:", MOLONI_TAX_ID);
+    console.log("🎯 mesa.order:", mesa.order);
+    console.log("🎯 plates:", mesa.order?.plates);
+    const order = mesa.order || {};
+    const {
+      plates = [],
+      drinks = [],
+      desserts = [],
+      extras = [],
+      coffee = [],
+    } = order;
+
+    const items = [...plates, ...drinks, ...desserts, ...extras, ...coffee];
+
+    const products = items
+      .filter((name) => typeof name === "string" && name.trim().length > 0)
+      .map((name) => ({
+        name,
+        qty: 1,
+        price: 10,
+        taxes: [
+          {
+            tax_id: MOLONI_TAX_ID,
+          },
+        ],
+      }));
+
+    if (products.length === 0) {
+      return res.status(400).json({
+        error: "sem_produtos",
+        detail: "Não foram encontrados produtos para faturar.",
+      });
+    }
+
     const payload = {
       company_id: MOLONI_COMPANY_ID,
       date: today,
       expiration_date: today,
       document_set_id: MOLONI_DOCUMENT_SET_ID,
       customer_id: MOLONI_CUSTOMER_ID,
-      status: 1, // 1 = getValidAccessToken
-      products: [
-        ...(mesa.order?.plates || []),
-        ...(mesa.order?.drinks || []),
-        ...(mesa.order?.desserts || []),
-        ...(mesa.order?.extras || []),
-        ...(mesa.order?.coffee || []),
-      ]
-        .filter(Boolean)
-        .map((name) => ({
-          name: name,
-          qty: 1,
-          price: 10,
-          taxes: [
-            {
-              tax_id: MOLONI_TAX_ID,
-            },
-          ],
-        })),
+      status: 1,
+      products,
     };
     console.log(
       "Body da requisição para Moloni (JSON):",
       JSON.stringify(payload, null, 2)
     );
-
-    const insertResp = await axios.post(insertUrl, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    });
+    console.log("✅ Produtos finais:", payload.products);
+    console.log("👉 Tipo do campo products:", typeof payload.products);
+    console.log("👉 É array válido?", Array.isArray(payload.products));
+    const insertResp = await axios.post(
+      insertUrl,
+      JSON.parse(JSON.stringify(payload)),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
 
     // document_id devolvido pela inserção
     const document_id =
