@@ -291,7 +291,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const mesa = req.body || {};
 
     // 1) inserir fatura (JSON + json=true; access_token em query GET)
-    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
+    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}`;
+
     console.log("📦 ENV document_set_id:", MOLONI_DOCUMENT_SET_ID);
     console.log("✅ Taxa usada:", MOLONI_TAX_ID);
     console.log("🎯 mesa.order:", mesa.order);
@@ -336,10 +337,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
       status: 1,
       products,
     };
-    console.log(
-      "Body da requisição para Moloni (JSON):",
-      JSON.stringify(payload, null, 2)
-    );
+    console.dir(payload, { depth: null });
+
     console.log("✅ Produtos finais:", payload.products);
     console.log("👉 Tipo do campo products:", typeof payload.products);
     console.log("👉 É array válido?", Array.isArray(payload.products));
