@@ -250,7 +250,7 @@
             alert("Erro ao emitir fatura.");
             return;
           }
-
+          console.log("👉 table:", table);
           let data;
           try {
             data = await parseJsonOrThrow(response);
