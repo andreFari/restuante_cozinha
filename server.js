@@ -364,25 +364,26 @@ app.post("/api/emitir-fatura", async (req, res) => {
       JSON.stringify(payload, null, 2)
     );
 
-    const insertResp = await axios.post(insertUrl, payload, {
+    const insertResp = await fetch(insertUrl, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      transformRequest: [(data) => JSON.stringify(data)],
+      body: JSON.stringify(payload),
     });
 
-    console.dir(products, { depth: null });
-    // document_id devolvido pela inserção
+    const insertData = await insertResp.json();
+
     const document_id =
-      insertResp?.data?.document_id ||
-      insertResp?.data?.document?.document_id ||
-      insertResp?.data?.documentId;
+      insertData?.document_id ||
+      insertData?.document?.document_id ||
+      insertData?.documentId;
+
     if (!document_id) {
       return res
-
         .status(502)
-        .json({ error: "insert_sem_document_id", detail: insertResp.data });
+        .json({ error: "insert_sem_document_id", detail: insertData });
     }
 
     // 2) link do PDF
