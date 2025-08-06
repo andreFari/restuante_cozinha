@@ -229,13 +229,7 @@
 
         const table = tables[index];
         console.log(tables[index]);
-        if (!Array.isArray(products) || products.length === 0) {
-          console.error("❌ Nenhum produto válido para enviar!");
-          return res.status(400).json({
-            error: "sem_produtos",
-            detail: "O pedido não contém produtos válidos.",
-          });
-        }
+
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
