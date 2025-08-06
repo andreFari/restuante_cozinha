@@ -270,6 +270,14 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     });
   }
 });
+const moloniProductMap = {
+  Bolo: {
+    product_id: 210061572,
+    price: 10,
+    tax_id: 3630173,
+  },
+  // outros produtos
+};
 // ----- API: emitir fatura -----
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
