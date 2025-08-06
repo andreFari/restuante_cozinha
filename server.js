@@ -365,6 +365,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
     console.log("📤 Enviando para Moloni:\n", JSON.stringify(payload, null, 2));
     console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
     console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
+    console.log("🛡️ Access token atual:", access_token);
     const insertResp = await axios.post(
       insertUrl, // já contém json=true
       payload,
