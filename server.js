@@ -375,10 +375,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
     if (!Array.isArray(payload.products) || payload.products.length === 0) {
       console.error("❌ Nenhum produto para enviar!");
     }
-    console.log(
-      "🟣 Final payload antes do POST:",
-      JSON.stringify(payload, null, 2)
-    );
 
     console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
     console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
@@ -387,8 +383,13 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const data = qs.stringify({
       json: JSON.stringify(payload),
     });
+    console.log(
+      "🟣 Final payload antes do POST:",
+      JSON.stringify(payload, null, 2)
+    );
+    console.log("🚀 Enviando dados para Moloni:");
+    console.log(data); // deve mostrar json={"company_id":...}
 
-    console.log("🛫 Enviar para Moloni como json=...", JSON.stringify(payload));
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
       data,
