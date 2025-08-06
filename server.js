@@ -369,6 +369,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
+      transformRequest: [(data) => JSON.stringify(data)],
     });
 
     console.dir(products, { depth: null });
