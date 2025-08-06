@@ -316,7 +316,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         name,
         qty: 1,
         price: 15, // preço real do produto, se puder buscar do catálogo melhor
-        taxes: [{ tax_id: Number(MOLONI_TAX_ID) }],
+        taxes: [{ tax_id: 3630173 }],
       }));
     if (products.length === 0) {
       return res.status(400).json({
