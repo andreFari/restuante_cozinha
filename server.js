@@ -363,6 +363,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       "🟣 Final payload antes do POST:",
       JSON.stringify(payload, null, 2)
     );
+    console.log("📤 Enviando para Moloni:\n", JSON.stringify(payload, null, 2));
 
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
@@ -370,6 +371,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         Accept: "application/json",
       },
     });
+    console.log("📥 Resposta Moloni:", insertResp.data);
 
     const insertData = insertResp.data;
 
