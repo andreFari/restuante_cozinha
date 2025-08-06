@@ -366,11 +366,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
     console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
     console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
     const insertResp = await axios.post(
-      insertUrl,
-      qs.stringify(payload, { arrayFormat: "brackets" }),
+      insertUrl, // já contém json=true
+      payload,
       {
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
           Accept: "application/json",
         },
       }
