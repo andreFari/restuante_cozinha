@@ -364,16 +364,14 @@ app.post("/api/emitir-fatura", async (req, res) => {
       JSON.stringify(payload, null, 2)
     );
 
-    const insertResp = await fetch(insertUrl, {
-      method: "POST",
+    const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(payload),
     });
 
-    const insertData = await insertResp.json();
+    const insertData = insertResp.data;
 
     const document_id =
       insertData?.document_id ||
