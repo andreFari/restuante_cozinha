@@ -315,6 +315,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         name,
         qty: 1,
         price: 10,
+        type: 1,
         taxes: [
           {
             tax_id: Number(MOLONI_TAX_ID),
@@ -358,6 +359,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
     if (!Array.isArray(payload.products) || payload.products.length === 0) {
       console.error("❌ Nenhum produto para enviar!");
     }
+    console.log(
+      "🟣 Final payload antes do POST:",
+      JSON.stringify(payload, null, 2)
+    );
 
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
@@ -374,6 +379,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       insertResp?.data?.documentId;
     if (!document_id) {
       return res
+
         .status(502)
         .json({ error: "insert_sem_document_id", detail: insertResp.data });
     }
