@@ -359,16 +359,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
       console.error("❌ Nenhum produto para enviar!");
     }
 
-    console.log("🔍 Stringified JSON:", JSON.stringify(payload));
-    const formData = new URLSearchParams();
-    formData.append("company_id", MOLONI_COMPANY_ID);
-    formData.append("date", today);
-    formData.append("expiration_date", today);
-    formData.append("document_set_id", MOLONI_DOCUMENT_SET_ID);
-    formData.append("customer_id", MOLONI_CUSTOMER_ID);
-    formData.append("status", 1);
-    formData.append("products", JSON.stringify(products)); // ✅ stringified!
-
     const insertResp = await axios.post(insertUrl, payload, {
       headers: {
         "Content-Type": "application/json",
