@@ -417,14 +417,17 @@ app.post("/api/emitir-fatura", async (req, res) => {
         .json({ error: "insert_sem_document_id", detail: insertData });
     }
 
-    // 2) link do PDF
-    const pdfResp = await axios.get(
-      "https://api.moloni.pt/v1/documents/getPDFLink/",
+    const pdfResp = await axios.post(
+      "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
+        access_token +
+        "&json=true",
       {
-        params: {
-          access_token,
-          company_id: 355755,
-          document_id,
+        company_id: 355755,
+        document_id,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
         },
       }
     );
