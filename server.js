@@ -312,24 +312,19 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const products = items
       .filter((name) => typeof name === "string" && name.trim().length > 0)
       .map((name) => ({
+        product_id: 7, // você deve implementar uma função para buscar ID válido
         name,
         qty: 1,
-
-        price: 10,
-        type: 1,
-        taxes: [
-          {
-            tax_id: Number(MOLONI_TAX_ID),
-          },
-        ],
+        price: 10, // preço real do produto, se puder buscar do catálogo melhor
+        taxes: [{ tax_id: Number(MOLONI_TAX_ID) }],
       }));
-
     if (products.length === 0) {
       return res.status(400).json({
         error: "sem_produtos",
         detail: "Não foram encontrados produtos para faturar.",
       });
     }
+
     const payload = {
       company_id: Number(MOLONI_COMPANY_ID),
       date: today,
@@ -337,16 +332,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_set_id: Number(MOLONI_DOCUMENT_SET_ID),
       customer_id: Number(MOLONI_CUSTOMER_ID),
       status: 1,
-      products: [
-        {
-          name: "Teste Produto",
-          product_id: 0,
-          qty: 1,
-          price: 10,
-          type: 1,
-          taxes: [{ tax_id: Number(MOLONI_TAX_ID) }],
-        },
-      ],
+      products,
     };
     console.log("Payload JSON enviado:", JSON.stringify(payload, null, 2));
 
@@ -559,7 +545,6 @@ app.get("/api/moloni-customers", async (req, res) => {
     });
   }
 });
-
 app.get("/api/moloni/config-resumo", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
@@ -571,28 +556,38 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       });
     }
 
-    // 🔍 1. Obter empresa
-    const [companiesResp, documentSetsResp, customersResp, taxesResp] =
-      await Promise.all([
-        axios.get("https://api.moloni.pt/v1/companies/getAll/", {
-          params: { access_token, json: true },
-        }),
-        axios.post(
-          "https://api.moloni.pt/v1/documentSets/getAll/",
-          { company_id: MOLONI_COMPANY_ID },
-          { params: { access_token, json: true } }
-        ),
-        axios.post(
-          "https://api.moloni.pt/v1/customers/getAll/",
-          { company_id: MOLONI_COMPANY_ID },
-          { params: { access_token, json: true } }
-        ),
-        axios.post(
-          "https://api.moloni.pt/v1/taxes/getAll/",
-          { company_id: MOLONI_COMPANY_ID },
-          { params: { access_token, json: true } }
-        ),
-      ]);
+    // 🔍 1. Obter dados essenciais e produtos
+    const [
+      companiesResp,
+      documentSetsResp,
+      customersResp,
+      taxesResp,
+      productsResp,
+    ] = await Promise.all([
+      axios.get("https://api.moloni.pt/v1/companies/getAll/", {
+        params: { access_token, json: true },
+      }),
+      axios.post(
+        "https://api.moloni.pt/v1/documentSets/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/customers/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/taxes/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/products/getAll/",
+        { company_id: MOLONI_COMPANY_ID, qty: 50, offset: 0 }, // Ajuste qty e offset conforme necessário
+        { params: { access_token, json: true } }
+      ),
+    ]);
 
     // 🔍 2. Filtrar info útil
     const company = companiesResp.data.find(
@@ -608,6 +603,9 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
     );
 
     const tax = taxesResp.data.find((t) => t.tax_id == MOLONI_TAX_ID);
+
+    // produtos
+    const products = productsResp.data || [];
 
     return res.status(200).json({
       company: company
@@ -629,6 +627,8 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       tax: tax
         ? { id: tax.tax_id, name: tax.name, value: tax.value }
         : { error: "Taxa não encontrada", id: MOLONI_TAX_ID },
+
+      products, // inclui a lista completa de produtos
     });
   } catch (e) {
     const status = e.response?.status || 500;
@@ -638,6 +638,7 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
     });
   }
 });
+
 app.get("/api/moloni-customers", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
