@@ -383,19 +383,20 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const data = qs.stringify({
       json: JSON.stringify(payload),
     });
+
     console.log(
       "🟣 Final payload antes do POST:",
       JSON.stringify(payload, null, 2)
     );
     console.log("🚀 Enviando dados para Moloni:");
-    console.log(data); // deve mostrar json={"company_id":...}
-
+    console.log("data", data); // deve mostrar json={"company_id":...}
+    console.log("payload", payload); // deve mostrar json={"company_id":...}
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
-      data,
+      payload, // envia como JSON diretamente
       {
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
           Accept: "application/json",
         },
       }
