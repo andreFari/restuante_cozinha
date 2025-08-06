@@ -312,10 +312,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const products = items
       .filter((name) => typeof name === "string" && name.trim().length > 0)
       .map((name) => ({
-        product_id: 7, // você deve implementar uma função para buscar ID válido
+        product_id: 209751188, // você deve implementar uma função para buscar ID válido
         name,
         qty: 1,
-        price: 10, // preço real do produto, se puder buscar do catálogo melhor
+        price: 15, // preço real do produto, se puder buscar do catálogo melhor
         taxes: [{ tax_id: Number(MOLONI_TAX_ID) }],
       }));
     if (products.length === 0) {
