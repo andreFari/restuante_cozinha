@@ -375,9 +375,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const data = new URLSearchParams();
     data.append("json", JSON.stringify(payload));
 
-    const insertResp = await axios.post(insertUrl, payload, {
+    const insertResp = await axios.post(insertUrl, data, {
       headers: {
-        "Content-Type": "application/json", // 🟢 correto
+        "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
     });
