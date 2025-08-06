@@ -140,7 +140,7 @@
         <p>Selecione uma mesa para ver os detalhes do pedido</p>
       </div>
     </div>
-    <button class="btn" onclick="emitirFatura(1)">Emitir Fatura</button>
+    <button class="btn" onclick="emitirFatura(0)">Emitir Fatura</button>
 
     <script>
       async function parseJsonOrThrow(response) {
@@ -228,6 +228,10 @@
         }
 
         const table = tables[index];
+        if (!table) {
+          alert("Mesa inválida!");
+          return;
+        }
         const products = convertOrderToMoloniProducts(table.order);
 
         try {
