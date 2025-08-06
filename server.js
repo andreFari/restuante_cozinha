@@ -311,19 +311,28 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     const products = items
       .filter((name) => typeof name === "string" && name.trim().length > 0)
-      .map((name) => ({
-        product_id: 209751188, // você deve implementar uma função para buscar ID válido
-        name,
-        qty: 1,
-        price: 15, // preço real do produto, se puder buscar do catálogo melhor
-        taxes: [{ tax_id: 3630173 }],
-      }));
-    if (products.length === 0) {
-      return res.status(400).json({
-        error: "sem_produtos",
-        detail: "Não foram encontrados produtos para faturar.",
+      .map((name) => {
+        const product = moloniProductMap[name];
+        if (product) {
+          return {
+            product_id: product.product_id,
+            name,
+            qty: 1,
+            price: product.price,
+            taxes: [{ tax_id: product.tax_id }],
+          };
+        } else {
+          console.warn(`Produto "${name}" não encontrado no mapa de produtos.`);
+          // Caso não encontre, podes ignorar ou usar um fallback:
+          return {
+            product_id: 210061572, // id genérico ou null
+            name,
+            qty: 1,
+            price: 10,
+            taxes: [{ tax_id: 3630173 }],
+          };
+        }
       });
-    }
 
     const payload = {
       company_id: Number(MOLONI_COMPANY_ID),
@@ -358,9 +367,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const data = new URLSearchParams();
     data.append("json", JSON.stringify(payload));
 
-    const insertResp = await axios.post(insertUrl, data.toString(), {
+    const insertResp = await axios.post(insertUrl, payload, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json", // 🟢 correto
         Accept: "application/json",
       },
     });

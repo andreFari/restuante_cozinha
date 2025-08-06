@@ -228,55 +228,47 @@
         }
 
         const table = tables[index];
-        console.log(tables[index]);
+        const products = convertOrderToMoloniProducts(table.order);
 
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Accept: "application/json",
               Authorization: "Bearer " + token,
             },
-            body: JSON.stringify(table),
+            body: JSON.stringify({
+              tableName: table.name,
+              order: table.order,
+            }),
           });
 
-          if (response.status === 204) {
-            alert("Fatura emitida sem conteúdo de resposta.");
-            return;
-          }
           if (!response.ok) {
             const raw = await response.text();
             console.error("Erro emitir fatura:", response.status, raw);
             alert("Erro ao emitir fatura.");
             return;
           }
-          console.log("👉 table:", table);
-          console.log(
-            "🟣 Conteúdo da mesa a enviar:",
-            JSON.stringify(table, null, 2)
-          );
-          let data;
-          try {
-            data = await parseJsonOrThrow(response);
-          } catch (err) {
-            console.error(err.message);
-            alert("Resposta inválida do servidor.");
-            return;
-          }
 
+          const data = await response.json();
           if (data.pdfUrl) {
             window.open(data.pdfUrl, "_blank");
           } else {
-            alert("Erro ao emitir fatura (sem pdfUrl).");
-            console.error(data);
+            alert("Erro: Fatura criada mas sem PDF.");
           }
-        } catch (error) {
+        } catch (err) {
+          console.error("Erro no pedido:", err);
           alert("Erro na comunicação com o servidor.");
-          console.error(error);
         }
       }
-
+      const moloniProductMap = {
+        Bolo: {
+          product_id: 210061572,
+          price: 10,
+          tax_id: 3630173,
+        },
+        // adiciona mais produtos aqui conforme fores criando
+      };
       const tables = [
         {
           id: 1,
@@ -569,6 +561,36 @@
 
         renderTables(); // Se existir, senão ignora
       });
+
+      function convertOrderToMoloniProducts(order) {
+        const sections = ["plates", "extras", "drinks", "desserts", "coffee"];
+        const products = [];
+
+        sections.forEach((section) => {
+          order[section].forEach((itemName) => {
+            const product = moloniProductMap[itemName];
+            if (product) {
+              products.push({
+                product_id: product.product_id,
+                name: itemName,
+                qty: 1,
+                price: product.price,
+                taxes: [
+                  {
+                    tax_id: product.tax_id,
+                  },
+                ],
+              });
+            } else {
+              console.warn(
+                `Produto "${itemName}" não existe no catálogo Moloni.`
+              );
+            }
+          });
+        });
+
+        return products;
+      }
     </script>
   </body>
 </html>
