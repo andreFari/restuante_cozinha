@@ -314,6 +314,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       .map((name) => ({
         name,
         qty: 1,
+
         price: 10,
         type: 1,
         taxes: [
@@ -336,17 +337,18 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_set_id: Number(MOLONI_DOCUMENT_SET_ID),
       customer_id: Number(MOLONI_CUSTOMER_ID),
       status: 1,
-      products,
+      products: [
+        {
+          name: "Teste Produto",
+          product_id: 0,
+          qty: 1,
+          price: 10,
+          type: 1,
+          taxes: [{ tax_id: Number(MOLONI_TAX_ID) }],
+        },
+      ],
     };
-    console.log(
-      "Company IDIDIDID:",
-      MOLONI_COMPANY_ID,
-      typeof MOLONI_COMPANY_ID
-    );
-    console.log(
-      "Payload enviado para Moloni:",
-      JSON.stringify(payload, null, 2)
-    );
+    console.log("Payload JSON enviado:", JSON.stringify(payload, null, 2));
 
     console.dir(payload, { depth: null });
 
