@@ -343,13 +343,25 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
 
     const payload = {
-      company_id: Number(MOLONI_COMPANY_ID),
-      date: today,
-      expiration_date: today,
-      document_set_id: Number(MOLONI_DOCUMENT_SET_ID),
-      customer_id: Number(MOLONI_CUSTOMER_ID),
+      company_id: 355755,
+      date: "2025-08-06",
+      expiration_date: "2025-08-06",
+      document_set_id: 850313,
+      customer_id: 129329338,
       status: 1,
-      products,
+      products: [
+        {
+          product_id: 210061572,
+          name: "Bolo",
+          qty: 1,
+          price: 10,
+          taxes: [
+            {
+              tax_id: 3630173,
+            },
+          ],
+        },
+      ],
     };
     console.log("Payload JSON enviado:", JSON.stringify(payload, null, 2));
 
@@ -367,20 +379,26 @@ app.post("/api/emitir-fatura", async (req, res) => {
       "🟣 Final payload antes do POST:",
       JSON.stringify(payload, null, 2)
     );
-    console.log("📤 Enviando para Moloni:\n", JSON.stringify(payload, null, 2));
+
     console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
     console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
     console.log("🛡️ Access token atual:", access_token);
 
-    const data = new URLSearchParams();
-    data.append("json", JSON.stringify(payload));
-
-    const insertResp = await axios.post(insertUrl, data, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
+    const data = qs.stringify({
+      json: JSON.stringify(payload),
     });
+    data.append("json", JSON.stringify(payload));
+    console.log("🛫 Enviar para Moloni como json=...", JSON.stringify(payload));
+    const insertResp = await axios.post(
+      `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
+      data,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+      }
+    );
 
     console.log("📥 Resposta Moloni:", insertResp.data);
 
