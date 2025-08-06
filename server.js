@@ -292,7 +292,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const mesa = req.body || {};
 
     // 1) inserir fatura (JSON + json=true; access_token em query GET)
-    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}`;
+    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
 
     console.log("📦 ENV document_set_id:", MOLONI_DOCUMENT_SET_ID);
     console.log("✅ Taxa usada:", MOLONI_TAX_ID);
@@ -329,10 +329,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         detail: "Não foram encontrados produtos para faturar.",
       });
     }
-
     const payload = {
-      json: true,
-      human_errors: true,
       company_id: Number(MOLONI_COMPANY_ID),
       date: today,
       expiration_date: today,
