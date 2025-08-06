@@ -423,7 +423,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       {
         params: {
           access_token,
-          company_id: MOLONI_COMPANY_ID,
+          company_id: 355755,
           document_id,
         },
       }
