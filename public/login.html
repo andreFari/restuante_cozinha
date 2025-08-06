@@ -274,126 +274,21 @@
           id: 1,
           name: "Mesa 1",
           open: true,
-          kitchenNote: "Falta sobremesas e ou cafés e ou bebidas",
+          kitchenNote: "Só tem Bolo na sobremesa",
           order: {
             status: "unpaid",
-            plates: ["Frango Assado", "Sopa"],
-            extras: ["Batatas Fritas"],
-            drinks: ["Água", "Vinho"],
-            desserts: ["Bolo"],
-            coffee: ["Expresso"],
+            plates: [], // no plates
+            extras: [], // no extras
+            drinks: [], // no drinks
+            desserts: ["Bolo"], // only Bolo
+            coffee: [], // no coffee
           },
           prepared: {
-            plates: [true, true],
-            extras: [true],
-            drinks: [false, false],
-            desserts: [false],
-            coffee: [false],
-          },
-        },
-        {
-          id: 2,
-          name: "Mesa 2",
-          open: false,
-          kitchenNote: "",
-          order: {
-            status: "paid",
-            plates: ["Peixe Grelhado"],
+            plates: [],
             extras: [],
-            drinks: ["Cerveja"],
-            desserts: [],
+            drinks: [],
+            desserts: [false], // Bolo not prepared yet
             coffee: [],
-          },
-          prepared: {
-            plates: [true],
-            extras: [],
-            drinks: [true],
-            desserts: [],
-            coffee: [],
-          },
-        },
-        {
-          id: 3,
-          name: "Mesa 3",
-          open: true,
-          kitchenNote: "Pratos feitos, falta cafés e ou bebidas",
-          order: {
-            status: "paid",
-            plates: ["Bife"],
-            extras: ["Arroz"],
-            drinks: ["Sumo"],
-            desserts: [],
-            coffee: ["Expresso"],
-          },
-          prepared: {
-            plates: [true],
-            extras: [true],
-            drinks: [false],
-            desserts: [],
-            coffee: [false],
-          },
-        },
-        {
-          id: 4,
-          name: "Mesa 4",
-          open: true,
-          kitchenNote: "",
-          order: {
-            status: "unpaid",
-            plates: ["Pizza"],
-            extras: [],
-            drinks: ["Água"],
-            desserts: [],
-            coffee: [],
-          },
-          prepared: {
-            plates: [false],
-            extras: [],
-            drinks: [false],
-            desserts: [],
-            coffee: [],
-          },
-        },
-        {
-          id: 5,
-          name: "Mesa 5",
-          open: true,
-          kitchenNote: "",
-          order: {
-            status: "paid",
-            plates: ["Lasanha"],
-            extras: ["Salada"],
-            drinks: ["Vinho"],
-            desserts: ["Tiramisù"],
-            coffee: [],
-          },
-          prepared: {
-            plates: [true],
-            extras: [true],
-            drinks: [false],
-            desserts: [false],
-            coffee: [],
-          },
-        },
-        {
-          id: 6,
-          name: "Mesa 6",
-          open: true,
-          kitchenNote: "",
-          order: {
-            status: "unpaid",
-            plates: ["Hambúrguer"],
-            extras: ["Batata Doce"],
-            drinks: ["Coca-Cola"],
-            desserts: [],
-            coffee: ["Descafeinado"],
-          },
-          prepared: {
-            plates: [false],
-            extras: [false],
-            drinks: [false],
-            desserts: [],
-            coffee: [false],
           },
         },
       ];
@@ -582,9 +477,9 @@
                 ],
               });
             } else {
-              console.warn(
-                `Produto "${itemName}" não existe no catálogo Moloni.`
-              );
+              // Simply skip products not in moloniProductMap
+              // You can remove this console.warn if you don't want logs
+              // console.warn(`Produto "${itemName}" não existe no catálogo Moloni.`);
             }
           });
         });
