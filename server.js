@@ -363,8 +363,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
       JSON.stringify(payload, null, 2)
     );
     console.log("📤 Enviando para Moloni:\n", JSON.stringify(payload, null, 2));
-
-    const insertResp = await axios.post(insertUrl, payload, {
+    console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
+    console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
+    const insertResp = await axios.post(insertUrl, JSON.stringify(payload), {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
