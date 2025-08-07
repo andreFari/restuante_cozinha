@@ -30,7 +30,7 @@
       <input type="file" id="pdfUpload" accept="application/pdf" />
       <button id="btnUpload" disabled>Enviar e juntar</button>
     </div>
-    <form id="formAutoPdf" style="margin-top: 1rem">
+    <form id="formAutoPdf">
       <label for="autoPdf">Seleciona o PDF do Auto para juntar:</label>
       <input
         type="file"
@@ -39,31 +39,33 @@
         accept="application/pdf"
         required
       />
-      <button type="submit">Enviar e juntar ao PDF da fatura</button>
+      <label for="faturaSelect">Escolha a fatura:</label>
+      <select id="faturaSelect" required>
+        <option value="">--Selecione--</option>
+      </select>
+      <button type="submit">Enviar e baixar PDF combinado</button>
     </form>
     <script>
       const form = document.getElementById("formAutoPdf");
+
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const selectedFatura = document.querySelector(
-          'input[name="faturaSelecionada"]:checked'
-        );
-        if (!selectedFatura) {
-          alert("Por favor selecione uma fatura.");
+        const select = document.getElementById("faturaSelect");
+        const documentId = select.value;
+        if (!documentId) {
+          alert("Selecione uma fatura");
           return;
         }
 
-        const documentId = selectedFatura.value;
         const fileInput = document.getElementById("autoPdf");
-        const file = fileInput.files[0];
-        if (!file) {
-          alert("Por favor, selecione um ficheiro PDF");
+        if (fileInput.files.length === 0) {
+          alert("Selecione o PDF do Auto");
           return;
         }
 
         const formData = new FormData();
-        formData.append("autoPdf", file);
+        formData.append("autoPdf", fileInput.files[0]);
 
         try {
           const response = await fetch(`/api/fatura-com-auto/${documentId}`, {
@@ -76,6 +78,7 @@
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
 
+          // Forçar download do PDF combinado
           const a = document.createElement("a");
           a.href = url;
           a.download = `fatura_com_auto_${documentId}.pdf`;
@@ -87,7 +90,6 @@
           alert(err.message);
         }
       });
-
       function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -136,6 +138,16 @@
       `;
           document.getElementById("faturaContainer").innerHTML = "";
           document.getElementById("faturaContainer").appendChild(table);
+          // Agora preencher o <select> dinamicamente
+          const select = document.getElementById("faturaSelect");
+          // Limpar opções anteriores (menos o placeholder)
+          select.innerHTML = '<option value="">--Selecione--</option>';
+          faturas.forEach((f) => {
+            const option = document.createElement("option");
+            option.value = f.document_id;
+            option.textContent = `Fatura ${f.document_number} (${f.date})`;
+            select.appendChild(option);
+          });
         } catch (err) {
           console.error("Erro ao obter faturas:", err);
           document.getElementById("faturaContainer").innerText =

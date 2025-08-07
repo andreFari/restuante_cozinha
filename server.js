@@ -712,109 +712,50 @@ app.get("/api/faturas", async (req, res) => {
     res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
   }
 });
-//Juntar pdf à fatura
-app.post("/api/fatura-com-auto", upload.single("pdf"), async (req, res) => {
-  const { document_id } = req.body;
-  const pdfExtraPath = req.file.path;
-
-  try {
-    // 1. Buscar o PDF da fatura pelo document_id
-    const access_token = await getValidAccessToken();
-    const resp = await axios.post(
-      `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
-      { company_id: MOLONI_COMPANY_ID, document_id }
-    );
-
-    const faturaUrl = resp.data.url;
-
-    // 2. Baixar o PDF da fatura e o PDF extra do upload
-    const pdfFaturaBuffer = (
-      await axios.get(faturaUrl, { responseType: "arraybuffer" })
-    ).data;
-    const pdfExtraBuffer = fs.readFileSync(pdfExtraPath);
-
-    // 3. Usar pdf-merger-js para juntar
-    const merger = new PDFMerger();
-    merger.add(pdfFaturaBuffer);
-    merger.add(pdfExtraBuffer);
-
-    // 4. Salvar o PDF combinado temporariamente
-    const outputPath = `uploads/combined_${document_id}.pdf`;
-    await merger.save(outputPath);
-
-    // 5. Enviar o PDF combinado para o cliente (exemplo: URL pública ou serve arquivo)
-    // Para simplificar: vamos servir direto o arquivo gerado
-    res.json({ combinedPdfUrl: `/uploads/combined_${document_id}.pdf` });
-
-    // opcional: apagar arquivos temporários depois de algum tempo
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao combinar PDFs" });
-  }
-});
-async function getFaturaPdfUrl(documentId) {
-  const access_token = await getValidAccessToken();
-  const resp = await axios.post(
-    `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
-    { company_id: MOLONI_COMPANY_ID, document_id: documentId }
-  );
-  return resp.data.url;
-}
 app.post(
   "/api/fatura-com-auto/:documentId",
-  upload.single("autoPdf"), // espera o campo "autoPdf" com o ficheiro
+  upload.single("autoPdf"),
   async (req, res) => {
     const { documentId } = req.params;
-    const autoPdfPath = req.file.path; // ficheiro recebido
+    const autoPdfPath = req.file.path;
 
     try {
-      // 1. Pega o PDF da fatura pelo documentId (exemplo: URL armazenada ou API)
-      // Supondo que tens um método que retorna o URL do PDF da fatura:
-      const faturaPdfUrl = await getFaturaPdfUrl(documentId); // cria essa função
-
-      // 2. Faz download do PDF da fatura para um ficheiro temporário
-      const faturaPdfPath = path.join("uploads", `${documentId}.pdf`);
-      const writer = fs.createWriteStream(faturaPdfPath);
-
-      const response = await axios({
-        url: faturaPdfUrl,
-        method: "GET",
-        responseType: "stream",
+      // 1. Baixar PDF da fatura (exemplo, substituir URL real)
+      const faturaPdfUrl = `https://seuservidor.com/faturas/${documentId}.pdf`;
+      const faturaPdfResponse = await axios.get(faturaPdfUrl, {
+        responseType: "arraybuffer",
       });
 
-      response.data.pipe(writer);
+      // Salvar PDF da fatura localmente temporariamente
+      const faturaPdfPath = path.join("uploads", `fatura_${documentId}.pdf`);
+      fs.writeFileSync(faturaPdfPath, faturaPdfResponse.data);
 
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-
-      // 3. Junta os PDFs
+      // 2. Juntar PDFs
       const merger = new PDFMerger();
       await merger.add(faturaPdfPath);
       await merger.add(autoPdfPath);
 
-      // 4. Guarda PDF combinado num ficheiro temporário e envia ao cliente
-      const mergedPdfPath = path.join("uploads", `merged_${documentId}.pdf`);
-      await merger.save(mergedPdfPath);
+      // 3. Gerar PDF combinado num buffer
+      const combinedPdfBuffer = await merger.saveAsBuffer();
 
-      res.download(
-        mergedPdfPath,
-        `fatura_com_auto_${documentId}.pdf`,
-        (err) => {
-          // Apaga ficheiros temporários depois de enviar
-          fs.unlink(faturaPdfPath, () => {});
-          fs.unlink(autoPdfPath, () => {});
-          fs.unlink(mergedPdfPath, () => {});
-          if (err) console.error("Erro ao enviar PDF combinado:", err);
-        }
-      );
-    } catch (err) {
-      console.error(err);
+      // 4. Limpar arquivos temporários
+      fs.unlinkSync(autoPdfPath);
+      fs.unlinkSync(faturaPdfPath);
+
+      // 5. Enviar PDF combinado para download
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="fatura_com_auto_${documentId}.pdf"`,
+        "Content-Length": combinedPdfBuffer.length,
+      });
+      res.send(combinedPdfBuffer);
+    } catch (error) {
+      console.error(error);
       res.status(500).send("Erro ao combinar PDFs");
     }
   }
 );
+
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
