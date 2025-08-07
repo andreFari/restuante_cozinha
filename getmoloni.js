@@ -116,12 +116,13 @@ router.get("/api/viaturas", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
 
-    const response = await axios.get(
+    const response = await axios.post(
       "https://api.moloni.pt/v1/vehicles/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
       {
         params: {
-          company_id: MOLONI_COMPANY_ID,
           access_token,
+          json: true,
         },
       }
     );
@@ -133,6 +134,7 @@ router.get("/api/viaturas", async (req, res) => {
     // Moloni's API might return data as { vehicles: [...] } or directly an array
     // Adjust this line based on actual API response structure
     const vehicles = Array.isArray(data) ? data : data.vehicles || [];
+    console.log("DEBUG :: raw response.data =", response.data);
 
     // Map to your simplified form
     const simplificadas = vehicles.map((v) => ({
