@@ -173,7 +173,7 @@ router.post("/api/guias", async (req, res) => {
     }));
 
     const response = await axios.post(
-      "https://api.moloni.pt/v1/billsOfLading/insert/",
+      `https://api.moloni.pt/v1/billsOfLading/insert/?access_token=${access_token}&json=true&human_errors=true`,
       {
         company_id: MOLONI_COMPANY_ID,
         document_set_id: 850313,
@@ -193,7 +193,7 @@ router.post("/api/guias", async (req, res) => {
         delivery_country: descarga.pais,
       },
       {
-        params: { access_token },
+        headers: { "Content-Type": "application/json" }, // importante
       }
     );
 
