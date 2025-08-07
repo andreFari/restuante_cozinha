@@ -713,39 +713,29 @@ app.get("/api/faturas", async (req, res) => {
   }
 });
 app.post(
-  "/api/fatura-com-auto/:documentId",
-  upload.single("autoPdf"),
+  "/api/fatura-com-auto",
+  upload.fields([
+    { name: "faturaPdf", maxCount: 1 },
+    { name: "autoPdf", maxCount: 1 },
+  ]),
   async (req, res) => {
-    const { documentId } = req.params;
-    const autoPdfPath = req.file.path;
-
     try {
-      // 1. Baixar PDF da fatura (exemplo, substituir URL real)
-      const faturaPdfUrl = `https://seuservidor.com/faturas/${documentId}.pdf`;
-      const faturaPdfResponse = await axios.get(faturaPdfUrl, {
-        responseType: "arraybuffer",
-      });
+      const faturaPdfPath = req.files["faturaPdf"][0].path;
+      const autoPdfPath = req.files["autoPdf"][0].path;
 
-      // Salvar PDF da fatura localmente temporariamente
-      const faturaPdfPath = path.join("uploads", `fatura_${documentId}.pdf`);
-      fs.writeFileSync(faturaPdfPath, faturaPdfResponse.data);
-
-      // 2. Juntar PDFs
       const merger = new PDFMerger();
       await merger.add(faturaPdfPath);
       await merger.add(autoPdfPath);
 
-      // 3. Gerar PDF combinado num buffer
       const combinedPdfBuffer = await merger.saveAsBuffer();
 
-      // 4. Limpar arquivos temporários
-      fs.unlinkSync(autoPdfPath);
+      // Apaga arquivos temporários
       fs.unlinkSync(faturaPdfPath);
+      fs.unlinkSync(autoPdfPath);
 
-      // 5. Enviar PDF combinado para download
       res.set({
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="fatura_com_auto_${documentId}.pdf"`,
+        "Content-Disposition": `attachment; filename="fatura_com_auto_${req.params.documentId}.pdf"`,
         "Content-Length": combinedPdfBuffer.length,
       });
       res.send(combinedPdfBuffer);

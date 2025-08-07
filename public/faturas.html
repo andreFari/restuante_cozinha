@@ -34,10 +34,14 @@
         accept="application/pdf"
         required
       />
-      <label for="faturaSelect">Escolha a fatura:</label>
-      <select id="faturaSelect" required>
-        <option value="">--Selecione--</option>
-      </select>
+      <label for="faturaPdf">Seleciona o PDF da Fatura:</label>
+      <input
+        type="file"
+        id="faturaPdf"
+        name="faturaPdf"
+        accept="application/pdf"
+        required
+      />
       <button type="submit">Enviar e baixar PDF combinado</button>
     </form>
 
@@ -62,10 +66,15 @@
 
         const formData = new FormData();
         formData.append("autoPdf", fileInput.files[0]);
-
+        const faturaPdfInput = document.getElementById("faturaPdf");
+        if (faturaPdfInput.files.length === 0) {
+          alert("Selecione o PDF da fatura");
+          return;
+        }
+        formData.append("faturaPdf", faturaPdfInput.files[0]);
         try {
           console.log("Enviando para o backend...", documentId);
-          const response = await fetch(`/api/fatura-com-auto/${documentId}`, {
+          const response = await fetch(`/api/fatura-com-auto}`, {
             method: "POST",
             body: formData,
           });
@@ -127,7 +136,7 @@
                   <td>${f.document_number}</td>
                   <td>${f.total}</td>
                   <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
-                  <td><input type="radio" name="faturaSelecionada" value="${f.document_id}"></td>
+              
                 </tr>
               `
                 )
