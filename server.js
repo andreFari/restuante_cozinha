@@ -29,6 +29,11 @@ const MOLONI_COMPANY_ID = Number(COMPANY_ID);
 const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
 const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
+const moloniTokens = {
+  access_token: null,
+  refresh_token: null,
+  expires_at: 0,
+};
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -271,6 +276,7 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+
 app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const { code } = req.body;
@@ -296,11 +302,10 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = response.data;
 
-    moloniTokens = {
-      access_token,
-      refresh_token,
-      expires_at: Date.now() + Number(expires_in) * 1000,
-    };
+    // Atualiza propriedades do objeto moloniTokens
+    moloniTokens.access_token = access_token;
+    moloniTokens.refresh_token = refresh_token;
+    moloniTokens.expires_at = Date.now() + Number(expires_in) * 1000;
     return res.json(response.data);
     // return res.json({ access_token, refresh_token });
   } catch (error) {
@@ -428,6 +433,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const pdfUrl = pdfResp?.data?.url || pdfResp?.data;
     return res.status(200).json({ pdfUrl, document_id });
   } catch (e) {
+    console.error("Erro ao emitir fatura:", e.response?.data || e.message || e);
     const status = e.response?.status || 500;
     return res.status(status).json({
       error: "emitir_fatura_failed",
