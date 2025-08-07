@@ -23,11 +23,47 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         margin-bottom: 2rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-        justify-content: center;
+
+        display: block; /* mudou de flex para block */
+        max-width: 450px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      form label {
+        display: block;
+        font-weight: 600;
+        color: #34495e;
+        margin-top: 1rem;
+        margin-bottom: 0.3rem;
+      }
+
+      form input[type="file"] {
+        width: 100%;
+        padding: 0.4rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      form button {
+        display: block;
+        width: 100%;
+        margin-top: 1.5rem;
+        padding: 0.8rem;
+        background: #2980b9;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        font-size: 1.1rem;
+      }
+
+      form button:hover:not(:disabled) {
+        background: #1c5980;
       }
       label {
         flex: 1 1 200px;
@@ -121,9 +157,6 @@
     </style>
   </head>
   <body>
-    <h1>📄 Faturas Emitidas</h1>
-    <div id="faturaContainer">A carregar...</div>
-
     <form id="formAutoPdf">
       <label for="autoPdf">Seleciona o PDF do Auto para juntar:</label>
       <input
@@ -141,8 +174,10 @@
         accept="application/pdf"
         required
       />
-      <button type="submit">Enviar e baixar PDF combinado</button>
+      <button type="submit">Exportar PDF combinado</button>
     </form>
+    <h1>📄 Faturas Emitidas</h1>
+    <div id="faturaContainer">A carregar...</div>
 
     <script>
       const form = document.getElementById("formAutoPdf");
