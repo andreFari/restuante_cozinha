@@ -459,7 +459,7 @@ app.get("/api/moloni-document-sets", async (req, res) => {
         },
       }
     );
-
+    console.log("Guias", response.data);
     const conjuntos = response.data;
 
     const guiasTransporte = conjuntos
