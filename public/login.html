@@ -140,7 +140,6 @@
         <p>Selecione uma mesa para ver os detalhes do pedido</p>
       </div>
     </div>
-    <button class="btn" onclick="openModal(0)">Emitir Fatura</button>
 
     <div
       id="invoiceModal"
@@ -425,7 +424,7 @@
               }</textarea>
               <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
             </div>
- <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+ 
             <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
               ${order.status === "paid" ? "Pago" : "Por Pagar"}
             </div>
@@ -436,7 +435,7 @@
             <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
               ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
             </button>
-
+<button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
             ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
             ${renderSection("Extras", order.extras, prepared.extras, "extras")}
             ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
