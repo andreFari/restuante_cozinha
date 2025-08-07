@@ -8,7 +8,7 @@ const app = express();
 const router = express.Router();
 
 const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);
-const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID);
+
 // Artigosv
 router.get("/api/artigos", async (req, res) => {
   try {
@@ -173,10 +173,10 @@ router.post("/api/guias", async (req, res) => {
     }));
 
     const response = await axios.post(
-      "https://api.moloni.pt/v1/transportGuides/insert/",
+      "https://api.moloni.pt/v1/billsOfLading/insert/",
       {
         company_id: MOLONI_COMPANY_ID,
-        document_set_id: MOLONI_DOCUMENT_SET_ID,
+        document_set_id: 1,
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
         date: emissao,
