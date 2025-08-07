@@ -138,16 +138,6 @@
           `;
           document.getElementById("faturaContainer").innerHTML = "";
           document.getElementById("faturaContainer").appendChild(table);
-
-          // Preencher o <select> dinamicamente
-          const select = document.getElementById("faturaSelect");
-          select.innerHTML = '<option value="">--Selecione--</option>';
-          faturas.forEach((f) => {
-            const option = document.createElement("option");
-            option.value = f.document_id;
-            option.textContent = `Fatura ${f.document_number} (${f.date})`;
-            select.appendChild(option);
-          });
         } catch (err) {
           console.error("Erro ao obter faturas:", err);
           document.getElementById("faturaContainer").innerText =
