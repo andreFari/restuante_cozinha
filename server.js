@@ -216,39 +216,44 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     return res.status(500).json({ error: "Failed to exchange code" });
   }
 });*/
-
 app.post("/api/moloni-login", async (req, res) => {
-  const { client_id, client_secret, username, password } = req.body;
-  if (!client_id || !client_secret || !username || !password) {
-    return res.status(400).json({ error: "Missing parameters" });
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: "Faltam dados" });
   }
 
-  const url = new URL("https://api.moloni.pt/v1/grant/");
-  url.searchParams.append("grant_type", "password");
-  url.searchParams.append("client_id", client_id);
-  url.searchParams.append("client_secret", client_secret);
-  url.searchParams.append("username", username);
-  url.searchParams.append("password", password);
+  const client_id = process.env.MOLONI_CLIENT_ID;
+  const client_secret = process.env.MOLONI_CLIENT_SECRET;
+
+  const params = new URLSearchParams({
+    grant_type: "password",
+    client_id,
+    client_secret,
+    username,
+    password,
+  });
 
   try {
-    const moloniRes = await fetch(url.toString(), {
+    const response = await fetch("https://api.moloni.pt/v1/grant/", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
+      body: params.toString(),
     });
 
-    const data = await moloniRes.json();
+    const data = await response.json();
 
-    if (!moloniRes.ok) {
-      return res.status(moloniRes.status).json(data);
+    if (data.error) {
+      console.error("Erro ao autenticar com a Moloni:", data);
+      return res.status(401).json({ error: "Login inválido." });
     }
 
-    // Success - send tokens back
-    res.json(data);
+    res.json(data); // retorna access_token e refresh_token
   } catch (error) {
-    console.error("Error contacting Moloni API:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Erro no login Moloni:", error);
+    res.status(500).json({ error: "Erro ao comunicar com Moloni." });
   }
 });
 

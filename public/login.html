@@ -161,9 +161,7 @@
       </div>
       <div id="tokenDisplay"></div>
 
-      <div id="moloniLoginForm" style="display: none; margin-top: 15px">
-        <input id="clientId" type="text" placeholder="Client ID" />
-        <input id="clientSecret" type="text" placeholder="Client Secret" />
+      <div id="moloniLoginForm" style="margin-top: 15px">
         <input id="username" type="email" placeholder="Email Moloni" />
         <input id="password" type="password" placeholder="Password Moloni" />
         <button onclick="loginMoloni()">Login</button>
@@ -239,17 +237,12 @@
           );
         }
       }
-
       async function loginMoloni() {
-        const clientId = document.getElementById("clientId").value.trim();
-        const clientSecret = document
-          .getElementById("clientSecret")
-          .value.trim();
         const username = document.getElementById("username").value.trim();
         const password = document.getElementById("password").value.trim();
         const loginStatus = document.getElementById("loginStatus");
 
-        if (!clientId || !clientSecret || !username || !password) {
+        if (!username || !password) {
           loginStatus.textContent = "Por favor, preencha todos os campos.";
           loginStatus.style.color = "red";
           return;
@@ -258,52 +251,36 @@
         loginStatus.textContent = "Fazendo login...";
         loginStatus.style.color = "black";
 
-        const params = {
-          client_id: clientId,
-          client_secret: clientSecret,
-          username,
-          password,
-        };
-
-        const formData = new URLSearchParams(params);
-
-        const response = await fetch("/api/moloni-login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
-          },
-          body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            username: "tomas.jose.ferreira.tavares@gmail.com",
-            password: "Tomasmolo12",
-          }),
-        });
-
-        if (!response.ok) {
-          const raw = await response.text();
-          console.error("Moloni login falhou:", response.status, raw);
-          loginStatus.textContent = "Erro no login.";
-          loginStatus.style.color = "red";
-          return;
-        }
-
-        let data;
         try {
-          data = await parseJsonOrThrow(response);
+          const response = await fetch("/api/moloni-login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          if (!response.ok) {
+            const raw = await response.text();
+            console.error("Moloni login falhou:", response.status, raw);
+            loginStatus.textContent = "Erro no login.";
+            loginStatus.style.color = "red";
+            return;
+          }
+
+          const data = await response.json();
+          localStorage.setItem("refresh_token", data.refresh_token);
+          localStorage.setItem("moloni_token", data.access_token);
+          loginStatus.textContent = "Login efetuado com sucesso!";
+          loginStatus.style.color = "green";
+          document.getElementById("tokenDisplay").textContent =
+            "Token armazenado: " + data.access_token.substring(0, 25) + "…";
         } catch (err) {
-          console.error(err.message);
+          console.error("Erro:", err.message);
           loginStatus.textContent = "Erro a processar resposta do servidor.";
           loginStatus.style.color = "red";
-          return;
         }
-        localStorage.setItem("refresh_token", data.refresh_token);
-        localStorage.setItem("moloni_token", data.access_token);
-        loginStatus.textContent = "Login efetuado com sucesso!";
-        loginStatus.style.color = "green";
       }
-
       let selectedTableIndex = null;
       let currentTableIndex = null;
       function openModal(index) {
@@ -520,6 +497,10 @@
         tables[index].kitchenNote = textarea.value.trim();
         renderTables();
       };
+      function toggleLoginForm() {
+        const form = document.getElementById("moloniLoginForm");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+      }
 
       window.addEventListener("DOMContentLoaded", () => {
         const params = new URLSearchParams(window.location.search);
