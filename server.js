@@ -681,6 +681,52 @@ app.get("/api/moloni-taxes", async (req, res) => {
     });
   }
 });
+app.get("/api/faturas", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+    const resp = await axios.post(
+      "https://api.moloni.pt/v1/invoices/getAll/?access_token=" +
+        access_token +
+        "&json=true",
+      {
+        company_id: 355755,
+        document_set_id: 850313,
+        filter: {
+          field: "date",
+          comparison: "between",
+          value: ["2025-01-01", "2025-12-31"], // ajusta datas conforme necessário
+        },
+      }
+    );
+
+    const invoices = resp.data || [];
+
+    // opcional: obter link PDF para cada fatura
+    const withPdf = await Promise.all(
+      invoices.map(async (f) => {
+        const pdfResp = await axios.post(
+          "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
+            access_token +
+            "&json=true",
+          {
+            company_id: 355755,
+            document_id: f.document_id,
+          }
+        );
+        return {
+          ...f,
+          pdfUrl: pdfResp?.data?.url || "",
+        };
+      })
+    );
+
+    res.json(withPdf);
+  } catch (e) {
+    console.error("Erro ao buscar faturas:", e);
+    res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
+  }
+});
+
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Faturas Emitidas</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 0.5rem;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📄 Faturas Emitidas</h1>
+    <div id="faturaContainer">A carregar...</div>
+
+    <script>
+      async function fetchFaturas() {
+        const token = localStorage.getItem("moloniToken"); // assumindo que o token foi salvo aqui após login
+        if (!token) {
+          document.getElementById("faturaContainer").innerText =
+            "Token não encontrado. Por favor faça login.";
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/faturas", {
+            headers: {
+              Authorization: "Bearer " + token,
+            },
+          });
+          const data = await response.json();
+
+          if (data.length === 0) {
+            document.getElementById("faturaContainer").innerText =
+              "Nenhuma fatura encontrada.";
+            return;
+          }
+
+          const table = document.createElement("table");
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Número</th>
+                <th>Total</th>
+                <th>PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data
+                .map(
+                  (f) => `
+                <tr>
+                  <td>${f.document_id}</td>
+                  <td>${f.date}</td>
+                  <td>${f.document_number}</td>
+                  <td>${f.total}</td>
+                  <td>
+                    <a href="${f.pdfUrl}" target="_blank">📄 Abrir</a>
+                  </td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          `;
+          document.getElementById("faturaContainer").innerHTML = "";
+          document.getElementById("faturaContainer").appendChild(table);
+        } catch (err) {
+          console.error("Erro ao obter faturas:", err);
+          document.getElementById("faturaContainer").innerText =
+            "Erro ao carregar faturas.";
+        }
+      }
+
+      fetchFaturas();
+    </script>
+  </body>
+</html>
