@@ -107,8 +107,13 @@ router.get("/api/viaturas", async (req, res) => {
     const access_token = await getValidAccessToken();
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/vehicles/getAll/",
-      { company_id: MOLONI_COMPANY_ID },
-      { params: { access_token } }
+      {}, // empty POST body
+      {
+        params: {
+          access_token,
+          company_id: MOLONI_COMPANY_ID,
+        },
+      }
     );
 
     const simplificadas = data.map((v) => ({
