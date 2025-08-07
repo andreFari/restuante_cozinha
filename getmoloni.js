@@ -206,4 +206,56 @@ router.post("/api/guias", async (req, res) => {
     });
   }
 });
+router.get("/api/guias", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+
+    if (!access_token || !MOLONI_COMPANY_ID) {
+      return res.status(500).json({
+        erro: "missing_credentials",
+        detalhe: "Access token ou company_id em falta.",
+      });
+    }
+
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/billsOfLading/getAll/",
+      {
+        company_id: MOLONI_COMPANY_ID,
+        qty: 50, // podes ajustar se quiseres paginação
+        offset: 0,
+      },
+      {
+        params: {
+          access_token,
+          json: true,
+        },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    // Podes transformar os dados aqui se quiseres formatar para o frontend
+    const guias = response.data.map((g) => ({
+      id: g.document_id,
+      numero: g.number,
+      data: g.date,
+      cliente: g.customer?.name || "-",
+      nif: g.customer?.vat || "-",
+      total: g.total_value || "0.00",
+      codigoAT: g.at_code || "-",
+    }));
+
+    res.json(guias);
+  } catch (error) {
+    console.error(
+      "Erro ao obter guias:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({
+      erro: "falha_obter_guias",
+      detalhe: error.response?.data || String(error),
+    });
+  }
+});
 export default router;
