@@ -6,33 +6,16 @@ import PDFMerger from "pdf-merger-js";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { URLSearchParams } from "url"; // necessário em ambientes Node
+import { URLSearchParams } from "url";
 import morgan from "morgan";
 import express from "express";
-import qs from "qs"; // ✅ garante que tens esta linha no topo do ficheiro
-
-/**
- * Servidor Express para integrar com a API Moloni
- * - OAuth: troca de code por tokens no /callback
- * - Refresh automático do access_token
- * - /api/emitir-fatura: cria fatura e devolve link do PDF
- * - /api/moloni-companies: lista empresas (para identificar company_id)
- *
- * Variáveis de ambiente necessárias (.env):
- *   PORT=3000
- *   CLIENT_ID=...
- *   CLIENT_SECRET=...
- *   REDIRECT_URI=http://SEU_HOST:3000/callback
- *   MOLONI_COMPANY_ID=123456
- *   MOLONI_DOCUMENT_SET_ID=11111
- *   MOLONI_CUSTOMER_ID=22222
- *   MOLONI_TAX_ID=33333
- */
+import qs from "qs";
+import multer from "multer";
 
 dotenv.config();
 
-// ----- ENV -----
 const PORT = process.env.PORT || 10000;
+const upload = multer({ dest: "uploads/" }); // pasta temporária para uploads
 
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
@@ -43,26 +26,26 @@ const MOLONI_COMPANY_ID = Number(COMPANY_ID);
 const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
 const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
-// ----- APP -----
+
 const app = express();
-app.use(express.urlencoded({ extended: true })); // Handles form-encoded bodies (e.g. from forms)
-app.use(express.json()); // Handles JSON bodies
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(morgan("dev"));
-// servir ficheiros estáticos (inclui login(1).html)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Alias conveniente: /login.html → login(1).html
 app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "login.html"));
 });
 
-// Redirect raiz para o login
 app.get("/", (req, res) => res.redirect("/login.html"));
-
 // ----- Gestão de Tokens (em memória) -----
 let moloniTokens = {
   access_token: null,
@@ -730,60 +713,108 @@ app.get("/api/faturas", async (req, res) => {
   }
 });
 //Juntar pdf à fatura
-
-// Exemplo: juntar PDF da fatura com o auto
-app.get("/api/fatura-com-auto/:documentId", async (req, res) => {
-  const documentId = req.params.documentId;
+app.post("/api/fatura-com-auto", upload.single("pdf"), async (req, res) => {
+  const { document_id } = req.body;
+  const pdfExtraPath = req.file.path;
 
   try {
+    // 1. Buscar o PDF da fatura pelo document_id
     const access_token = await getValidAccessToken();
-
-    // 1. Buscar o link do PDF da fatura
-    const { data: pdfResp } = await axios.post(
-      "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
-        access_token +
-        "&json=true",
-      {
-        company_id: 355755,
-        document_id: documentId,
-      }
+    const resp = await axios.post(
+      `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
+      { company_id: MOLONI_COMPANY_ID, document_id }
     );
 
-    const moloniPdfUrl = pdfResp.url;
+    const faturaUrl = resp.data.url;
 
-    // 2. Fazer download dos dois PDFs (Moloni + Auto)
-    const moloniPdfBuffer = (
-      await axios.get(moloniPdfUrl, { responseType: "arraybuffer" })
+    // 2. Baixar o PDF da fatura e o PDF extra do upload
+    const pdfFaturaBuffer = (
+      await axios.get(faturaUrl, { responseType: "arraybuffer" })
     ).data;
+    const pdfExtraBuffer = fs.readFileSync(pdfExtraPath);
 
-    const autoPath = path.resolve(__dirname, "autos", `auto_${documentId}.pdf`);
-
-    if (!fs.existsSync(autoPath)) {
-      return res.status(404).json({ error: "Auto de entrega não encontrado" });
-    }
-    const autoPdfBuffer = fs.readFileSync(autoPath);
-
-    // 3. Juntar os PDFs
+    // 3. Usar pdf-merger-js para juntar
     const merger = new PDFMerger();
-    await merger.add(moloniPdfBuffer);
-    await merger.add(autoPdfBuffer);
+    merger.add(pdfFaturaBuffer);
+    merger.add(pdfExtraBuffer);
 
-    const mergedPdfBuffer = await merger.saveAsBuffer();
+    // 4. Salvar o PDF combinado temporariamente
+    const outputPath = `uploads/combined_${document_id}.pdf`;
+    await merger.save(outputPath);
 
-    // 4. Enviar resultado
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="fatura_com_auto_${documentId}.pdf"`
-    );
-    res.send(mergedPdfBuffer);
+    // 5. Enviar o PDF combinado para o cliente (exemplo: URL pública ou serve arquivo)
+    // Para simplificar: vamos servir direto o arquivo gerado
+    res.json({ combinedPdfUrl: `/uploads/combined_${document_id}.pdf` });
+
+    // opcional: apagar arquivos temporários depois de algum tempo
   } catch (err) {
-    console.error("Erro ao juntar PDF:", err);
-    res
-      .status(500)
-      .json({ error: "Erro ao gerar PDF combinado", detail: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Erro ao combinar PDFs" });
   }
 });
+async function getFaturaPdfUrl(documentId) {
+  const access_token = await getValidAccessToken();
+  const resp = await axios.post(
+    `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
+    { company_id: MOLONI_COMPANY_ID, document_id: documentId }
+  );
+  return resp.data.url;
+}
+app.post(
+  "/api/fatura-com-auto/:documentId",
+  upload.single("autoPdf"), // espera o campo "autoPdf" com o ficheiro
+  async (req, res) => {
+    const { documentId } = req.params;
+    const autoPdfPath = req.file.path; // ficheiro recebido
+
+    try {
+      // 1. Pega o PDF da fatura pelo documentId (exemplo: URL armazenada ou API)
+      // Supondo que tens um método que retorna o URL do PDF da fatura:
+      const faturaPdfUrl = await getFaturaPdfUrl(documentId); // cria essa função
+
+      // 2. Faz download do PDF da fatura para um ficheiro temporário
+      const faturaPdfPath = path.join("uploads", `${documentId}.pdf`);
+      const writer = fs.createWriteStream(faturaPdfPath);
+
+      const response = await axios({
+        url: faturaPdfUrl,
+        method: "GET",
+        responseType: "stream",
+      });
+
+      response.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+
+      // 3. Junta os PDFs
+      const merger = new PDFMerger();
+      await merger.add(faturaPdfPath);
+      await merger.add(autoPdfPath);
+
+      // 4. Guarda PDF combinado num ficheiro temporário e envia ao cliente
+      const mergedPdfPath = path.join("uploads", `merged_${documentId}.pdf`);
+      await merger.save(mergedPdfPath);
+
+      res.download(
+        mergedPdfPath,
+        `fatura_com_auto_${documentId}.pdf`,
+        (err) => {
+          // Apaga ficheiros temporários depois de enviar
+          fs.unlink(faturaPdfPath, () => {});
+          fs.unlink(autoPdfPath, () => {});
+          fs.unlink(mergedPdfPath, () => {});
+          if (err) console.error("Erro ao enviar PDF combinado:", err);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Erro ao combinar PDFs");
+    }
+  }
+);
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
