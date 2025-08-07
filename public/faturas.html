@@ -51,30 +51,24 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const select = document.getElementById("faturaSelect");
-        const documentId = select.value;
-        if (!documentId) {
-          alert("Selecione uma fatura");
+        const fileAuto = document.getElementById("autoPdf");
+        const fileFatura = document.getElementById("faturaPdf");
+
+        if (fileAuto.files.length === 0) {
+          alert("Selecione o PDF do Auto");
           return;
         }
-
-        const fileInput = document.getElementById("autoPdf");
-        if (fileInput.files.length === 0) {
-          alert("Selecione o PDF do Auto");
+        if (fileFatura.files.length === 0) {
+          alert("Selecione o PDF da fatura");
           return;
         }
 
         const formData = new FormData();
-        formData.append("autoPdf", fileInput.files[0]);
-        const faturaPdfInput = document.getElementById("faturaPdf");
-        if (faturaPdfInput.files.length === 0) {
-          alert("Selecione o PDF da fatura");
-          return;
-        }
-        formData.append("faturaPdf", faturaPdfInput.files[0]);
+        formData.append("autoPdf", fileAuto.files[0]);
+        formData.append("faturaPdf", fileFatura.files[0]);
+
         try {
-          console.log("Enviando para o backend...", documentId);
-          const response = await fetch(`/api/fatura-com-auto}`, {
+          const response = await fetch("/api/fatura-com-auto", {
             method: "POST",
             body: formData,
           });
@@ -89,10 +83,9 @@
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
 
-          // Forçar download do PDF combinado
           const a = document.createElement("a");
           a.href = url;
-          a.download = `fatura_com_auto_${documentId}.pdf`;
+          a.download = `fatura_com_auto_${Date.now()}.pdf`; // nome genérico com timestamp
           document.body.appendChild(a);
           a.click();
           a.remove();
