@@ -1,5 +1,8 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import fs from "fs";
+
+import PDFMerger from "pdf-merger-js";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -30,9 +33,7 @@ dotenv.config();
 
 // ----- ENV -----
 const PORT = process.env.PORT || 10000;
-const fs = require("fs");
-const path = require("path");
-const PDFMerger = require("pdf-merger-js");
+
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
 const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
