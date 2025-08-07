@@ -9,38 +9,26 @@
         margin: 0;
         background: #f2f2f2;
       }
-      header {
-        background: #444;
-        color: white;
-        padding: 1rem 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap; /* para responsividade */
-        gap: 0.5rem;
-      }
 
       header h1 {
         margin: 0;
         font-size: 1.4rem;
         font-weight: 600;
-        flex-grow: 1; /* ocupa o máximo possível */
-        min-width: 200px; /* não encolhe demais */
+        flex-grow: 1;
+        min-width: 200px;
       }
 
       header .links-container {
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 0.3rem;
-        min-width: 150px;
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
       }
 
       header .links-container a {
         color: #f1f1f1;
         text-decoration: none;
         font-weight: 600;
-        margin-left: 1rem;
         transition: color 0.3s;
       }
 
@@ -49,11 +37,10 @@
       }
 
       #tokenDisplay {
-        color: #bbb;
-        font-size: 0.8rem;
-        margin-top: 4px;
+        color: #555;
+        font-size: 0.9rem;
+        margin: 10px 20px;
         text-align: right;
-        min-width: 150px;
       }
       .login-section {
         background: #fff;
@@ -160,13 +147,14 @@
         <a href="/faturas.html">📄 Ver Faturas</a>
       </div>
       <div id="tokenDisplay"></div>
-
+      <!-- Login antigo via username/password (comentado) 
       <div id="moloniLoginForm" style="margin-top: 15px">
         <input id="username" type="email" placeholder="Email Moloni" />
         <input id="password" type="password" placeholder="Password Moloni" />
         <button onclick="loginMoloni()">Login</button>
         <p id="loginStatus"></p>
       </div>
+        -->
     </header>
     <div class="container">
       <div class="table-lists">
