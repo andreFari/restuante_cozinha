@@ -216,6 +216,43 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     return res.status(500).json({ error: "Failed to exchange code" });
   }
 });*/
+
+app.post("/api/moloni-login", async (req, res) => {
+  const { client_id, client_secret, username, password } = req.body;
+  if (!client_id || !client_secret || !username || !password) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  const url = new URL("https://api.moloni.pt/v1/grant/");
+  url.searchParams.append("grant_type", "password");
+  url.searchParams.append("client_id", client_id);
+  url.searchParams.append("client_secret", client_secret);
+  url.searchParams.append("username", username);
+  url.searchParams.append("password", password);
+
+  try {
+    const moloniRes = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    const data = await moloniRes.json();
+
+    if (!moloniRes.ok) {
+      return res.status(moloniRes.status).json(data);
+    }
+
+    // Success - send tokens back
+    res.json(data);
+  } catch (error) {
+    console.error("Error contacting Moloni API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.listen(3000, () => console.log("Server running on http://localhost:3000"));
 app.post("/api/moloni-exchange-code", async (req, res) => {
   try {
     const { code } = req.body;
