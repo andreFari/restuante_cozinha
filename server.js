@@ -50,11 +50,7 @@ app.get("/login.html", (req, res) => {
 
 app.get("/", (req, res) => res.redirect("/login.html"));
 // ----- Gestão de Tokens (em memória) -----
-let moloniTokens = {
-  access_token: null,
-  refresh_token: null,
-  expires_at: null, // timestamp (ms)
-};
+
 // Exemplo em Express
 app.get("/api/moloni-token-status", (req, res) => {
   if (
