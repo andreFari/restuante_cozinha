@@ -136,10 +136,9 @@ router.get("/api/viaturas", async (req, res) => {
     const vehicles = Array.isArray(data) ? data : data.vehicles || [];
     console.log("DEBUG :: raw response.data =", response.data);
 
-    // Map to your simplified form
     const simplificadas = vehicles.map((v) => ({
       id: v.vehicle_id,
-      matricula: v.name,
+      matricula: v.number_plate || v.description || "Sem matrícula",
     }));
 
     res.json(simplificadas);
