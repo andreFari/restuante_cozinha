@@ -185,4 +185,4 @@ router.post("/api/guias", async (req, res) => {
     });
   }
 });
-export default app;
+export default router;
