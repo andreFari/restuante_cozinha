@@ -105,7 +105,7 @@ router.get("/api/moloni-companies", async (req, res) => {
 router.get("/api/viaturas", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-    const { data } = await axios.post(
+    const { data } = await axios.get(
       "https://api.moloni.pt/v1/vehicles/getAll/",
       { company_id: MOLONI_COMPANY_ID },
       {
@@ -114,7 +114,7 @@ router.get("/api/viaturas", async (req, res) => {
         },
       }
     );
-
+    console.log("Moloni vehicles response data:", data);
     const simplificadas = data.map((v) => ({
       id: v.vehicle_id,
       matricula: v.name,
