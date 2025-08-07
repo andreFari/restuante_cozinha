@@ -160,6 +160,15 @@
         <a href="/faturas.html">📄 Ver Faturas</a>
       </div>
       <div id="tokenDisplay"></div>
+
+      <div id="moloniLoginForm" style="display: none; margin-top: 15px">
+        <input id="clientId" type="text" placeholder="Client ID" />
+        <input id="clientSecret" type="text" placeholder="Client Secret" />
+        <input id="username" type="email" placeholder="Email Moloni" />
+        <input id="password" type="password" placeholder="Password Moloni" />
+        <button onclick="loginMoloni()">Login</button>
+        <p id="loginStatus"></p>
+      </div>
     </header>
     <div class="container">
       <div class="table-lists">
