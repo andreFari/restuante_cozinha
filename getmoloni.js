@@ -1,8 +1,10 @@
 import express from "express";
-const app = express();
-const axios = require("axios");
-const { getValidAccessToken } = require("./your-token-helper"); // adapta ao teu projeto
 
+import axios from "axios";
+
+import { getValidAccessToken } from "./moloniAuth.js";
+
+const app = express();
 const router = express.Router();
 
 const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);

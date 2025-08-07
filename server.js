@@ -12,6 +12,9 @@ import express from "express";
 import qs from "qs";
 import multer from "multer";
 import moloniRoutes from "./getmoloni.js";
+
+import { moloniTokens, getValidAccessToken } from "./moloniAuth.js";
+
 dotenv.config();
 
 const PORT = process.env.PORT || 10000;
@@ -67,7 +70,9 @@ app.get("/api/moloni-token-status", (req, res) => {
 /**
  * Devolve um access_token válido; renova automaticamente via refresh_token quando necessário.
  */
-async function getValidAccessToken() {
+
+/*
+export async function getValidAccessToken() {
   // token válido com 60s de margem
   if (
     moloniTokens.access_token &&
@@ -108,7 +113,7 @@ async function getValidAccessToken() {
     );
     throw new Error("Não foi possível renovar o token.");
   }
-}
+}*/
 
 // ----- OAuth -----
 // (opcional) endpoint para iniciar o fluxo OAuth (utiliza o painel de autenticação da Moloni)
