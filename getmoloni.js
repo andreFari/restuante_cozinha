@@ -177,7 +177,7 @@ router.post("/api/guias", async (req, res) => {
       {
         access_token,
         company_id: MOLONI_COMPANY_ID,
-        document_set_id: 1,
+        document_set_id: 850313,
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
         date: emissao,
