@@ -278,122 +278,80 @@ const moloniProductMap = {
   },
   // outros produtos
 };
-// ----- API: emitir fatura -----
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
-    // valida envs base
-    if (
-      !MOLONI_COMPANY_ID ||
-      !MOLONI_DOCUMENT_SET_ID ||
-      !MOLONI_CUSTOMER_ID ||
-      !MOLONI_TAX_ID
-    ) {
-      return res.status(500).json({
-        error: "config_invalida",
-        detail:
-          "Faltam IDs (company, document_set, customer, tax) nas variáveis de ambiente.",
+    const access_token = await getValidAccessToken();
+
+    // 🔹 Dados vindos do frontend
+    const mesa = req.body || {};
+    const { notes, tableName, order } = mesa;
+
+    // 🔹 IDs ainda definidos no backend (podes passar para o frontend depois se quiseres)
+    const company_id = MOLONI_COMPANY_ID;
+    const document_set_id = MOLONI_DOCUMENT_SET_ID;
+    const customer_id = MOLONI_CUSTOMER_ID;
+
+    if (!company_id || !document_set_id || !customer_id) {
+      return res.status(400).json({
+        error: "ids_em_falta",
+        detail: "company_id, document_set_id ou customer_id em falta",
       });
     }
-    console.log("🟢 Body recebido:", req.body);
-    const access_token = await getValidAccessToken();
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const mesa = req.body || {};
 
-    // 1) inserir fatura (JSON + json=true; access_token em query GET)
-    const insertUrl = `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`;
+    // 🔹 Extrair e juntar todos os itens do pedido
+    const items = [
+      ...(order.plates || []),
+      ...(order.drinks || []),
+      ...(order.desserts || []),
+      ...(order.extras || []),
+      ...(order.coffee || []),
+    ];
 
-    console.log("📦 ENV document_set_id:", MOLONI_DOCUMENT_SET_ID);
-    console.log("✅ Taxa usada:", MOLONI_TAX_ID);
-    console.log("🎯 mesa.order:", mesa.order);
-    console.log("🎯 plates:", mesa.order?.plates);
-    const order = mesa.order || {};
-    const {
-      plates = [],
-      drinks = [],
-      desserts = [],
-      extras = [],
-      coffee = [],
-    } = order;
-
-    const items = [...plates, ...drinks, ...desserts, ...extras, ...coffee];
-
+    // 🔹 Converter cada item num produto da Moloni
     const products = items
       .filter((name) => typeof name === "string" && name.trim().length > 0)
       .map((name) => {
-        const product = moloniProductMap[name];
-        if (product) {
+        const product = moloniProductMap[name]; // ← pode estar no backend ou vir do frontend
+        if (!product) {
           return {
-            product_id: product.product_id,
-            name,
-            qty: 1,
-            price: product.price,
-            taxes: [{ tax_id: product.tax_id }],
-          };
-        } else {
-          console.warn(`Produto "${name}" não encontrado no mapa de produtos.`);
-          // Caso não encontre, podes ignorar ou usar um fallback:
-          return {
-            product_id: 210061572, // id genérico ou null
+            product_id: 210061572, // fallback
             name,
             qty: 1,
             price: 10,
             taxes: [{ tax_id: 3630173 }],
           };
         }
+        return {
+          product_id: product.product_id,
+          name,
+          qty: 1,
+          price: product.price,
+          taxes: [{ tax_id: product.tax_id }],
+        };
       });
 
-    const payload = {
-      company_id: 355755,
-      date: "2025-08-06",
-      expiration_date: "2025-08-06",
-      document_set_id: 850313,
-      customer_id: 129329338,
-      status: 1,
-      products: [
-        {
-          product_id: 210061572,
-          name: "Bolo",
-          qty: 1,
-          price: 10,
-          taxes: [
-            {
-              tax_id: 3630173,
-            },
-          ],
-        },
-      ],
-    };
-    console.log("Payload JSON enviado:", JSON.stringify(payload, null, 2));
-
-    console.dir(payload, { depth: null });
-
-    console.log("✅ Produtos finais:", payload.products);
-    console.log("👉 Tipo do campo products:", typeof payload.products);
-    console.log("👉 É array válido?", Array.isArray(payload.products));
-    console.dir(payload.products, { depth: null });
-
-    if (!Array.isArray(payload.products) || payload.products.length === 0) {
-      console.error("❌ Nenhum produto para enviar!");
+    if (!products.length) {
+      return res.status(400).json({ error: "sem_produtos_validos" });
     }
 
-    console.log("🔍 Tipo real do payload:", typeof payload); // deveria ser object
-    console.log("🔍 Tipo do payload final:", typeof JSON.stringify(payload)); // string
-    console.log("🛡️ Access token atual:", access_token);
+    // 🔹 Preparar o payload da fatura
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = {
+      company_id,
+      customer_id,
+      document_set_id,
+      date: today,
+      expiration_date: today,
+      status: 1,
+      products,
+      notes: notes || "",
+      internal_notes: `Mesa: ${tableName || ""}`,
+    };
 
-    const data = qs.stringify({
-      json: JSON.stringify(payload),
-    });
-
-    console.log(
-      "🟣 Final payload antes do POST:",
-      JSON.stringify(payload, null, 2)
-    );
-    console.log("🚀 Enviando dados para Moloni:");
-    console.log("data", data); // deve mostrar json={"company_id":...}
-    console.log("payload", payload); // deve mostrar json={"company_id":...}
+    // 🔹 Inserir a fatura na Moloni
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
-      payload, // envia como JSON diretamente
+      payload,
       {
         headers: {
           "Content-Type": "application/json",
@@ -402,10 +360,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       }
     );
 
-    console.log("📥 Resposta Moloni:", insertResp.data);
-
     const insertData = insertResp.data;
-
     const document_id =
       insertData?.document_id ||
       insertData?.document?.document_id ||
@@ -417,18 +372,15 @@ app.post("/api/emitir-fatura", async (req, res) => {
         .json({ error: "insert_sem_document_id", detail: insertData });
     }
 
+    // 🔹 Obter link do PDF
     const pdfResp = await axios.post(
-      "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
-        access_token +
-        "&json=true",
+      `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
       {
-        company_id: 355755,
+        company_id,
         document_id,
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       }
     );
 
