@@ -148,10 +148,15 @@
           select.appendChild(opt);
         });
       }
-
       async function preencherViaturas() {
         const res = await fetch("/molo/api/viaturas");
         const viaturas = await res.json();
+
+        if (!Array.isArray(viaturas)) {
+          console.error("Erro: viaturas não é um array", viaturas);
+          return;
+        }
+
         const select = document.getElementById("viatura");
         viaturas.forEach((v) => {
           const opt = document.createElement("option");
@@ -160,7 +165,6 @@
           select.appendChild(opt);
         });
       }
-
       document
         .getElementById("guiaForm")
         .addEventListener("submit", async (e) => {
