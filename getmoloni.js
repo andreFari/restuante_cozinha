@@ -13,6 +13,7 @@ const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);
 router.get("/api/artigos", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
+
     const response = await axios.post(
       "https://api.moloni.pt/v1/products/getAll/",
       {
@@ -20,15 +21,25 @@ router.get("/api/artigos", async (req, res) => {
         qty: 100,
         offset: 0,
       },
-      { params: { access_token, json: true } }
+      {
+        params: { access_token, json: true },
+      }
     );
-    res.json(response.data);
+
+    // Map to simpler object with keys your frontend expects
+    const simplificados = response.data.map((item) => ({
+      id: item.product_id,
+      nome: item.name,
+      preco: item.price,
+      unidade: item.unit_id,
+    }));
+
+    res.json(simplificados);
   } catch (error) {
     console.error("Erro ao buscar artigos:", error);
     res.status(500).json({ error: "erro_artigos", detail: error.message });
   }
 });
-
 // Clientes
 router.get("/api/moloni-customers", async (req, res) => {
   try {

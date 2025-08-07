@@ -140,6 +140,7 @@
       async function preencherArtigos() {
         const res = await fetch("/molo/api/artigos");
         const artigos = await res.json();
+
         const select = document.getElementById("artigos");
         artigos.forEach((a) => {
           const opt = document.createElement("option");
@@ -148,6 +149,7 @@
           select.appendChild(opt);
         });
       }
+
       async function preencherViaturas() {
         const res = await fetch("/molo/api/viaturas");
         const viaturas = await res.json();
