@@ -206,7 +206,7 @@ router.post("/api/guias", async (req, res) => {
     });
   }
 });
-router.get("/api/guias", async (req, res) => {
+router.get("/importar/guias", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
 
