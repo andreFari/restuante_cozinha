@@ -26,8 +26,14 @@
     <div id="faturaContainer">A carregar...</div>
 
     <script>
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(";").shift();
+      }
+
       async function fetchFaturas() {
-        const token = localStorage.getItem("moloniToken"); // assumindo que o token foi salvo aqui após login
+        const token = getCookie("moloni_token");
         if (!token) {
           document.getElementById("faturaContainer").innerText =
             "Token não encontrado. Por favor faça login.";
