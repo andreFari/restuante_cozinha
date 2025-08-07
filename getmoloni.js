@@ -1,4 +1,5 @@
-const express = require("express");
+import express from "express";
+const app = express();
 const axios = require("axios");
 const { getValidAccessToken } = require("./your-token-helper"); // adapta ao teu projeto
 
@@ -182,4 +183,4 @@ router.post("/api/guias", async (req, res) => {
     });
   }
 });
-module.exports = router;
+export default app;
