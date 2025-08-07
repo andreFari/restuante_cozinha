@@ -30,7 +30,9 @@ dotenv.config();
 
 // ----- ENV -----
 const PORT = process.env.PORT || 10000;
-
+const fs = require("fs");
+const path = require("path");
+const PDFMerger = require("pdf-merger-js");
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
 const REDIRECT_URI = process.env.MOLONI_CALLBACK_URL;
@@ -726,7 +728,61 @@ app.get("/api/faturas", async (req, res) => {
     res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
   }
 });
+//Juntar pdf à fatura
 
+// Exemplo: juntar PDF da fatura com o auto
+app.get("/api/fatura-com-auto/:documentId", async (req, res) => {
+  const documentId = req.params.documentId;
+
+  try {
+    const access_token = await getValidAccessToken();
+
+    // 1. Buscar o link do PDF da fatura
+    const { data: pdfResp } = await axios.post(
+      "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
+        access_token +
+        "&json=true",
+      {
+        company_id: 355755,
+        document_id: documentId,
+      }
+    );
+
+    const moloniPdfUrl = pdfResp.url;
+
+    // 2. Fazer download dos dois PDFs (Moloni + Auto)
+    const moloniPdfBuffer = (
+      await axios.get(moloniPdfUrl, { responseType: "arraybuffer" })
+    ).data;
+
+    const autoPath = path.resolve(__dirname, "autos", `auto_${documentId}.pdf`);
+
+    if (!fs.existsSync(autoPath)) {
+      return res.status(404).json({ error: "Auto de entrega não encontrado" });
+    }
+    const autoPdfBuffer = fs.readFileSync(autoPath);
+
+    // 3. Juntar os PDFs
+    const merger = new PDFMerger();
+    await merger.add(moloniPdfBuffer);
+    await merger.add(autoPdfBuffer);
+
+    const mergedPdfBuffer = await merger.saveAsBuffer();
+
+    // 4. Enviar resultado
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="fatura_com_auto_${documentId}.pdf"`
+    );
+    res.send(mergedPdfBuffer);
+  } catch (err) {
+    console.error("Erro ao juntar PDF:", err);
+    res
+      .status(500)
+      .json({ error: "Erro ao gerar PDF combinado", detail: err.message });
+  }
+});
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
