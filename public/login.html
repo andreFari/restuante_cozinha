@@ -12,8 +12,48 @@
       header {
         background: #444;
         color: white;
-        padding: 1rem;
-        text-align: center;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap; /* para responsividade */
+        gap: 0.5rem;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 600;
+        flex-grow: 1; /* ocupa o máximo possível */
+        min-width: 200px; /* não encolhe demais */
+      }
+
+      header .links-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.3rem;
+        min-width: 150px;
+      }
+
+      header .links-container a {
+        color: #f1f1f1;
+        text-decoration: none;
+        font-weight: 600;
+        margin-left: 1rem;
+        transition: color 0.3s;
+      }
+
+      header .links-container a:hover {
+        color: #1abc9c;
+      }
+
+      #tokenDisplay {
+        color: #bbb;
+        font-size: 0.8rem;
+        margin-top: 4px;
+        text-align: right;
+        min-width: 150px;
       }
       .login-section {
         background: #fff;
@@ -109,11 +149,9 @@
   </head>
 
   <body>
-    <header
-      style="display: flex; justify-content: space-between; align-items: center"
-    >
+    <header>
       <h1>Painel de Admin / Recessão</h1>
-      <div style="text-align: right">
+      <div class="links-container">
         <a
           href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=249928302_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
         >
@@ -121,8 +159,7 @@
         </a>
         <a href="/faturas.html">📄 Ver Faturas</a>
       </div>
-
-      <div id="tokenDisplay" style="color: #ccc"></div>
+      <div id="tokenDisplay"></div>
     </header>
     <div class="container">
       <div class="table-lists">
@@ -505,8 +542,7 @@
         } else {
           const storedToken = localStorage.getItem("moloni_token");
           if (storedToken) {
-            tokenDisplayDiv.textContent =
-              "Token armazenado: " + storedToken.substring(0, 25) + "…";
+            tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
           } else {
             tokenDisplayDiv.textContent = "Nenhum token armazenado.";
           }
