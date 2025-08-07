@@ -6,7 +6,7 @@ import { getValidAccessToken } from "./moloniAuth.js";
 
 const app = express();
 const router = express.Router();
-
+const formatDate = (d) => new Date(d).toISOString().slice(0, 10);
 const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);
 
 // Artigosv
@@ -175,23 +175,18 @@ router.post("/api/guias", async (req, res) => {
     const response = await axios.post(
       "https://api.moloni.pt/v1/billsOfLading/insert/",
       {
-        access_token,
         company_id: MOLONI_COMPANY_ID,
         document_set_id: 850313,
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
-        date: emissao,
-        shipping_date: inicio,
+        date: formatDate(emissao),
+        shipping_date: formatDate(inicio),
         observations: observacoes,
         products: linhas,
-
-        // Morada carga
         address: carga.morada,
         zip_code: carga.cp,
         city: carga.localidade,
         country: carga.pais,
-
-        // Morada descarga
         delivery_address: descarga.morada,
         delivery_zip_code: descarga.cp,
         delivery_city: descarga.localidade,
