@@ -33,19 +33,8 @@
       }
 
       async function fetchFaturas() {
-        const token = getCookie("moloni_token");
-        if (!token) {
-          document.getElementById("faturaContainer").innerText =
-            "Token não encontrado. Por favor faça login.";
-          return;
-        }
-
         try {
-          const response = await fetch("/api/faturas", {
-            headers: {
-              Authorization: "Bearer " + token,
-            },
-          });
+          const response = await fetch("/api/faturas"); // <-- Sem Authorization!
           const data = await response.json();
 
           if (data.length === 0) {
@@ -56,33 +45,33 @@
 
           const table = document.createElement("table");
           table.innerHTML = `
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Número</th>
-                <th>Total</th>
-                <th>PDF</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data
-                .map(
-                  (f) => `
-                <tr>
-                  <td>${f.document_id}</td>
-                  <td>${f.date}</td>
-                  <td>${f.document_number}</td>
-                  <td>${f.total}</td>
-                  <td>
-                    <a href="${f.pdfUrl}" target="_blank">📄 Abrir</a>
-                  </td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          `;
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Número</th>
+          <th>Total</th>
+          <th>PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data
+          .map(
+            (f) => `
+          <tr>
+            <td>${f.document_id}</td>
+            <td>${f.date}</td>
+            <td>${f.document_number}</td>
+            <td>${f.total}</td>
+            <td>
+              <a href="${f.pdfUrl}" target="_blank">📄 Abrir</a>
+            </td>
+          </tr>
+        `
+          )
+          .join("")}
+      </tbody>
+    `;
           document.getElementById("faturaContainer").innerHTML = "";
           document.getElementById("faturaContainer").appendChild(table);
         } catch (err) {
