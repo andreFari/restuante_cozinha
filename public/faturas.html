@@ -40,6 +40,7 @@
       </select>
       <button type="submit">Enviar e baixar PDF combinado</button>
     </form>
+
     <script>
       const form = document.getElementById("formAutoPdf");
 
@@ -63,12 +64,18 @@
         formData.append("autoPdf", fileInput.files[0]);
 
         try {
+          console.log("Enviando para o backend...", documentId);
           const response = await fetch(`/api/fatura-com-auto/${documentId}`, {
             method: "POST",
             body: formData,
           });
 
-          if (!response.ok) throw new Error("Erro ao combinar PDFs");
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(
+              `Erro ao combinar PDFs: ${response.status} ${text}`
+            );
+          }
 
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
@@ -85,11 +92,7 @@
           alert(err.message);
         }
       });
-      function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(";").shift();
-      }
+
       let faturas = [];
       async function fetchFaturas() {
         try {
@@ -104,38 +107,38 @@
 
           const table = document.createElement("table");
           table.innerHTML = `
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Data</th>
-            <th>Número</th>
-            <th>Total</th>
-            <th>PDF</th>
-            <th>Selecionar para juntar</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${faturas
-            .map(
-              (f) => `
-            <tr>
-              <td>${f.document_id}</td>
-              <td>${f.date}</td>
-              <td>${f.document_number}</td>
-              <td>${f.total}</td>
-              <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
-              <td><input type="radio" name="faturaSelecionada" value="${f.document_id}"></td>
-            </tr>
-          `
-            )
-            .join("")}
-        </tbody>
-      `;
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Número</th>
+                <th>Total</th>
+                <th>PDF</th>
+                <th>Selecionar para juntar</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${faturas
+                .map(
+                  (f) => `
+                <tr>
+                  <td>${f.document_id}</td>
+                  <td>${f.date}</td>
+                  <td>${f.document_number}</td>
+                  <td>${f.total}</td>
+                  <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
+                  <td><input type="radio" name="faturaSelecionada" value="${f.document_id}"></td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          `;
           document.getElementById("faturaContainer").innerHTML = "";
           document.getElementById("faturaContainer").appendChild(table);
-          // Agora preencher o <select> dinamicamente
+
+          // Preencher o <select> dinamicamente
           const select = document.getElementById("faturaSelect");
-          // Limpar opções anteriores (menos o placeholder)
           select.innerHTML = '<option value="">--Selecione--</option>';
           faturas.forEach((f) => {
             const option = document.createElement("option");
@@ -151,59 +154,6 @@
       }
 
       fetchFaturas();
-
-      // Habilitar botão só se tiver arquivo e fatura selecionada
-      const pdfInput = document.getElementById("pdfUpload");
-      const btnUpload = document.getElementById("btnUpload");
-
-      function checkEnableButton() {
-        const selectedFatura = document.querySelector(
-          'input[name="faturaSelecionada"]:checked'
-        );
-        btnUpload.disabled = !(pdfInput.files.length > 0 && selectedFatura);
-      }
-
-      pdfInput.addEventListener("change", checkEnableButton);
-      document
-        .getElementById("faturaContainer")
-        .addEventListener("change", checkEnableButton);
-
-      btnUpload.addEventListener("click", async () => {
-        const selectedFatura = document.querySelector(
-          'input[name="faturaSelecionada"]:checked'
-        );
-        if (!selectedFatura) {
-          alert("Por favor selecione uma fatura.");
-          return;
-        }
-
-        const file = pdfInput.files[0];
-        if (!file) {
-          alert("Por favor escolha um arquivo PDF.");
-          return;
-        }
-
-        const formData = new FormData();
-        formData.append("pdf", file);
-        formData.append("document_id", selectedFatura.value);
-
-        try {
-          const res = await fetch("/api/fatura-com-auto", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!res.ok) {
-            throw new Error("Erro no servidor");
-          }
-
-          // Supondo que o backend responde com link para o PDF combinado
-          const data = await res.json();
-          window.open(data.combinedPdfUrl, "_blank");
-        } catch (err) {
-          alert("Erro ao enviar o arquivo: " + err.message);
-        }
-      });
     </script>
   </body>
 </html>
