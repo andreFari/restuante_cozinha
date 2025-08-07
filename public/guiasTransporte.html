@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Criar Guia de Transporte</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 900px;
+        margin: auto;
+        padding: 2rem;
+        background: #f5f5f5;
+      }
+
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 2rem;
+      }
+
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: bold;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.3rem;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+
+      .section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+      }
+
+      button {
+        background: #2980b9;
+        color: white;
+        padding: 0.8rem;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        width: 100%;
+        cursor: pointer;
+        margin-top: 1.5rem;
+      }
+
+      button:hover {
+        background: #1f5e85;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚚 Criar Guia de Transporte</h1>
+
+    <form id="guiaForm">
+      <div class="section">
+        <label for="cliente">Cliente:</label>
+        <select id="cliente" required></select>
+
+        <label for="artigos">Artigos:</label>
+        <select id="artigos" multiple required></select>
+
+        <label for="viatura">Viatura:</label>
+        <select id="viatura" required></select>
+
+        <label for="emissao">Data de emissão:</label>
+        <input type="datetime-local" id="emissao" required />
+
+        <label for="inicio">Início do transporte:</label>
+        <input type="datetime-local" id="inicio" required />
+      </div>
+
+      <div class="section">
+        <h3>Local de Carga (Empresa)</h3>
+        <label>Morada:</label>
+        <input type="text" id="moradaCarga" required />
+        <label>Código Postal:</label>
+        <input type="text" id="cpCarga" required />
+        <label>Localidade:</label>
+        <input type="text" id="localCarga" required />
+        <label>País:</label>
+        <input type="text" id="paisCarga" value="Portugal" required />
+      </div>
+
+      <div class="section">
+        <h3>Local de Descarga (Cliente)</h3>
+        <label>Morada:</label>
+        <input type="text" id="moradaDescarga" required />
+        <label>Código Postal:</label>
+        <input type="text" id="cpDescarga" required />
+        <label>Localidade:</label>
+        <input type="text" id="localDescarga" required />
+        <label>País:</label>
+        <input type="text" id="paisDescarga" value="Portugal" required />
+      </div>
+
+      <div class="section">
+        <label for="obs">Observações:</label>
+        <textarea id="obs" rows="4"></textarea>
+      </div>
+
+      <button type="submit">Criar Guia</button>
+    </form>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        // Preencher campos com data atual
+        const now = new Date().toISOString().slice(0, 16);
+        document.getElementById("emissao").value = now;
+        document.getElementById("inicio").value = now;
+
+        // Preencher dropdowns
+        await preencherClientes();
+        await preencherArtigos();
+        await preencherViaturas();
+      });
+
+      async function preencherClientes() {
+        const res = await fetch("/api/moloni-customers");
+        const clientes = await res.json();
+        const select = document.getElementById("cliente");
+        clientes.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = `${c.nome} (${c.nif})`;
+          select.appendChild(opt);
+        });
+      }
+
+      async function preencherArtigos() {
+        const res = await fetch("/api/artigos");
+        const artigos = await res.json();
+        const select = document.getElementById("artigos");
+        artigos.forEach((a) => {
+          const opt = document.createElement("option");
+          opt.value = a.id;
+          opt.textContent = `${a.nome} - ${a.preco}€`;
+          select.appendChild(opt);
+        });
+      }
+
+      async function preencherViaturas() {
+        const res = await fetch("/api/viaturas");
+        const viaturas = await res.json();
+        const select = document.getElementById("viatura");
+        viaturas.forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.id;
+          opt.textContent = v.matricula;
+          select.appendChild(opt);
+        });
+      }
+
+      document
+        .getElementById("guiaForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const dados = {
+            clienteId: document.getElementById("cliente").value,
+            artigos: Array.from(
+              document.getElementById("artigos").selectedOptions
+            ).map((opt) => opt.value),
+            viaturaId: document.getElementById("viatura").value,
+            emissao: document.getElementById("emissao").value,
+            inicio: document.getElementById("inicio").value,
+            carga: {
+              morada: document.getElementById("moradaCarga").value,
+              cp: document.getElementById("cpCarga").value,
+              localidade: document.getElementById("localCarga").value,
+              pais: document.getElementById("paisCarga").value,
+            },
+            descarga: {
+              morada: document.getElementById("moradaDescarga").value,
+              cp: document.getElementById("cpDescarga").value,
+              localidade: document.getElementById("localDescarga").value,
+              pais: document.getElementById("paisDescarga").value,
+            },
+            observacoes: document.getElementById("obs").value,
+          };
+
+          try {
+            const res = await fetch("/api/guias", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(dados),
+            });
+
+            if (!res.ok) throw new Error("Erro ao criar guia");
+
+            alert("Guia criada com sucesso!");
+            document.getElementById("guiaForm").reset();
+          } catch (err) {
+            alert("Erro ao criar guia: " + err.message);
+          }
+        });
+    </script>
+  </body>
+</html>

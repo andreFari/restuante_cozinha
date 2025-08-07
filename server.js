@@ -16,6 +16,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 10000;
 const upload = multer({ dest: "uploads/" }); // pasta temporária para uploads
+const moloniRoutes = require("./getmoloni");
 
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
@@ -30,7 +31,7 @@ const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
+app.use("/molo", moloniRoutes);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, "uploads");
@@ -52,7 +53,18 @@ let moloniTokens = {
   refresh_token: null,
   expires_at: null, // timestamp (ms)
 };
+// Exemplo em Express
+app.get("/api/moloni-token-status", (req, res) => {
+  if (
+    moloniTokens.access_token &&
+    moloniTokens.expires_at &&
+    moloniTokens.expires_at > Date.now() + 60000
+  ) {
+    return res.json({ valid: true });
+  }
 
+  return res.json({ valid: false });
+});
 /**
  * Devolve um access_token válido; renova automaticamente via refresh_token quando necessário.
  */
@@ -424,25 +436,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
   }
 });
 
-// util: lista empresas (para encontrares o company_id)
-app.get("/api/moloni-companies", async (req, res) => {
-  try {
-    const access_token = await getValidAccessToken();
-    const { data } = await axios.get(
-      "https://api.moloni.pt/v1/companies/getAll/",
-      {
-        params: { access_token },
-      }
-    );
-    return res.json(data);
-  } catch (e) {
-    const status = e.response?.status || 500;
-    return res.status(status).json({
-      error: "companies_failed",
-      detail: e.response?.data || String(e),
-    });
-  }
-});
 app.get("/api/moloni-document-sets", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
@@ -471,7 +464,7 @@ app.get("/api/moloni-document-sets", async (req, res) => {
     const dadosFiltrados = conjuntos.map((set) => ({
       id: set.document_set_id,
       nome: set.name,
-      tipo: set.type,
+      tipo: set.document_type, // aqui está o correto
     }));
 
     return res.status(200).json(dadosFiltrados);
@@ -527,45 +520,85 @@ app.get("/api/moloni-taxes", async (req, res) => {
   }
 });
 
-app.get("/api/moloni-customers", async (req, res) => {
+app.get("/api/faturas", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-    const company_id = MOLONI_COMPANY_ID;
-
-    if (!access_token || !company_id) {
-      return res.status(500).json({
-        error: "missing_credentials",
-        detail: "Access token ou company_id em falta.",
-      });
-    }
-
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/customers/getAll/",
-      { company_id },
+    const resp = await axios.post(
+      "https://api.moloni.pt/v1/invoices/getAll/?access_token=" +
+        access_token +
+        "&json=true",
       {
-        params: { access_token, json: true },
+        company_id: 355755,
+        document_set_id: 850313,
+        filter: {
+          field: "date",
+          comparison: "between",
+          value: ["2025-01-01", "2025-12-31"], // ajusta datas conforme necessário
+        },
       }
     );
 
-    const clientes = response.data.map((cliente) => ({
-      id: cliente.customer_id,
-      nome: cliente.name,
-      contribuinte: cliente.vat,
-      email: cliente.email,
-    }));
+    const invoices = resp.data || [];
 
-    return res.status(200).json(clientes);
-  } catch (error) {
-    console.error(
-      "Erro ao obter clientes:",
-      error.response?.data || error.message
+    // opcional: obter link PDF para cada fatura
+    const withPdf = await Promise.all(
+      invoices.map(async (f) => {
+        const pdfResp = await axios.post(
+          "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
+            access_token +
+            "&json=true",
+          {
+            company_id: 355755,
+            document_id: f.document_id,
+          }
+        );
+        return {
+          ...f,
+          pdfUrl: pdfResp?.data?.url || "",
+        };
+      })
     );
-    return res.status(500).json({
-      error: "failed_fetch_customers",
-      detail: error.response?.data || error.message,
-    });
+
+    res.json(withPdf);
+  } catch (e) {
+    console.error("Erro ao buscar faturas:", e);
+    res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
   }
 });
+app.post(
+  "/api/fatura-com-auto",
+  upload.fields([
+    { name: "faturaPdf", maxCount: 1 },
+    { name: "autoPdf", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const faturaPdfPath = req.files["faturaPdf"][0].path;
+      const autoPdfPath = req.files["autoPdf"][0].path;
+
+      const merger = new PDFMerger();
+      await merger.add(faturaPdfPath);
+      await merger.add(autoPdfPath);
+
+      const combinedPdfBuffer = await merger.saveAsBuffer();
+
+      // Apaga arquivos temporários
+      fs.unlinkSync(faturaPdfPath);
+      fs.unlinkSync(autoPdfPath);
+
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="fatura_com_auto_${req.params.documentId}.pdf"`,
+        "Content-Length": combinedPdfBuffer.length,
+      });
+      res.send(combinedPdfBuffer);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Erro ao combinar PDFs");
+    }
+  }
+);
+
 app.get("/api/moloni/config-resumo", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
@@ -659,135 +692,6 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
     });
   }
 });
-
-app.get("/api/moloni-customers", async (req, res) => {
-  try {
-    const access_token = await getValidAccessToken();
-
-    const { data } = await axios.post(
-      "https://api.moloni.pt/v1/customers/getAll/",
-      { company_id: MOLONI_COMPANY_ID },
-      { params: { access_token, json: true } }
-    );
-
-    const simplificados = data.map((c) => ({
-      id: c.customer_id,
-      nome: c.name,
-      contribuinte: c.vat,
-    }));
-
-    return res.status(200).json(simplificados);
-  } catch (e) {
-    return res.status(500).json({
-      error: "failed_fetch_customers",
-      detail: e.response?.data || String(e),
-    });
-  }
-});
-
-app.get("/api/moloni-taxes", async (req, res) => {
-  try {
-    const access_token = await getValidAccessToken();
-
-    const { data } = await axios.post(
-      "https://api.moloni.pt/v1/taxes/getAll/",
-      { company_id: MOLONI_COMPANY_ID },
-      { params: { access_token, json: true } }
-    );
-
-    const simplificados = data.map((t) => ({
-      id: t.tax_id,
-      nome: t.name,
-      valor: t.value,
-      ativo: t.active,
-    }));
-
-    return res.status(200).json(simplificados);
-  } catch (e) {
-    return res.status(500).json({
-      error: "failed_fetch_taxes",
-      detail: e.response?.data || String(e),
-    });
-  }
-});
-app.get("/api/faturas", async (req, res) => {
-  try {
-    const access_token = await getValidAccessToken();
-    const resp = await axios.post(
-      "https://api.moloni.pt/v1/invoices/getAll/?access_token=" +
-        access_token +
-        "&json=true",
-      {
-        company_id: 355755,
-        document_set_id: 850313,
-        filter: {
-          field: "date",
-          comparison: "between",
-          value: ["2025-01-01", "2025-12-31"], // ajusta datas conforme necessário
-        },
-      }
-    );
-
-    const invoices = resp.data || [];
-
-    // opcional: obter link PDF para cada fatura
-    const withPdf = await Promise.all(
-      invoices.map(async (f) => {
-        const pdfResp = await axios.post(
-          "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
-            access_token +
-            "&json=true",
-          {
-            company_id: 355755,
-            document_id: f.document_id,
-          }
-        );
-        return {
-          ...f,
-          pdfUrl: pdfResp?.data?.url || "",
-        };
-      })
-    );
-
-    res.json(withPdf);
-  } catch (e) {
-    console.error("Erro ao buscar faturas:", e);
-    res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
-  }
-});
-app.post(
-  "/api/fatura-com-auto",
-  upload.fields([
-    { name: "faturaPdf", maxCount: 1 },
-    { name: "autoPdf", maxCount: 1 },
-  ]),
-  async (req, res) => {
-    try {
-      const faturaPdfPath = req.files["faturaPdf"][0].path;
-      const autoPdfPath = req.files["autoPdf"][0].path;
-
-      const merger = new PDFMerger();
-      await merger.add(faturaPdfPath);
-      await merger.add(autoPdfPath);
-
-      const combinedPdfBuffer = await merger.saveAsBuffer();
-
-      // Apaga arquivos temporários
-      fs.unlinkSync(faturaPdfPath);
-      fs.unlinkSync(autoPdfPath);
-
-      res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="fatura_com_auto_${req.params.documentId}.pdf"`,
-        "Content-Length": combinedPdfBuffer.length,
-      });
-      res.send(combinedPdfBuffer);
-    } catch (error) {
-      console.error(error);
-      res.status(500).send("Erro ao combinar PDFs");
-    }
-  }
-);
 
 // start
 app.listen(PORT, () => {

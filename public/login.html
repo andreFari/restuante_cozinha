@@ -411,15 +411,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-              <strong>${table.name}</strong> - ${
+                    <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-              ${
-                table.kitchenNote
-                  ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                  : ""
-              }
-            `;
+                    ${
+                      table.kitchenNote
+                        ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                        : ""
+                    }
+                  `;
 
           div.onclick = () => renderOrderDetails(index);
 
@@ -440,56 +440,82 @@
         function renderSection(title, items, prepState, key) {
           if (items.length === 0) return "";
           return `
-              <div class="section">
-                <h3>${title}</h3>
-                ${items
-                  .map(
-                    (item, i) => `
-                  <div class="item">
-                    <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                      onchange="togglePrepared(${index}, '${key}', ${i})">
-                    <label>${item}</label>
-                  </div>
-                `
-                  )
-                  .join("")}
-              </div>
-            `;
+                    <div class="section">
+                      <h3>${title}</h3>
+                      ${items
+                        .map(
+                          (item, i) => `
+                        <div class="item">
+                          <input type="checkbox" ${
+                            prepState[i] ? "checked" : ""
+                          }
+                            onchange="togglePrepared(${index}, '${key}', ${i})">
+                          <label>${item}</label>
+                        </div>
+                      `
+                        )
+                        .join("")}
+                    </div>
+                  `;
         }
 
         orderDetails.innerHTML = `
-            <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+                  <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
 
-            <div class="section">
-              <label><strong>Nota da cozinha :</strong></label><br>
-              <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-                table.kitchenNote
-              }</textarea>
-              <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-            </div>
- 
-            <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
-              ${order.status === "paid" ? "Pago" : "Por Pagar"}
-            </div>
-            <button class="btn" onclick="togglePaid(${index})">
-              Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-            </button>
+                  <div class="section">
+                    <label><strong>Nota da cozinha :</strong></label><br>
+                    <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+                      table.kitchenNote
+                    }</textarea>
+                    <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+                  </div>
 
-            <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-              ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-            </button>
-<button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
-            ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
-            ${renderSection("Extras", order.extras, prepared.extras, "extras")}
-            ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
-            ${renderSection(
-              "Sobremesas",
-              order.desserts,
-              prepared.desserts,
-              "desserts"
-            )}
-            ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
-          `;
+                  <div class="status ${
+                    order.status === "paid" ? "paid" : "unpaid"
+                  }">
+                    ${order.status === "paid" ? "Pago" : "Por Pagar"}
+                  </div>
+                  <button class="btn" onclick="togglePaid(${index})">
+                    Marcar como ${
+                      order.status === "paid" ? "Por Pagar" : "Pago"
+                    }
+                  </button>
+
+                  <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+                    ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+                  </button>
+      <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+                  ${renderSection(
+                    "Pratos",
+                    order.plates,
+                    prepared.plates,
+                    "plates"
+                  )}
+                  ${renderSection(
+                    "Extras",
+                    order.extras,
+                    prepared.extras,
+                    "extras"
+                  )}
+                  ${renderSection(
+                    "Bebidas",
+                    order.drinks,
+                    prepared.drinks,
+                    "drinks"
+                  )}
+                  ${renderSection(
+                    "Sobremesas",
+                    order.desserts,
+                    prepared.desserts,
+                    "desserts"
+                  )}
+                  ${renderSection(
+                    "Cafés",
+                    order.coffee,
+                    prepared.coffee,
+                    "coffee"
+                  )}
+                `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
@@ -521,50 +547,61 @@
         form.style.display = form.style.display === "none" ? "block" : "none";
       }
 
-      window.addEventListener("DOMContentLoaded", () => {
+      window.addEventListener("DOMContentLoaded", async () => {
         const params = new URLSearchParams(window.location.search);
-
         const code = params.get("code");
         const error = params.get("error");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
-        console.log("Code da URL:", code);
-        if (code) {
-          fetch("/api/moloni-exchange-code", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ code }),
-          })
-            .then((res) => res.json())
-            .then(({ access_token, refresh_token }) => {
-              console.log("Tokens recebidos:", access_token, refresh_token);
-              localStorage.setItem("moloni_token", access_token);
-              localStorage.setItem("refresh_token", refresh_token);
-              history.replaceState({}, "", "/login.html");
-              alert("Tokens armazenados com sucesso!");
-            })
-            .catch((err) => {
-              console.error("Erro a obter tokens:", err);
-              alert("Erro no login com Moloni.");
-            });
-        } else {
-          const storedToken = localStorage.getItem("moloni_token");
-          if (storedToken) {
-            tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
-          } else {
-            tokenDisplayDiv.textContent = "Nenhum token armazenado.";
-          }
 
-          if (error) {
-            alert(
-              "Erro durante o login com Moloni: " + decodeURIComponent(error)
-            );
-            tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+        console.log("Code da URL:", code);
+
+        if (code) {
+          try {
+            const res = await fetch("/api/moloni-exchange-code", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ code }),
+            });
+
+            const { access_token, refresh_token } = await res.json();
+            console.log("Tokens recebidos:", access_token, refresh_token);
+
+            // Apenas para debug (não obrigatório)
+            // localStorage.setItem("moloni_token", access_token);
+            //localStorage.setItem("refresh_token", refresh_token);
+
+            alert("Tokens armazenados com sucesso!");
+            history.replaceState({}, "", "/login.html");
+          } catch (err) {
+            console.error("Erro a obter tokens:", err);
+            alert("Erro no login com Moloni.");
           }
         }
 
-        renderTables(); // Se existir, senão ignora
+        try {
+          const res = await fetch("/api/moloni-token-status");
+          const { valid } = await res.json();
+          tokenDisplayDiv.textContent = valid
+            ? "✔️ Sistema pronto a usar"
+            : "⚠️ Sistema não autenticado";
+        } catch (err) {
+          console.error("Erro ao verificar status do token:", err);
+          tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
+        }
+
+        if (error) {
+          alert(
+            "Erro durante o login com Moloni: " + decodeURIComponent(error)
+          );
+          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+        }
+
+        // Renderização das mesas, se existir
+        if (typeof renderTables === "function") {
+          renderTables();
+        }
       });
 
       function convertOrderToMoloniProducts(order) {
