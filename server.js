@@ -215,12 +215,13 @@ app.post("/api/moloni-exchange-code", async (req, res) => {
     });
     return res.status(500).json({ error: "Failed to exchange code" });
   }
-});*/
-app.post("/api/moloni-login", async (req, res) => {
+});*/ app.post("/api/moloni-login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Faltam dados" });
+    return res
+      .status(400)
+      .json({ error: "Faltam parâmetros username e password" });
   }
 
   const client_id = process.env.MOLONI_CLIENT_ID;
@@ -247,13 +248,13 @@ app.post("/api/moloni-login", async (req, res) => {
 
     if (data.error) {
       console.error("Erro ao autenticar com a Moloni:", data);
-      return res.status(401).json({ error: "Login inválido." });
+      return res.status(401).json(data);
     }
 
-    res.json(data); // retorna access_token e refresh_token
+    res.json(data);
   } catch (error) {
     console.error("Erro no login Moloni:", error);
-    res.status(500).json({ error: "Erro ao comunicar com Moloni." });
+    res.status(500).json({ error: "Erro ao comunicar com a Moloni." });
   }
 });
 
