@@ -8,8 +8,8 @@ const app = express();
 const router = express.Router();
 
 const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);
-
-// Artigos
+const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID);
+// Artigosv
 router.get("/api/artigos", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
