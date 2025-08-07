@@ -175,6 +175,7 @@ router.post("/api/guias", async (req, res) => {
     const response = await axios.post(
       "https://api.moloni.pt/v1/billsOfLading/insert/",
       {
+        access_token,
         company_id: MOLONI_COMPANY_ID,
         document_set_id: 1,
         customer_id: Number(clienteId),
