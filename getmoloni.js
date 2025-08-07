@@ -112,21 +112,30 @@ router.get("/api/moloni-companies", async (req, res) => {
     });
   }
 });
-
 router.get("/api/viaturas", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-    const { data } = await axios.get(
+
+    const response = await axios.get(
       "https://api.moloni.pt/v1/vehicles/getAll/",
       {
         params: {
-          access_token,
           company_id: MOLONI_COMPANY_ID,
+          access_token,
         },
       }
     );
-    console.log("Moloni vehicles response data:", data);
-    const simplificadas = data.map((v) => ({
+
+    const data = response.data;
+
+    console.log("Moloni vehicles response:", data);
+
+    // Moloni's API might return data as { vehicles: [...] } or directly an array
+    // Adjust this line based on actual API response structure
+    const vehicles = Array.isArray(data) ? data : data.vehicles || [];
+
+    // Map to your simplified form
+    const simplificadas = vehicles.map((v) => ({
       id: v.vehicle_id,
       matricula: v.name,
     }));

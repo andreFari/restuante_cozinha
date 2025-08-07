@@ -152,6 +152,10 @@
 
       async function preencherViaturas() {
         const res = await fetch("/molo/api/viaturas");
+        if (!res.ok) {
+          console.error("Failed to fetch viaturas", res.status);
+          return;
+        }
         const viaturas = await res.json();
 
         if (!Array.isArray(viaturas)) {
