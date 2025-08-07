@@ -11,12 +11,11 @@ import morgan from "morgan";
 import express from "express";
 import qs from "qs";
 import multer from "multer";
-
+import moloniRoutes from "./getmoloni.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 10000;
 const upload = multer({ dest: "uploads/" }); // pasta temporária para uploads
-const moloniRoutes = require("./getmoloni");
 
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
