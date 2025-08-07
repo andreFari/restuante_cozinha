@@ -5,19 +5,118 @@
     <title>Faturas Emitidas</title>
     <style>
       body {
-        font-family: sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f9f9f9;
         padding: 2rem;
+        color: #333;
+        max-width: 900px;
+        margin: auto;
+      }
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+      }
+      form {
+        background: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        justify-content: center;
+      }
+      label {
+        flex: 1 1 200px;
+        font-weight: 600;
+        color: #34495e;
+      }
+      input[type="file"] {
+        flex: 2 1 300px;
+        padding: 0.3rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button {
+        flex: 1 1 150px;
+        padding: 0.6rem 1.2rem;
+        background: #2980b9;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        min-width: 150px;
+      }
+      button:disabled {
+        background: #7f8c8d;
+        cursor: not-allowed;
+      }
+      button:hover:not(:disabled) {
+        background: #1c5980;
+      }
+      #statusMessage {
+        text-align: center;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        color: #27ae60;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 1rem;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       }
       th,
       td {
-        border: 1px solid #ccc;
-        padding: 0.5rem;
+        padding: 0.75rem 1rem;
         text-align: left;
+      }
+      thead {
+        background: #2980b9;
+        color: white;
+      }
+      tbody tr:nth-child(even) {
+        background: #f4f6f8;
+      }
+      tbody tr:hover {
+        background: #d6eaff;
+      }
+      a.pdf-link {
+        text-decoration: none;
+        color: #2980b9;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      a.pdf-link:hover {
+        text-decoration: underline;
+      }
+      a.pdf-link::before {
+        content: "📄";
+      }
+      @media (max-width: 600px) {
+        form {
+          flex-direction: column;
+          gap: 0.8rem;
+        }
+        label,
+        input[type="file"],
+        button {
+          flex: 1 1 100%;
+        }
+        th,
+        td {
+          font-size: 0.9rem;
+        }
       }
     </style>
   </head>
@@ -116,7 +215,7 @@
                 <th>Número</th>
                 <th>Total</th>
                 <th>PDF</th>
-                <th>Selecionar para juntar</th>
+              
               </tr>
             </thead>
             <tbody>
