@@ -462,13 +462,14 @@ app.get("/api/moloni-document-sets", async (req, res) => {
 
     const conjuntos = response.data;
 
-    const dadosFiltrados = conjuntos.map((set) => ({
-      id: set.document_set_id,
-      nome: set.name,
-      tipo: set.document_type, // aqui está o correto
-    }));
+    const guiasTransporte = conjuntos
+      .filter((set) => set.document_type === "billsOfLading")
+      .map((set) => ({
+        id: set.document_set_id,
+        nome: set.name,
+      }));
 
-    return res.status(200).json(dadosFiltrados);
+    return res.status(200).json(guiasTransporte);
   } catch (error) {
     console.error(
       "Erro ao obter document sets:",
