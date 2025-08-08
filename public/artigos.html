@@ -161,7 +161,7 @@
           document.addEventListener("DOMContentLoaded", async () => {
             try {
               // ⚠️ Altera a URL conforme onde o teu backend está hospedado
-              const res = await fetch("/api/categorias");
+              const res = await fetch("/artigo/categorias");
               const categorias = await res.json();
 
               const select = document.getElementById("category_id");
