@@ -219,8 +219,7 @@ router.post("/api/guias", async (req, res) => {
         name: p.name,
         qty: 1,
         price: parseFloat(p.price) || 0,
-        exemption_reason:
-          Number(p.tax?.value) === 0 ? p.exemption_reason || "M01" : undefined,
+        ...(exemptionReason && { exemption_reason: exemptionReason }),
         tax: { tax_id: p.tax_id },
       };
     });
