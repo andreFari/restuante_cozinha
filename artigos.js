@@ -10,10 +10,15 @@ router.get("/artigos", async (req, res) => {
     const company_id = getCompanyId();
     const { category_id } = req.query;
 
-    const response = await fetch("https://api.moloni.pt/v1/products/getAll/", {
+    const url = `https://api.moloni.pt/v1/products/getAll/?access_token=${token}&json=true`;
+
+    const body = { company_id };
+    if (category_id) body.category_id = category_id;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: token, company_id, category_id }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
@@ -22,6 +27,7 @@ router.get("/artigos", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 // POST - criar artigo
 router.post("/artigos", async (req, res) => {
   try {
@@ -85,20 +91,20 @@ router.delete("/artigos/:id", async (req, res) => {
   }
 });
 
-// GET categorias
 router.get("/categorias", async (req, res) => {
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
-    const response = await fetch(
-      "https://api.moloni.pt/v1/productCategories/getAll/",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: token, company_id }),
-      }
-    );
+    const url = `https://api.moloni.pt/v1/productCategories/getAll/?access_token=${token}&json=true`;
+
+    const body = { company_id, parent_id: 0 };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
     const data = await response.json();
     res.json(data);
