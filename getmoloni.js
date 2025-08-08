@@ -274,7 +274,7 @@ router.get("/api/delivery-methods", async (req, res) => {
       });
     }
 
-    const response = await axios.get(
+    const response = await axios.post(
       "https://api.moloni.pt/v1/deliveryMethods/getAll/",
       {
         params: {
