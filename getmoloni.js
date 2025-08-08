@@ -352,6 +352,37 @@ router.post("/api/guias", async (req, res) => {
     });
   }
 });
+router.get("/api/guias/:id/refresh-at", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const access_token = await getValidAccessToken();
+
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/billsOfLading/getOne/",
+      {
+        company_id: MOLONI_COMPANY_ID,
+        document_id: id,
+      },
+      {
+        params: { access_token, json: true },
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    const guia = response.data;
+    return res.json({
+      saft_hash: guia.saft_hash,
+      at_code: guia.at_code || guia.saft_hash || "---",
+      raw: guia,
+    });
+  } catch (err) {
+    console.error("Erro ao buscar código AT:", err.message);
+    return res.status(500).json({
+      erro: "erro_codigo_at",
+      detalhe: err.response?.data || String(err),
+    });
+  }
+});
 router.get("/importar/guias", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();

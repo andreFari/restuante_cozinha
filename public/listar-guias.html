@@ -109,6 +109,9 @@
                   <td>${parseFloat(g.total || 0).toFixed(2)} €</td>
                   <td>${g.codigoAT || "-"}</td>
                   <td><button data-id="${g.id}">Alterar Código</button></td>
+                    <button class="atualizar" data-id="${
+                      g.id
+                    }">🔄 Atualizar Código</button>
                 </tr>
               `
                 )
@@ -119,10 +122,17 @@
           container.appendChild(tabela);
 
           // Adicionar event listener aos botões
-          container.querySelectorAll("button").forEach((btn) => {
+          container.querySelectorAll("button.alterar").forEach((btn) => {
             btn.addEventListener("click", () => {
               const id = btn.getAttribute("data-id");
               definirCodigoAT(id);
+            });
+          });
+
+          container.querySelectorAll("button.atualizar").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const id = btn.getAttribute("data-id");
+              atualizarCodigoAT(id);
             });
           });
         } catch (err) {
@@ -131,7 +141,23 @@
           console.error("Erro ao carregar guias:", err);
         }
       }
+      async function atualizarCodigoAT(document_id) {
+        try {
+          const res = await fetch(`/molo/api/guias/${document_id}/refresh-at`);
+          const data = await res.json();
 
+          if (!data || !data.at_code) {
+            alert("Código AT ainda não disponível para esta guia.");
+            return;
+          }
+
+          alert(`Código AT atualizado: ${data.at_code}`);
+          carregarGuias(); // recarrega para mostrar novo código na tabela
+        } catch (err) {
+          alert("Erro ao atualizar código AT automaticamente: " + err.message);
+          console.error(err);
+        }
+      }
       async function definirCodigoAT(document_id) {
         const codigo = prompt(
           `Introduz o novo código AT para a guia ID ${document_id}`
