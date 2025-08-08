@@ -213,28 +213,26 @@ router.post("/api/guias", async (req, res) => {
     const linhas = artigos.map((artigoId) => {
       const p = todosArtigos.find((a) => a.product_id == artigoId);
       if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
+
+      // Verifique se tem impostos válidos:
       const hasValidTaxes =
         Array.isArray(p.taxes) && p.taxes.some((t) => t.tax_id && t.tax_id > 0);
 
-      const isTaxExempt = Number(p.tax?.value) === 0;
-      const exemptionReason = isTaxExempt
+      const exemptionReason = !hasValidTaxes
         ? p.exemption_reason || "M01"
         : undefined;
+
       return {
         product_id: p.product_id,
         name: p.name,
         qty: 1,
         price: parseFloat(p.price) || 0,
         ...(exemptionReason && { exemption_reason: exemptionReason }),
-        taxes: [
-          {
-            tax_id: p.tax_id,
-            // se necessário podes enviar value aqui
-          },
-        ],
+        taxes: hasValidTaxes
+          ? p.taxes.map((t) => ({ tax_id: t.tax_id, value: t.value || 0 }))
+          : [],
       };
     });
-
     // 5. Verificar se cliente existe
     const clientesResponse = await axios.post(
       "https://api.moloni.pt/v1/customers/getAll/",
