@@ -168,7 +168,7 @@ router.post("/guias/:id/codigo-at", async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}`,
+      `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}&json=true`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
