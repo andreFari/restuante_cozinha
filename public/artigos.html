@@ -106,7 +106,7 @@
     <script>
       function buildCategoryOptions(
         categories,
-        parentId = null,
+        parentId = 0,
         level = 0,
         maxLevel = 50
       ) {
@@ -132,7 +132,7 @@
           const select = document.getElementById("category_id");
           select.innerHTML =
             '<option value="">-- Escolha uma categoria --</option>';
-          const optionsHtml = buildCategoryOptions(data, null);
+          const optionsHtml = buildCategoryOptions(data, 0);
           select.innerHTML += optionsHtml;
         } catch (err) {
           console.error("Erro ao carregar categorias:", err);
