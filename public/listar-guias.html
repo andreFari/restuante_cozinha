@@ -139,7 +139,7 @@
         if (!codigo) return;
 
         try {
-          const res = await fetch(`/molo/api/guias/${document_id}/codigo-at`, {
+          const res = await fetch(`/molo/guias/${document_id}/codigo-at`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ transport_code: codigo }),
