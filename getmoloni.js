@@ -356,8 +356,8 @@ router.get("/importar/guias", async (req, res) => {
             id: guia.document_id,
             numero: guia.document_number || guia.number || "-",
             data: guia.date || "-",
-            cliente: guia.customer?.name || guia.customer_name || "-",
-            nif: guia.customer?.vat || guia.customer_vat || "-",
+            cliente: guia.customer_name || guia.customer?.name || "-",
+            nif: guia.customer_vat || guia.customer?.vat || "-",
             total: guia.net_value || guia.total_value || "0.00",
             codigoAT: guia.at_code || "-",
           };
