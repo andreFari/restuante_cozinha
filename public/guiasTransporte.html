@@ -69,7 +69,8 @@
 
         <label for="artigos">Artigos:</label>
         <select id="artigos" multiple required></select>
-
+        <label for="deliveryMethod">Método de Entrega:</label>
+        <select id="deliveryMethod" required></select>
         <label for="viatura">Viaturas:</label>
         <select id="viatura" required></select>
 
@@ -126,6 +127,7 @@
         await preencherClientes();
         await preencherArtigos();
         await preencherViaturas();
+        await preencherDeliveryMethods();
       });
 
       async function preencherClientes() {
@@ -193,6 +195,7 @@
               localidade: document.getElementById("localCarga").value,
               pais: document.getElementById("paisCarga").value,
             },
+            deliveryMethodId: document.getElementById("deliveryMethod").value,
             descarga: {
               morada: document.getElementById("moradaDescarga").value,
               cp: document.getElementById("cpDescarga").value,
@@ -209,7 +212,10 @@
               body: JSON.stringify(dados),
             });
 
-            if (!res.ok) throw new Error(result.detalhe || "Erro desconhecido");
+            if (!res.ok) {
+              const result = await res.json();
+              throw new Error(result.detalhe || "Erro desconhecido");
+            }
 
             alert("Guia criada com sucesso!");
             document.getElementById("guiaForm").reset();
@@ -217,6 +223,26 @@
             alert("Erro ao criar guia: " + err.message);
           }
         });
+      async function preencherDeliveryMethods() {
+        try {
+          const res = await fetch("/molo/api/delivery-methods");
+          if (!res.ok) throw new Error("Erro ao carregar métodos de entrega");
+          const methods = await res.json();
+
+          const select = document.getElementById("deliveryMethod");
+          select.innerHTML = ""; // Limpar se necessário
+
+          methods.forEach((m) => {
+            const opt = document.createElement("option");
+            opt.value = m.id;
+            opt.textContent = m.name;
+            select.appendChild(opt);
+          });
+        } catch (err) {
+          console.error("Erro ao carregar métodos de entrega:", err);
+          alert("Erro ao carregar métodos de entrega. Ver consola.");
+        }
+      }
     </script>
   </body>
 </html>
