@@ -102,30 +102,50 @@
     </form>
 
     <script>
+      async function fetchCategorias() {
+        const res = await fetch("/artigo/categorias");
+        const data = await res.json();
+        console.log("Resposta categorias:", data);
+
+        // Suponha que o array de categorias está na propriedade 'productCategories'
+        const categorias = data.productCategories || [];
+
+        const select = document.getElementById("category_id");
+        select.innerHTML = "";
+
+        categorias.forEach((cat) => {
+          const option = document.createElement("option");
+          option.value = cat.productCategory_id;
+          option.textContent = cat.name;
+          select.appendChild(option);
+        });
+      }
       async function fetchProducts() {
         const res = await fetch("/artigo/artigos");
         const data = await res.json();
-        console.log("Produtos:", data);
+        console.log("Resposta produtos:", data);
+
+        const produtos = data.products || [];
+
         const tbody = document.querySelector("#productTable tbody");
         tbody.innerHTML = "";
 
-        data.forEach((prod) => {
+        produtos.forEach((prod) => {
           const row = document.createElement("tr");
           row.innerHTML = `
-          <td>${prod.product_id}</td>
-          <td>${prod.name}</td>
-          <td>${prod.reference}</td>
-          <td>${prod.price} €</td>
-          <td><button onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
-        `;
+      <td>${prod.product_id}</td>
+      <td>${prod.name}</td>
+      <td>${prod.reference}</td>
+      <td>${prod.price} €</td>
+      <td><button onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
+    `;
           tbody.appendChild(row);
         });
       }
-
       async function deleteProduct(id) {
         if (!confirm("Tens a certeza que queres eliminar este produto?"))
           return;
-        await fetch(`/artigos/artigos/${id}`, { method: "DELETE" });
+        await fetch(`/artigo/artigos/${id}`, { method: "DELETE" });
         fetchProducts();
       }
       async function fetchCategorias() {
