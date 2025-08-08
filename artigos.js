@@ -91,23 +91,46 @@ router.delete("/artigos/:id", async (req, res) => {
   }
 });
 
+// Recursivamente obter todas as categorias e subcategorias
+async function fetchAllCategories(
+  token,
+  company_id,
+  parent_id = 0,
+  categorias = []
+) {
+  const res = await fetch(
+    "https://api.moloni.pt/v1/productCategories/getAll/",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: token, company_id, parent_id }),
+    }
+  );
+
+  const data = await res.json();
+
+  for (const categoria of data) {
+    categorias.push(categoria);
+    // Chamar recursivamente para buscar subcategorias desta
+    await fetchAllCategories(
+      token,
+      company_id,
+      categoria.productCategory_id,
+      categorias
+    );
+  }
+
+  return categorias;
+}
+
 router.get("/categorias", async (req, res) => {
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
-    const url = `https://api.moloni.pt/v1/productCategories/getAll/?access_token=${token}&json=true`;
+    const categorias = await fetchAllCategories(token, company_id);
 
-    const body = { company_id, parent_id: 0 };
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-    res.json(data);
+    res.json(categorias);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
