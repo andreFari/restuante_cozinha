@@ -145,9 +145,24 @@
             body: JSON.stringify({ transport_code: codigo }),
           });
 
-          const result = await res.json();
+          const text = await res.text();
 
-          if (!res.ok) throw new Error(result.detalhe || "Erro desconhecido");
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch (e) {
+            console.error("Resposta não JSON:", text);
+            alert("Erro inesperado (resposta não JSON):\n" + text);
+            return;
+          }
+
+          if (!res.ok) {
+            alert(
+              "Erro ao atualizar código AT: " +
+                (result.detalhe || "Erro desconhecido")
+            );
+            return;
+          }
 
           alert("Código AT atualizado com sucesso!");
           carregarGuias();
