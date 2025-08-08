@@ -108,7 +108,9 @@
                   <td>${g.nif || "-"}</td>
                   <td>${parseFloat(g.total || 0).toFixed(2)} €</td>
                   <td>${g.codigoAT || "-"}</td>
-                  <td><button data-id="${g.id}">Alterar Código</button></td>
+                  <td><button  class="alterar" data-id="${
+                    g.id
+                  }">Alterar Código</button></td>
                  
                 </tr>
               `

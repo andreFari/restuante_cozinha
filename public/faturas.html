@@ -206,7 +206,8 @@
               "Nenhuma fatura encontrada.";
             return;
           }
-
+          // Ordenar pela data decrescente
+          faturas.sort((a, b) => new Date(b.date) - new Date(a.date));
           const table = document.createElement("table");
           table.innerHTML = `
             <thead>
@@ -221,18 +222,22 @@
             </thead>
             <tbody>
               ${faturas
-                .map(
-                  (f) => `
-                <tr>
-                  <td>${f.document_id}</td>
-                  <td>${f.date}</td>
-                  <td>${f.document_number}</td>
-                  <td>${f.total}</td>
-                  <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
-              
-                </tr>
-              `
-                )
+                .map((f) => {
+                  const dataFormatada = new Date(f.date).toLocaleDateString(
+                    "pt-PT"
+                  );
+                  return `
+              <tr>
+                <td>${f.document_id}</td>
+                <td>${dataFormatada}</td>
+                <td>${f.document_number || "-"}</td>
+                <td>${
+                  f.total ? parseFloat(f.total).toFixed(2) + " €" : "-"
+                }</td>
+                <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
+              </tr>
+            `;
+                })
                 .join("")}
             </tbody>
           `;
