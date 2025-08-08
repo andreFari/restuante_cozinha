@@ -35,7 +35,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use("/molo", moloniRoutes);
-app.use("/artigos", artigosRoutes);
+app.use("/artigo", artigosRoutes);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, "uploads");
@@ -50,7 +50,7 @@ app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "login.html"));
 });
 
-app.get("/", (req, res) => res.redirect("./login.html"));
+app.get("/", (req, res) => res.redirect("/login.html"));
 // ----- Gestão de Tokens (em memória) -----
 
 // Exemplo em Express
