@@ -180,10 +180,12 @@ router.post("/guias/:id/codigo-at", async (req, res) => {
       }
     );
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("Moloni raw response:", rawText);
 
+    const data = JSON.parse(rawText); // cuidado: pode lançar erro se não for JSON
     if (!response.ok) {
-      return res.status(response.status).json(data);
+      return res.status(response.status).send(rawText); // mostra HTML completo se quiser debugar
     }
 
     res.json(data);
