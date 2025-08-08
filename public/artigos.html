@@ -194,7 +194,7 @@
           };
 
           try {
-            const res = await fetch("artigo/artigos", {
+            const res = await fetch("/artigo/artigos", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(product),
