@@ -169,8 +169,13 @@ router.post("/api/guias", async (req, res) => {
     } = req.body;
 
     const linhas = artigos.map((artigoId) => ({
-      product_id: Number(artigoId),
-      qty: 1, // ou ajustar conforme pretendas
+      product_id: p.product_id,
+      name: p.name,
+      qty: 1,
+      price: parseFloat(p.price) || 0,
+      exemption_reason:
+        Number(p.tax?.value) === 0 ? p.exemption_reason || "M01" : undefined,
+      tax: { tax_id: p.tax_id },
     }));
 
     const response = await axios.post(
