@@ -277,12 +277,14 @@ router.get("/api/delivery-methods", async (req, res) => {
     const response = await axios.post(
       "https://api.moloni.pt/v1/deliveryMethods/getAll/",
       {
+        company_id: MOLONI_COMPANY_ID,
+        qty: 50,
+        offset: 0,
+      },
+      {
         params: {
           access_token,
           json: true,
-          company_id: MOLONI_COMPANY_ID,
-          qty: 50,
-          offset: 0,
         },
       }
     );
