@@ -110,9 +110,8 @@
           const data = await res.json();
           console.log("Resposta categorias raw:", data);
 
-          const categorias = Array.isArray(data)
-            ? data
-            : data.productCategories || [];
+          // Aqui o data é um array plano com productCategory_id e parent_id
+          const categorias = Array.isArray(data) ? data : [];
 
           const select = document.getElementById("category_id");
           select.innerHTML =
@@ -120,22 +119,22 @@
 
           // Filtra categorias principais (parent_id == 0)
           const principais = categorias.filter((cat) => cat.parent_id === 0);
+          console.log("Categorias principais:", principais);
 
           principais.forEach((cat) => {
             const option = document.createElement("option");
-            option.value = cat.category_id;
+            option.value = cat.productCategory_id; // Atenção aqui
             option.textContent = cat.name;
             select.appendChild(option);
 
-            // Procura subcategorias desta categoria principal
+            // Subcategorias (parent_id igual ao id da categoria principal)
             const subcats = categorias.filter(
-              (sub) => sub.parent_id === cat.category_id
+              (sub) => sub.parent_id === cat.productCategory_id
             );
-
             subcats.forEach((subcat) => {
               const subOption = document.createElement("option");
-              subOption.value = subcat.category_id;
-              subOption.textContent = "— " + subcat.name; // Indenta com traço para parecer hierarquia
+              subOption.value = subcat.productCategory_id;
+              subOption.textContent = "— " + subcat.name;
               select.appendChild(subOption);
             });
           });
@@ -182,28 +181,7 @@
         .getElementById("newProductForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
-          document.addEventListener("DOMContentLoaded", async () => {
-            try {
-              // ⚠️ Altera a URL conforme onde o teu backend está hospedado
-              const res = await fetch("/artigo/categorias");
-              const categorias = await res.json();
 
-              const select = document.getElementById("category_id");
-
-              // Popular o dropdown com categorias
-              categorias.forEach((cat) => {
-                const option = document.createElement("option");
-                option.value = cat.productCategory_id;
-                option.textContent = cat.name;
-                select.appendChild(option);
-              });
-            } catch (err) {
-              console.error("Erro ao carregar categorias:", err);
-              alert(
-                "Erro ao carregar categorias. Verifique a ligação com o servidor."
-              );
-            }
-          });
           const product = {
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
@@ -215,16 +193,23 @@
             category_id: parseInt(document.getElementById("category_id").value),
           };
 
-          await fetch("artigo/artigos", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(product),
-          });
+          try {
+            const res = await fetch("artigo/artigos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(product),
+            });
 
-          e.target.reset();
-          fetchProducts();
+            if (!res.ok) throw new Error("Erro ao criar prato");
+
+            alert("Prato criado com sucesso!");
+            e.target.reset();
+            fetchProducts(); // Atualiza tabela
+          } catch (err) {
+            console.error(err);
+            alert("Erro ao criar prato.");
+          }
         });
-
       // Carrega categorias e produtos na inicialização
       fetchCategorias();
       fetchProducts();
