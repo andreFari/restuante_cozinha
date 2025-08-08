@@ -198,6 +198,8 @@ router.post("/api/guias", async (req, res) => {
     );
 
     res.json({ sucesso: true, data: response.data });
+
+    console.log("Guia criada:", response.data);
   } catch (error) {
     console.error("Erro ao criar guia:", error.response?.data || error.message);
     res.status(500).json({
@@ -235,8 +237,7 @@ router.get("/importar/guias", async (req, res) => {
       }
     );
 
-    // Podes transformar os dados aqui se quiseres formatar para o frontend
-    const guias = response.data.map((g) => ({
+    const guias = response.data.reverse().map((g) => ({
       id: g.document_id,
       numero: g.number,
       data: g.date,
@@ -247,6 +248,7 @@ router.get("/importar/guias", async (req, res) => {
     }));
 
     res.json(guias);
+    console.log(guias);
   } catch (error) {
     console.error(
       "Erro ao obter guias:",
