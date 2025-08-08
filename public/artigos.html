@@ -105,7 +105,7 @@
       async function fetchProducts() {
         const res = await fetch("/artigos/artigos");
         const data = await res.json();
-
+        console.log("Produtos:", data);
         const tbody = document.querySelector("#productTable tbody");
         tbody.innerHTML = "";
 
@@ -131,7 +131,7 @@
       async function fetchCategorias() {
         const res = await fetch("/artigos/categorias");
         const categorias = await res.json();
-
+        console.log("Categorias:", categorias);
         const select = document.getElementById("category_id");
         select.innerHTML = ""; // limpar antes
 
