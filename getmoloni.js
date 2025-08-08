@@ -159,43 +159,36 @@ router.get("/api/viaturas", async (req, res) => {
 // routes/moloni.js (ou onde tens as rotas Moloni)
 
 router.post("/guias/:id/codigo-at", async (req, res) => {
-  const document_id = parseInt(req.params.id, 10);
+  const { id: document_id } = req.params;
   const { transport_code } = req.body;
 
-  if (!transport_code || isNaN(document_id)) {
-    return res.status(400).json({
-      erro: "dados_invalidos",
-      detalhe:
-        "É necessário fornecer um código AT válido e um ID de documento.",
-    });
-  }
+  // Pega o access_token e company_id do teu config/auth
+  const access_token = "teu_token_aqui";
+  const company_id = 12345;
 
   try {
-    const access_token = await getValidAccessToken();
-
-    const response = await axios.post(
-      "https://api.moloni.pt/v1/billsOfLading/setTransportCode/",
+    const response = await fetch(
+      `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}`,
       {
-        company_id: MOLONI_COMPANY_ID,
-        document_id,
-        transport_code,
-      },
-      {
-        params: { access_token, json: true },
+        method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id,
+          document_id: Number(document_id),
+          transport_code,
+        }),
       }
     );
 
-    return res.json({
-      sucesso: true,
-      resposta: response.data,
-    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    res.json(data);
   } catch (error) {
-    console.error("Erro ao definir código AT:", error.message);
-    return res.status(500).json({
-      erro: "falha_definir_codigo_at",
-      detalhe: error.response?.data || error.message,
-    });
+    res.status(500).json({ detalhe: error.message });
   }
 });
 

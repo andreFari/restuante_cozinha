@@ -108,9 +108,7 @@
                   <td>${g.nif || "-"}</td>
                   <td>${parseFloat(g.total || 0).toFixed(2)} €</td>
                   <td>${g.codigoAT || "-"}</td>
-                  <td><button data-numero="${
-                    g.numero
-                  }">Alterar Código</button></td>
+                  <td><button data-id="${g.id}">Alterar Código</button></td>
                 </tr>
               `
                 )
@@ -123,8 +121,8 @@
           // Adicionar event listener aos botões
           container.querySelectorAll("button").forEach((btn) => {
             btn.addEventListener("click", () => {
-              const numero = btn.getAttribute("data-numero");
-              definirCodigoAT(numero);
+              const id = btn.getAttribute("data-id");
+              definirCodigoAT(id);
             });
           });
         } catch (err) {
@@ -134,14 +132,14 @@
         }
       }
 
-      async function definirCodigoAT(numero) {
+      async function definirCodigoAT(document_id) {
         const codigo = prompt(
-          `Introduz o novo código AT para a guia nº ${numero}`
+          `Introduz o novo código AT para a guia ID ${document_id}`
         );
         if (!codigo) return;
 
         try {
-          const res = await fetch(`/molo/api/guias/${numero}/codigo-at`, {
+          const res = await fetch(`/molo/api/guias/${document_id}/codigo-at`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ transport_code: codigo }),
@@ -152,12 +150,11 @@
           if (!res.ok) throw new Error(result.detalhe || "Erro desconhecido");
 
           alert("Código AT atualizado com sucesso!");
-          carregarGuias(); // Atualiza a lista após mudança
+          carregarGuias();
         } catch (err) {
           alert("Erro ao atualizar código AT: " + err.message);
         }
       }
-
       document.addEventListener("DOMContentLoaded", carregarGuias);
     </script>
   </body>
