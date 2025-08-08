@@ -436,7 +436,7 @@ router.get("/importar/guias", async (req, res) => {
             cliente: guia.customer_name || guia.customer?.name || "-",
             nif: guia.customer_vat || guia.customer?.vat || "-",
             total: guia.net_value || guia.total_value || "0.00",
-            codigoAT: guia.saft_hash || "-",
+            codigoAT: guia.transport_code || "-",
           };
         } catch (detalheErro) {
           console.error("Erro ao obter guia detalhada:", detalheErro.message);
