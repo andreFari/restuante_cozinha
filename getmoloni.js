@@ -274,6 +274,7 @@ router.post("/api/guias", async (req, res) => {
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
         date: emissao,
+        status: 1,
         shipping_date: inicio,
         observations: observacoes,
         products: linhas,
@@ -285,6 +286,8 @@ router.post("/api/guias", async (req, res) => {
         delivery_destination_zip_code: descarga.cp,
         delivery_method_id: Number(deliveryMethodId) || 1,
         delivery_country: descarga.pais,
+        delivery_country: descarga.pais || "PT", // garante que tem país
+        billing_country: "PT", // também ajuda a AT
         delivery_datetime: emissao,
       },
       {
