@@ -103,18 +103,23 @@ async function fetchAllCategories(
   company_id,
   parent_id = 0,
   categorias = [],
-  offset = 0
+  offset = 0,
+  visited = new Set()
 ) {
+  if (visited.has(parent_id)) {
+    return categorias; // Já visitou essa categoria pai, evita loop
+  }
+  visited.add(parent_id);
+
   const url = moloniUrl("productCategories/getAll", token);
 
-  // Monta o body incluindo offset e qty para paginação
   const body = {
     company_id,
     parent_id,
     qty: 50,
     offset,
   };
-
+  console.log("Buscando categorias parent_id=", parent_id, "offset=", offset);
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -124,30 +129,31 @@ async function fetchAllCategories(
   const data = await res.json();
 
   if (!Array.isArray(data)) {
-    // Se houver erro ou resposta inesperada
     return categorias;
   }
 
   categorias.push(...data);
 
-  // Se chegou no limite 50, pode haver mais categorias -> chama recursivamente aumentando offset
   if (data.length === 50) {
-    return fetchAllCategories(
+    // Paginação, buscar próximo offset
+    await fetchAllCategories(
       token,
       company_id,
       parent_id,
       categorias,
-      offset + 50
+      offset + 50,
+      visited
     );
   }
 
-  // Agora chama recursivamente para cada categoria buscar subcategorias
   for (const categoria of data) {
     await fetchAllCategories(
       token,
       company_id,
       categoria.productCategory_id,
-      categorias
+      categorias,
+      0,
+      visited
     );
   }
 
@@ -158,8 +164,9 @@ router.get("/categorias", async (req, res) => {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
+    console.log("Iniciando fetchAllCategories");
     const categorias = await fetchAllCategories(token, company_id);
-
+    console.log("Categorias buscadas:", categorias.length);
     res.json(categorias);
   } catch (error) {
     res.status(500).json({ error: error.message });
