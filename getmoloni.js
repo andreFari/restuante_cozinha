@@ -163,9 +163,14 @@ router.post("/guias/:id/codigo-at", async (req, res) => {
   const { transport_code } = req.body;
 
   // Pega o access_token e company_id do teu config/auth
-  const access_token = "teu_token_aqui";
-  const company_id = 12345;
-
+  const access_token = await getValidAccessToken(); // <- importante!
+  const company_id = MOLONI_COMPANY_ID;
+  console.log("🚚 Atualizar Código AT para guia:", {
+    document_id,
+    transport_code,
+    access_token,
+    company_id,
+  });
   try {
     const response = await fetch(
       `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}&json=true`,
