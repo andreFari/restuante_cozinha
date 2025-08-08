@@ -189,7 +189,9 @@ router.post("/api/guias", async (req, res) => {
         country: carga.pais,
         delivery_address: descarga.morada,
         delivery_zip_code: descarga.cp,
+        delivery_datetime: formatDate(inicio), // ✅ necessário
         delivery_city: descarga.localidade,
+        delivery_method_id: 1,
         delivery_country: descarga.pais,
       },
       {
@@ -256,6 +258,49 @@ router.get("/importar/guias", async (req, res) => {
     );
     res.status(500).json({
       erro: "falha_obter_guias",
+      detalhe: error.response?.data || String(error),
+    });
+  }
+});
+
+router.get("/api/delivery-methods", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+
+    if (!access_token || !MOLONI_COMPANY_ID) {
+      return res.status(500).json({
+        erro: "missing_credentials",
+        detalhe: "Access token ou company_id em falta.",
+      });
+    }
+
+    const response = await axios.get(
+      "https://api.moloni.pt/v1/deliveryMethods/getAll/",
+      {
+        params: {
+          access_token,
+          json: true,
+          company_id: MOLONI_COMPANY_ID,
+          qty: 50,
+          offset: 0,
+        },
+      }
+    );
+
+    // Transformar os dados para um formato simples no frontend
+    const methods = response.data.map((m) => ({
+      id: m.delivery_method_id,
+      name: m.name,
+    }));
+
+    res.json(methods);
+  } catch (error) {
+    console.error(
+      "Erro ao obter métodos de entrega:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({
+      erro: "falha_obter_delivery_methods",
       detalhe: error.response?.data || String(error),
     });
   }

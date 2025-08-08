@@ -209,7 +209,7 @@
               body: JSON.stringify(dados),
             });
 
-            if (!res.ok) throw new Error("Erro ao criar guia");
+            if (!res.ok) throw new Error(result.detalhe || "Erro desconhecido");
 
             alert("Guia criada com sucesso!");
             document.getElementById("guiaForm").reset();
