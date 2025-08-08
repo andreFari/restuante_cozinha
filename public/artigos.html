@@ -106,21 +106,19 @@
     <script>
       function buildCategoryOptions(
         categories,
-        parentId = 0,
+        parentId = null,
         level = 0,
         maxLevel = 50
       ) {
-        if (level > maxLevel) return ""; // evita loops infinitos
+        if (level > maxLevel) return ""; // evita loop infinito
         let result = "";
-        const children = categories.filter(
-          (cat) => cat.productCategory_parent_id === parentId
-        );
+        const children = categories.filter((cat) => cat.parent_id === parentId);
         children.forEach((cat) => {
           const indent = "— ".repeat(level);
-          result += `<option value="${cat.productCategory_id}">${indent}${cat.name}</option>`;
+          result += `<option value="${cat.category_id}">${indent}${cat.name}</option>`;
           result += buildCategoryOptions(
             categories,
-            cat.productCategory_id,
+            cat.category_id,
             level + 1,
             maxLevel
           );
@@ -131,12 +129,10 @@
         try {
           const res = await fetch("/artigo/categorias");
           const data = await res.json();
-          console.log(data[0]);
           const select = document.getElementById("category_id");
           select.innerHTML =
             '<option value="">-- Escolha uma categoria --</option>';
-
-          const optionsHtml = buildCategoryOptions(data);
+          const optionsHtml = buildCategoryOptions(data, null);
           select.innerHTML += optionsHtml;
         } catch (err) {
           console.error("Erro ao carregar categorias:", err);
@@ -189,7 +185,9 @@
             unit_id: parseInt(document.getElementById("unit_id").value),
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
-            category_id: parseInt(document.getElementById("category_id").value),
+            category_id: document.getElementById("category_id").value
+              ? parseInt(document.getElementById("category_id").value)
+              : null,
           };
 
           try {
