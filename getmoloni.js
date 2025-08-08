@@ -157,23 +157,23 @@ router.get("/api/viaturas", async (req, res) => {
 
 //Guias
 // routes/moloni.js (ou onde tens as rotas Moloni)
-
 router.post("/guias/:id/codigo-at", async (req, res) => {
   const { id: document_id } = req.params;
   const { transport_code } = req.body;
 
-  // Pega o access_token e company_id do teu config/auth
-  const access_token = await getValidAccessToken(); // <- importante!
+  const access_token = await getValidAccessToken();
   const company_id = MOLONI_COMPANY_ID;
-  console.log("🚚 Atualizar Código AT para guia:", {
+
+  console.log("🚀 Enviando código AT", {
     document_id,
     transport_code,
-    access_token,
     company_id,
+    access_token,
   });
+
   try {
     const response = await fetch(
-      `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}&json=true`,
+      `https://api.moloni.pt/v1/billsOfLading/setTransportCode/?access_token=${access_token}&json=true&human_errors=true`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,22 +186,16 @@ router.post("/guias/:id/codigo-at", async (req, res) => {
     );
 
     const rawText = await response.text();
-    console.log("Moloni raw response:", rawText);
 
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (e) {
-      return res
-        .status(500)
-        .json({ detalhe: "Resposta inválida da API Moloni", raw: rawText });
-    }
     if (!response.ok) {
-      return res.status(response.status).send(rawText); // mostra HTML completo se quiser debugar
+      console.error("❌ Erro da Moloni:", response.status, rawText);
+      return res.status(response.status).send(rawText);
     }
 
+    const data = JSON.parse(rawText);
     res.json(data);
   } catch (error) {
+    console.error("❌ Exceção ao enviar código AT:", error.message);
     res.status(500).json({ detalhe: error.message });
   }
 });
