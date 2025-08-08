@@ -7,6 +7,7 @@ import { getValidAccessToken } from "./moloniAuth.js";
 const app = express();
 const router = express.Router();
 const formatDate = (d) => new Date(d).toISOString().slice(0, 10);
+const formatDateTime = (d) => new Date(d).toISOString();
 const MOLONI_COMPANY_ID = Number(process.env.COMPANY_ID);
 
 // Artigosv
