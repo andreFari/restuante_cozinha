@@ -213,7 +213,10 @@ router.post("/api/guias", async (req, res) => {
     const linhas = artigos.map((artigoId) => {
       const p = todosArtigos.find((a) => a.product_id == artigoId);
       if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
-
+      const isTaxExempt = Number(p.tax?.value) === 0;
+      const exemptionReason = isTaxExempt
+        ? p.exemption_reason || "M01"
+        : undefined;
       return {
         product_id: p.product_id,
         name: p.name,
