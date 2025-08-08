@@ -157,6 +157,7 @@ router.get("/api/viaturas", async (req, res) => {
 router.post("/api/guias", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
+
     const {
       clienteId,
       artigos,
@@ -166,18 +167,97 @@ router.post("/api/guias", async (req, res) => {
       carga,
       descarga,
       observacoes,
+      deliveryMethodId,
     } = req.body;
 
-    const linhas = artigos.map((artigoId) => ({
-      product_id: p.product_id,
-      name: p.name,
-      qty: 1,
-      price: parseFloat(p.price) || 0,
-      exemption_reason:
-        Number(p.tax?.value) === 0 ? p.exemption_reason || "M01" : undefined,
-      tax: { tax_id: p.tax_id },
-    }));
+    // 1. Validação de campos obrigatórios
+    if (
+      !clienteId ||
+      !Array.isArray(artigos) ||
+      artigos.length === 0 ||
+      !viaturaId ||
+      !emissao ||
+      !inicio ||
+      !carga ||
+      !descarga
+    ) {
+      return res.status(400).json({
+        erro: "dados_invalidos",
+        detalhe: "Campos obrigatórios em falta ou inválidos.",
+      });
+    }
 
+    // 2. Validar formato das datas
+    const dataRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dataRegex.test(emissao) || !dataRegex.test(inicio)) {
+      return res.status(400).json({
+        erro: "data_invalida",
+        detalhe: "Datas devem estar no formato YYYY-MM-DD.",
+      });
+    }
+
+    // 3. Buscar todos os artigos para validação
+    const artigosResponse = await axios.post(
+      "https://api.moloni.pt/v1/products/getAll/",
+      {
+        company_id: MOLONI_COMPANY_ID,
+        qty: 1000,
+        offset: 0,
+      },
+      { params: { access_token, json: true } }
+    );
+
+    const todosArtigos = artigosResponse.data;
+
+    // 4. Verificar se todos os artigos existem
+    const linhas = artigos.map((artigoId) => {
+      const p = todosArtigos.find((a) => a.product_id == artigoId);
+      if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
+
+      return {
+        product_id: p.product_id,
+        name: p.name,
+        qty: 1,
+        price: parseFloat(p.price) || 0,
+        exemption_reason:
+          Number(p.tax?.value) === 0 ? p.exemption_reason || "M01" : undefined,
+        tax: { tax_id: p.tax_id },
+      };
+    });
+
+    // 5. Verificar se cliente existe
+    const clientesResponse = await axios.post(
+      "https://api.moloni.pt/v1/customers/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
+      { params: { access_token, json: true } }
+    );
+    const clienteExiste = clientesResponse.data.some(
+      (c) => c.customer_id == clienteId
+    );
+    if (!clienteExiste) {
+      return res.status(400).json({
+        erro: "cliente_nao_existe",
+        detalhe: `Cliente com ID ${clienteId} não encontrado.`,
+      });
+    }
+
+    // 6. Verificar se viatura existe
+    const viaturasResponse = await axios.post(
+      "https://api.moloni.pt/v1/vehicles/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
+      { params: { access_token, json: true } }
+    );
+    const viaturaExiste = viaturasResponse.data.some(
+      (v) => v.vehicle_id == viaturaId
+    );
+    if (!viaturaExiste) {
+      return res.status(400).json({
+        erro: "viatura_nao_existe",
+        detalhe: `Viatura com ID ${viaturaId} não encontrada.`,
+      });
+    }
+
+    // 7. Criar a guia
     const response = await axios.post(
       `https://api.moloni.pt/v1/billsOfLading/insert/?access_token=${access_token}&json=true&human_errors=true`,
       {
@@ -185,8 +265,8 @@ router.post("/api/guias", async (req, res) => {
         document_set_id: 850313,
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
-        date: formatDate(emissao), // só data (YYYY-MM-DD)
-        shipping_date: formatDate(inicio), // só data
+        date: emissao,
+        shipping_date: inicio,
         observations: observacoes,
         products: linhas,
         delivery_departure_address: carga.morada,
@@ -195,18 +275,18 @@ router.post("/api/guias", async (req, res) => {
         delivery_destination_address: descarga.morada,
         delivery_destination_city: descarga.localidade,
         delivery_destination_zip_code: descarga.cp,
-        delivery_method_id: Number(req.body.deliveryMethodId) || 1,
+        delivery_method_id: Number(deliveryMethodId) || 1,
         delivery_country: descarga.pais,
-        delivery_datetime: formatDate(inicio), // ISO com hora
+        delivery_datetime: emissao,
       },
       {
-        headers: { "Content-Type": "application/json" }, // importante
+        headers: { "Content-Type": "application/json" },
       }
     );
 
+    // 8. Resposta final
     res.json({ sucesso: true, data: response.data });
-
-    console.log("Guia criada:", response.data);
+    console.log("Guia criada com sucesso:", response.data);
   } catch (error) {
     console.error("Erro ao criar guia:", error.response?.data || error.message);
     res.status(500).json({
