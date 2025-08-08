@@ -129,6 +129,7 @@
         try {
           const res = await fetch("/artigo/categorias");
           const data = await res.json();
+          console.log("Resposta Categorias:", data);
           const select = document.getElementById("category_id");
           select.innerHTML =
             '<option value="">-- Escolha uma categoria --</option>';
