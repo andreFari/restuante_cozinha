@@ -103,7 +103,7 @@
 
     <script>
       async function fetchProducts() {
-        const res = await fetch("/artigos/artigos");
+        const res = await fetch("/artigo/artigos");
         const data = await res.json();
         console.log("Produtos:", data);
         const tbody = document.querySelector("#productTable tbody");
@@ -129,7 +129,7 @@
         fetchProducts();
       }
       async function fetchCategorias() {
-        const res = await fetch("/artigos/categorias");
+        const res = await fetch("/artigo/categorias");
         const categorias = await res.json();
         console.log("Categorias:", categorias);
         const select = document.getElementById("category_id");
@@ -158,7 +158,7 @@
             category_id: parseInt(document.getElementById("category_id").value),
           };
 
-          await fetch("artigos/artigos", {
+          await fetch("artigo/artigos", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
