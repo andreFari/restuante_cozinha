@@ -192,7 +192,7 @@ router.post("/api/guias", async (req, res) => {
         delivery_destination_zip_code: descarga.cp,
         delivery_method_id: Number(req.body.deliveryMethodId) || 1,
         delivery_country: descarga.pais,
-        delivery_datetime: formatDateTime(inicio), // ISO com hora
+       delivery_datetime: formatDate(inicio),, // ISO com hora
       },
       {
         headers: { "Content-Type": "application/json" }, // importante
