@@ -331,7 +331,7 @@ router.post("/api/guias", async (req, res) => {
         delivery_destination_city: descarga.localidade,
         delivery_destination_zip_code: descarga.cp,
         delivery_method_id: Number(deliveryMethodId) || 1,
-        delivery_country: descarga.pais,
+
         delivery_country: descarga.pais || "PT", // garante que tem país
         billing_country: "PT", // também ajuda a AT
         delivery_datetime: emissao,
@@ -397,7 +397,7 @@ router.get("/importar/guias", async (req, res) => {
           );
 
           const guia = detalheResponse.data;
-
+          console.log("Guia detalhada:", guia);
           return {
             id: guia.document_id,
             numero: guia.document_number || guia.number || "-",
@@ -405,7 +405,7 @@ router.get("/importar/guias", async (req, res) => {
             cliente: guia.customer_name || guia.customer?.name || "-",
             nif: guia.customer_vat || guia.customer?.vat || "-",
             total: guia.net_value || guia.total_value || "0.00",
-            codigoAT: guia.at_code || "-",
+            codigoAT: guia.saft_hash || "-",
           };
         } catch (detalheErro) {
           console.error("Erro ao obter guia detalhada:", detalheErro.message);
