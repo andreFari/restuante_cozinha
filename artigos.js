@@ -3,6 +3,11 @@ const router = express.Router();
 
 import { getValidAccessToken, getCompanyId } from "./moloniAuth.js";
 
+// Função para criar URLs com access_token e json=true
+function moloniUrl(endpoint, token) {
+  return `https://api.moloni.pt/v1/${endpoint}/?access_token=${token}&json=true&human_errors=true`;
+}
+
 // GET produtos da categoria (ex: carne)
 router.get("/artigos", async (req, res) => {
   try {
@@ -10,7 +15,7 @@ router.get("/artigos", async (req, res) => {
     const company_id = getCompanyId();
     const { category_id } = req.query;
 
-    const url = `https://api.moloni.pt/v1/products/getAll/?access_token=${token}&json=true`;
+    const url = moloniUrl("products/getAll", token);
 
     const body = { company_id };
     if (category_id) body.category_id = category_id;
@@ -44,11 +49,12 @@ router.post("/artigos", async (req, res) => {
       category_id,
     } = req.body;
 
-    const response = await fetch("https://api.moloni.pt/v1/products/insert/", {
+    const url = moloniUrl("products/insert", token);
+
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        access_token: token,
         company_id,
         name,
         reference,
@@ -78,10 +84,12 @@ router.delete("/artigos/:id", async (req, res) => {
     const company_id = getCompanyId();
     const product_id = req.params.id;
 
-    const response = await fetch("https://api.moloni.pt/v1/products/delete/", {
+    const url = moloniUrl("products/delete", token);
+
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: token, company_id, product_id }),
+      body: JSON.stringify({ company_id, product_id }),
     });
 
     const data = await response.json();
@@ -98,14 +106,13 @@ async function fetchAllCategories(
   parent_id = 0,
   categorias = []
 ) {
-  const res = await fetch(
-    "https://api.moloni.pt/v1/productCategories/getAll/",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: token, company_id, parent_id }),
-    }
-  );
+  const url = moloniUrl("productCategories/getAll", token);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ company_id, parent_id }),
+  });
 
   const data = await res.json();
 
