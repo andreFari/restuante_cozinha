@@ -176,19 +176,25 @@
           select.appendChild(opt);
         });
       }
+
       document
         .getElementById("guiaForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
 
+          const emissaoISO = document.getElementById("emissao").value; // ex: "2025-08-08T14:30"
+          const inicioISO = document.getElementById("inicio").value;
+
+          const emissao = emissaoISO.split("T")[0]; // "2025-08-08"
+          const inicio = inicioISO.split("T")[0]; // "2025-08-08"
           const dados = {
             clienteId: document.getElementById("cliente").value,
             artigos: Array.from(
               document.getElementById("artigos").selectedOptions
             ).map((opt) => opt.value),
             viaturaId: document.getElementById("viatura").value,
-            emissao: document.getElementById("emissao").value,
-            inicio: document.getElementById("inicio").value,
+            emissao, // já só data YYYY-MM-DD
+            inicio,
             carga: {
               morada: document.getElementById("moradaCarga").value,
               cp: document.getElementById("cpCarga").value,
