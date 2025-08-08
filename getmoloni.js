@@ -334,14 +334,15 @@ router.get("/importar/guias", async (req, res) => {
 
     const guias = response.data.reverse().map((g) => ({
       id: g.document_id,
-      numero: g.number,
-      data: g.date,
-      cliente: g.customer?.name || "-",
-      nif: g.customer?.vat || "-",
-      total: g.total_value || "0.00",
+      numero: g.document_number || g.number || "-",
+      data: g.date || "-",
+      cliente: g.customer?.name || g.customer_name || "-",
+      nif: g.customer?.vat || g.customer_vat || "-",
+      total: g.net_value || g.total_value || "0.00",
       codigoAT: g.at_code || "-",
     }));
 
+    console.log("DEBUG Moloni resposta bruta:", response.data);
     res.json(guias);
     console.log(guias);
   } catch (error) {
