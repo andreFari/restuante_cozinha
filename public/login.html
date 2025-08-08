@@ -187,452 +187,462 @@
       </div>
         -->
     </header>
-    <h1>Painel de Admin / Recessão</h1>
-    <div class="container">
-      <div class="table-lists">
-        <div class="table-section">
-          <h3>Mesas Abertas</h3>
-          <div id="openTables"></div>
+    <div id="mainContent" style="display: none">
+      <h1>Painel de Admin / Recessão</h1>
+      <div class="container">
+        <div class="table-lists">
+          <div class="table-section">
+            <h3>Mesas Abertas</h3>
+            <div id="openTables"></div>
+          </div>
+
+          <div class="table-section">
+            <h3>Mesas Fechadas</h3>
+            <div id="closedTables"></div>
+          </div>
         </div>
 
-        <div class="table-section">
-          <h3>Mesas Fechadas</h3>
-          <div id="closedTables"></div>
+        <div class="order-details" id="orderDetails">
+          <p>Selecione uma mesa para ver os detalhes do pedido</p>
         </div>
       </div>
 
-      <div class="order-details" id="orderDetails">
-        <p>Selecione uma mesa para ver os detalhes do pedido</p>
-      </div>
-    </div>
-
-    <div
-      id="invoiceModal"
-      style="
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        justify-content: center;
-        align-items: center;
-      "
-    >
       <div
+        id="invoiceModal"
         style="
-          background: white;
-          padding: 20px;
-          border-radius: 5px;
-          width: 300px;
-          box-sizing: border-box;
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          justify-content: center;
+          align-items: center;
         "
       >
-        <h3>Notas para a Fatura</h3>
-        <textarea
-          id="modalInvoiceNotes"
-          rows="6"
-          style="width: 100%"
-        ></textarea>
-        <div style="margin-top: 15px; text-align: right">
-          <button onclick="closeModal()" style="margin-right: 10px">
-            Cancelar
-          </button>
-          <button onclick="confirmEmitirFatura()">Confirmar</button>
+        <div
+          style="
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+            box-sizing: border-box;
+          "
+        >
+          <h3>Notas para a Fatura</h3>
+          <textarea
+            id="modalInvoiceNotes"
+            rows="6"
+            style="width: 100%"
+          ></textarea>
+          <div style="margin-top: 15px; text-align: right">
+            <button onclick="closeModal()" style="margin-right: 10px">
+              Cancelar
+            </button>
+            <button onclick="confirmEmitirFatura()">Confirmar</button>
+          </div>
         </div>
       </div>
     </div>
-
     <script>
-      async function parseJsonOrThrow(response) {
-        const text = await response.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          throw new Error(
-            `Resposta não-JSON (${response.status} ${
-              response.statusText
-            }): ${text.slice(0, 300)}`
-          );
-        }
-      }
-      async function loginMoloni() {
-        const username = document.getElementById("username").value.trim();
-        const password = document.getElementById("password").value.trim();
-        const loginStatus = document.getElementById("loginStatus");
+            async function parseJsonOrThrow(response) {
+              const text = await response.text();
+              try {
+                return JSON.parse(text);
+              } catch (e) {
+                throw new Error(
+                  `Resposta não-JSON (${response.status} ${
+                    response.statusText
+                  }): ${text.slice(0, 300)}`
+                );
+              }
+            }
+            async function loginMoloni() {
+              const username = document.getElementById("username").value.trim();
+              const password = document.getElementById("password").value.trim();
+              const loginStatus = document.getElementById("loginStatus");
 
-        if (!username || !password) {
-          loginStatus.textContent = "Por favor, preencha todos os campos.";
-          loginStatus.style.color = "red";
-          return;
-        }
+              if (!username || !password) {
+                loginStatus.textContent = "Por favor, preencha todos os campos.";
+                loginStatus.style.color = "red";
+                return;
+              }
 
-        loginStatus.textContent = "Fazendo login...";
-        loginStatus.style.color = "black";
+              loginStatus.textContent = "Fazendo login...";
+              loginStatus.style.color = "black";
 
-        try {
-          const response = await fetch("/api/moloni-login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ username, password }),
-          });
+              try {
+                const response = await fetch("/api/moloni-login", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ username, password }),
+                });
 
-          if (!response.ok) {
-            const raw = await response.text();
-            console.error("Moloni login falhou:", response.status, raw);
-            loginStatus.textContent = "Erro no login.";
-            loginStatus.style.color = "red";
-            return;
-          }
+                if (!response.ok) {
+                  const raw = await response.text();
+                  console.error("Moloni login falhou:", response.status, raw);
+                  loginStatus.textContent = "Erro no login.";
+                  loginStatus.style.color = "red";
+                  return;
+                }
 
-          const data = await response.json();
-          localStorage.setItem("refresh_token", data.refresh_token);
-          localStorage.setItem("moloni_token", data.access_token);
-          loginStatus.textContent = "Login efetuado com sucesso!";
-          loginStatus.style.color = "green";
-          document.getElementById("tokenDisplay").textContent =
-            "Token armazenado: " + data.access_token.substring(0, 25) + "…";
-        } catch (err) {
-          console.error("Erro:", err.message);
-          loginStatus.textContent = "Erro a processar resposta do servidor.";
-          loginStatus.style.color = "red";
-        }
-      }
-      let selectedTableIndex = null;
-      let currentTableIndex = null;
-      function openModal(index) {
-        // Aqui podes setar currentTableIndex consoante a mesa selecionada —
-        // ou adapta para receber o index.
-        currentTableIndex = index; // exemplo fixo, muda conforme a tua lógica
-        const textarea = document.getElementById("modalInvoiceNotes");
-        textarea.value = "";
-        document.getElementById("invoiceModal").style.display = "flex";
-        textarea.focus();
-        document.getElementById("modalInvoiceNotes").value = ""; // limpa
-        document.getElementById("invoiceModal").style.display = "flex";
-      }
+                const data = await response.json();
+                localStorage.setItem("refresh_token", data.refresh_token);
+                localStorage.setItem("moloni_token", data.access_token);
+                loginStatus.textContent = "Login efetuado com sucesso!";
+                loginStatus.style.color = "green";
+                document.getElementById("tokenDisplay").textContent =
+                  "Token armazenado: " + data.access_token.substring(0, 25) + "…";
+              } catch (err) {
+                console.error("Erro:", err.message);
+                loginStatus.textContent = "Erro a processar resposta do servidor.";
+                loginStatus.style.color = "red";
+              }
+            }
+            let selectedTableIndex = null;
+            let currentTableIndex = null;
+            function openModal(index) {
+              // Aqui podes setar currentTableIndex consoante a mesa selecionada —
+              // ou adapta para receber o index.
+              currentTableIndex = index; // exemplo fixo, muda conforme a tua lógica
+              const textarea = document.getElementById("modalInvoiceNotes");
+              textarea.value = "";
+              document.getElementById("invoiceModal").style.display = "flex";
+              textarea.focus();
+              document.getElementById("modalInvoiceNotes").value = ""; // limpa
+              document.getElementById("invoiceModal").style.display = "flex";
+            }
 
-      function closeModal() {
-        document.getElementById("invoiceModal").style.display = "none";
-      }
+            function closeModal() {
+              document.getElementById("invoiceModal").style.display = "none";
+            }
 
-      async function confirmEmitirFatura() {
-        const notes = document.getElementById("modalInvoiceNotes").value.trim();
+            async function confirmEmitirFatura() {
+              const notes = document.getElementById("modalInvoiceNotes").value.trim();
 
-        closeModal();
+              closeModal();
 
-        // Chama a função que emite a fatura passando as notas
-        await emitirFatura(currentTableIndex, notes);
-      }
+              // Chama a função que emite a fatura passando as notas
+              await emitirFatura(currentTableIndex, notes);
+            }
 
-      async function emitirFatura(index, notes = "") {
-        const token = localStorage.getItem("moloni_token");
-        if (!token) {
-          alert("Por favor, faça login no Moloni primeiro!");
-          return;
-        }
+            async function emitirFatura(index, notes = "") {
+              const token = localStorage.getItem("moloni_token");
+              if (!token) {
+                alert("Por favor, faça login no Moloni primeiro!");
+                return;
+              }
 
-        const table = tables[index];
-        if (!table) {
-          alert("Mesa inválida!");
-          return;
-        }
+              const table = tables[index];
+              if (!table) {
+                alert("Mesa inválida!");
+                return;
+              }
 
-        const products = convertOrderToMoloniProducts(table.order);
+              const products = convertOrderToMoloniProducts(table.order);
 
-        try {
-          const response = await fetch("/api/emitir-fatura", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + token,
-            },
-            body: JSON.stringify({
-              tableName: table.name,
-              notes: notes,
-              order: table.order,
-            }),
-          });
+              try {
+                const response = await fetch("/api/emitir-fatura", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + token,
+                  },
+                  body: JSON.stringify({
+                    tableName: table.name,
+                    notes: notes,
+                    order: table.order,
+                  }),
+                });
 
-          const data = await response.json();
-          if (data.pdfUrl) {
-            window.open(data.pdfUrl, "_blank");
-          } else {
-            alert("Erro: Fatura criada mas sem PDF.");
-          }
-        } catch (err) {
-          console.error("Erro no pedido:", err);
-          alert("Erro na comunicação com o servidor.");
-        }
-      }
-      const moloniProductMap = {
-        Bolo: {
-          product_id: 210061572,
-          price: 10,
-          tax_id: 3630173,
-        },
-        // adiciona mais produtos aqui conforme fores criando
-      };
-      const tables = [
-        {
-          id: 1,
-          name: "Mesa 1",
-          open: true,
-          kitchenNote: "Só tem Bolo na sobremesa",
-          order: {
-            status: "unpaid",
-            plates: [], // no plates
-            extras: [], // no extras
-            drinks: [], // no drinks
-            desserts: ["Bolo"], // only Bolo
-            coffee: [], // no coffee
-          },
-          prepared: {
-            plates: [],
-            extras: [],
-            drinks: [],
-            desserts: [false], // Bolo not prepared yet
-            coffee: [],
-          },
-        },
-      ];
-
-      const openTablesDiv = document.getElementById("openTables");
-      const closedTablesDiv = document.getElementById("closedTables");
-      const orderDetails = document.getElementById("orderDetails");
-
-      function renderTables() {
-        openTablesDiv.innerHTML = "";
-        closedTablesDiv.innerHTML = "";
-
-        tables.forEach((table, index) => {
-          const div = document.createElement("div");
-          div.className = `table-item ${table.open ? "open" : "closed"}`;
-          div.innerHTML = `
-                    <strong>${table.name}</strong> - ${
-            table.open ? "Aberta" : "Fechada"
-          }
-                    ${
-                      table.kitchenNote
-                        ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                        : ""
-                    }
-                  `;
-
-          div.onclick = () => renderOrderDetails(index);
-
-          if (table.open) {
-            openTablesDiv.appendChild(div);
-          } else {
-            closedTablesDiv.appendChild(div);
-          }
-        });
-      }
-
-      function renderOrderDetails(index) {
-        selectedTableIndex = index;
-        const table = tables[index];
-        const order = table.order;
-        const prepared = table.prepared;
-
-        function renderSection(title, items, prepState, key) {
-          if (items.length === 0) return "";
-          return `
-                    <div class="section">
-                      <h3>${title}</h3>
-                      ${items
-                        .map(
-                          (item, i) => `
-                        <div class="item">
-                          <input type="checkbox" ${
-                            prepState[i] ? "checked" : ""
-                          }
-                            onchange="togglePrepared(${index}, '${key}', ${i})">
-                          <label>${item}</label>
-                        </div>
-                      `
-                        )
-                        .join("")}
-                    </div>
-                  `;
-        }
-
-        orderDetails.innerHTML = `
-                  <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
-
-                  <div class="section">
-                    <label><strong>Nota da cozinha :</strong></label><br>
-                    <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-                      table.kitchenNote
-                    }</textarea>
-                    <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-                  </div>
-
-                  <div class="status ${
-                    order.status === "paid" ? "paid" : "unpaid"
-                  }">
-                    ${order.status === "paid" ? "Pago" : "Por Pagar"}
-                  </div>
-                  <button class="btn" onclick="togglePaid(${index})">
-                    Marcar como ${
-                      order.status === "paid" ? "Por Pagar" : "Pago"
-                    }
-                  </button>
-
-                  <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-                    ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-                  </button>
-      <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
-                  ${renderSection(
-                    "Pratos",
-                    order.plates,
-                    prepared.plates,
-                    "plates"
-                  )}
-                  ${renderSection(
-                    "Extras",
-                    order.extras,
-                    prepared.extras,
-                    "extras"
-                  )}
-                  ${renderSection(
-                    "Bebidas",
-                    order.drinks,
-                    prepared.drinks,
-                    "drinks"
-                  )}
-                  ${renderSection(
-                    "Sobremesas",
-                    order.desserts,
-                    prepared.desserts,
-                    "desserts"
-                  )}
-                  ${renderSection(
-                    "Cafés",
-                    order.coffee,
-                    prepared.coffee,
-                    "coffee"
-                  )}
-                `;
-      }
-
-      window.togglePrepared = function (tableIndex, section, itemIndex) {
-        tables[tableIndex].prepared[section][itemIndex] =
-          !tables[tableIndex].prepared[section][itemIndex];
-        renderOrderDetails(tableIndex);
-      };
-
-      window.togglePaid = function (index) {
-        const order = tables[index].order;
-        order.status = order.status === "paid" ? "unpaid" : "paid";
-        renderOrderDetails(index);
-        renderTables();
-      };
-
-      window.toggleOpenClose = function (index) {
-        tables[index].open = !tables[index].open;
-        renderOrderDetails(index);
-        renderTables();
-      };
-
-      window.saveKitchenNote = function (index) {
-        const textarea = document.getElementById("kitchenNote");
-        tables[index].kitchenNote = textarea.value.trim();
-        renderTables();
-      };
-      function toggleLoginForm() {
-        const form = document.getElementById("moloniLoginForm");
-        form.style.display = form.style.display === "none" ? "block" : "none";
-      }
-
-      window.addEventListener("DOMContentLoaded", async () => {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-        const error = params.get("error");
-        const tokenDisplayDiv = document.getElementById("tokenDisplay");
-
-        console.log("Code da URL:", code);
-
-        if (code) {
-          try {
-            const res = await fetch("/api/moloni-exchange-code", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
+                const data = await response.json();
+                if (data.pdfUrl) {
+                  window.open(data.pdfUrl, "_blank");
+                } else {
+                  alert("Erro: Fatura criada mas sem PDF.");
+                }
+              } catch (err) {
+                console.error("Erro no pedido:", err);
+                alert("Erro na comunicação com o servidor.");
+              }
+            }
+            const moloniProductMap = {
+              Bolo: {
+                product_id: 210061572,
+                price: 10,
+                tax_id: 3630173,
               },
-              body: JSON.stringify({ code }),
+              // adiciona mais produtos aqui conforme fores criando
+            };
+            const tables = [
+              {
+                id: 1,
+                name: "Mesa 1",
+                open: true,
+                kitchenNote: "Só tem Bolo na sobremesa",
+                order: {
+                  status: "unpaid",
+                  plates: [], // no plates
+                  extras: [], // no extras
+                  drinks: [], // no drinks
+                  desserts: ["Bolo"], // only Bolo
+                  coffee: [], // no coffee
+                },
+                prepared: {
+                  plates: [],
+                  extras: [],
+                  drinks: [],
+                  desserts: [false], // Bolo not prepared yet
+                  coffee: [],
+                },
+              },
+            ];
+
+            const openTablesDiv = document.getElementById("openTables");
+            const closedTablesDiv = document.getElementById("closedTables");
+            const orderDetails = document.getElementById("orderDetails");
+
+            function renderTables() {
+              openTablesDiv.innerHTML = "";
+              closedTablesDiv.innerHTML = "";
+
+              tables.forEach((table, index) => {
+                const div = document.createElement("div");
+                div.className = `table-item ${table.open ? "open" : "closed"}`;
+                div.innerHTML = `
+                          <strong>${table.name}</strong> - ${
+                  table.open ? "Aberta" : "Fechada"
+                }
+                          ${
+                            table.kitchenNote
+                              ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                              : ""
+                          }
+                        `;
+
+                div.onclick = () => renderOrderDetails(index);
+
+                if (table.open) {
+                  openTablesDiv.appendChild(div);
+                } else {
+                  closedTablesDiv.appendChild(div);
+                }
+              });
+            }
+
+            function renderOrderDetails(index) {
+              selectedTableIndex = index;
+              const table = tables[index];
+              const order = table.order;
+              const prepared = table.prepared;
+
+              function renderSection(title, items, prepState, key) {
+                if (items.length === 0) return "";
+                return `
+                          <div class="section">
+                            <h3>${title}</h3>
+                            ${items
+                              .map(
+                                (item, i) => `
+                              <div class="item">
+                                <input type="checkbox" ${
+                                  prepState[i] ? "checked" : ""
+                                }
+                                  onchange="togglePrepared(${index}, '${key}', ${i})">
+                                <label>${item}</label>
+                              </div>
+                            `
+                              )
+                              .join("")}
+                          </div>
+                        `;
+              }
+
+              orderDetails.innerHTML = `
+                        <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+
+                        <div class="section">
+                          <label><strong>Nota da cozinha :</strong></label><br>
+                          <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+                            table.kitchenNote
+                          }</textarea>
+                          <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+                        </div>
+
+                        <div class="status ${
+                          order.status === "paid" ? "paid" : "unpaid"
+                        }">
+                          ${order.status === "paid" ? "Pago" : "Por Pagar"}
+                        </div>
+                        <button class="btn" onclick="togglePaid(${index})">
+                          Marcar como ${
+                            order.status === "paid" ? "Por Pagar" : "Pago"
+                          }
+                        </button>
+
+                        <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+                          ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+                        </button>
+            <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+                        ${renderSection(
+                          "Pratos",
+                          order.plates,
+                          prepared.plates,
+                          "plates"
+                        )}
+                        ${renderSection(
+                          "Extras",
+                          order.extras,
+                          prepared.extras,
+                          "extras"
+                        )}
+                        ${renderSection(
+                          "Bebidas",
+                          order.drinks,
+                          prepared.drinks,
+                          "drinks"
+                        )}
+                        ${renderSection(
+                          "Sobremesas",
+                          order.desserts,
+                          prepared.desserts,
+                          "desserts"
+                        )}
+                        ${renderSection(
+                          "Cafés",
+                          order.coffee,
+                          prepared.coffee,
+                          "coffee"
+                        )}
+                      `;
+            }
+
+            window.togglePrepared = function (tableIndex, section, itemIndex) {
+              tables[tableIndex].prepared[section][itemIndex] =
+                !tables[tableIndex].prepared[section][itemIndex];
+              renderOrderDetails(tableIndex);
+            };
+
+            window.togglePaid = function (index) {
+              const order = tables[index].order;
+              order.status = order.status === "paid" ? "unpaid" : "paid";
+              renderOrderDetails(index);
+              renderTables();
+            };
+
+            window.toggleOpenClose = function (index) {
+              tables[index].open = !tables[index].open;
+              renderOrderDetails(index);
+              renderTables();
+            };
+
+            window.saveKitchenNote = function (index) {
+              const textarea = document.getElementById("kitchenNote");
+              tables[index].kitchenNote = textarea.value.trim();
+              renderTables();
+            };
+            function toggleLoginForm() {
+              const form = document.getElementById("moloniLoginForm");
+              form.style.display = form.style.display === "none" ? "block" : "none";
+            }
+
+            window.addEventListener("DOMContentLoaded", async () => {
+              const params = new URLSearchParams(window.location.search);
+              const code = params.get("code");
+              const error = params.get("error");
+              const tokenDisplayDiv = document.getElementById("tokenDisplay");
+
+              console.log("Code da URL:", code);
+
+              if (code) {
+                try {
+                  const res = await fetch("/api/moloni-exchange-code", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ code }),
+                  });
+
+                  const { access_token, refresh_token } = await res.json();
+                  console.log("Tokens recebidos:", access_token, refresh_token);
+
+                  // Apenas para debug (não obrigatório)
+                  // localStorage.setItem("moloni_token", access_token);
+                  //localStorage.setItem("refresh_token", refresh_token);
+
+                  alert("Tokens armazenados com sucesso!");
+                  history.replaceState({}, "", "/login.html");
+                } catch (err) {
+                  console.error("Erro a obter tokens:", err);
+                  alert("Erro no login com Moloni.");
+                }
+              }
+
+              try {
+                const res = await fetch("/api/moloni-token-status");
+                const { valid } = await res.json();
+                tokenDisplayDiv.textContent = valid
+                  ? "✔️ Sistema pronto a usar"
+                  : "⚠️ Sistema não autenticado";
+              } catch (err) {
+                console.error("Erro ao verificar status do token:", err);
+                tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
+              }
+
+              if (error) {
+                alert(
+                  "Erro durante o login com Moloni: " + decodeURIComponent(error)
+                );
+                tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
+              }
+
+              // Renderização das mesas, se existir
+              if (typeof renderTables === "function") {
+                renderTables();
+              }
             });
 
-            const { access_token, refresh_token } = await res.json();
-            console.log("Tokens recebidos:", access_token, refresh_token);
+            function convertOrderToMoloniProducts(order) {
+              const sections = ["plates", "extras", "drinks", "desserts", "coffee"];
+              const products = [];
 
-            // Apenas para debug (não obrigatório)
-            // localStorage.setItem("moloni_token", access_token);
-            //localStorage.setItem("refresh_token", refresh_token);
-
-            alert("Tokens armazenados com sucesso!");
-            history.replaceState({}, "", "/login.html");
-          } catch (err) {
-            console.error("Erro a obter tokens:", err);
-            alert("Erro no login com Moloni.");
-          }
-        }
-
-        try {
-          const res = await fetch("/api/moloni-token-status");
-          const { valid } = await res.json();
-          tokenDisplayDiv.textContent = valid
-            ? "✔️ Sistema pronto a usar"
-            : "⚠️ Sistema não autenticado";
-        } catch (err) {
-          console.error("Erro ao verificar status do token:", err);
-          tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
-        }
-
-        if (error) {
-          alert(
-            "Erro durante o login com Moloni: " + decodeURIComponent(error)
-          );
-          tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
-        }
-
-        // Renderização das mesas, se existir
-        if (typeof renderTables === "function") {
-          renderTables();
-        }
-      });
-
-      function convertOrderToMoloniProducts(order) {
-        const sections = ["plates", "extras", "drinks", "desserts", "coffee"];
-        const products = [];
-
-        sections.forEach((section) => {
-          order[section].forEach((itemName) => {
-            const product = moloniProductMap[itemName];
-            if (product) {
-              products.push({
-                product_id: product.product_id,
-                name: itemName,
-                qty: 1,
-                price: product.price,
-                taxes: [
-                  {
-                    tax_id: product.tax_id,
-                  },
-                ],
+              sections.forEach((section) => {
+                order[section].forEach((itemName) => {
+                  const product = moloniProductMap[itemName];
+                  if (product) {
+                    products.push({
+                      product_id: product.product_id,
+                      name: itemName,
+                      qty: 1,
+                      price: product.price,
+                      taxes: [
+                        {
+                          tax_id: product.tax_id,
+                        },
+                      ],
+                    });
+                  } else {
+                    // Simply skip products not in moloniProductMap
+                    // You can remove this console.warn if you don't want logs
+                    // console.warn(`Produto "${itemName}" não existe no catálogo Moloni.`);
+                  }
+                });
               });
-            } else {
-              // Simply skip products not in moloniProductMap
-              // You can remove this console.warn if you don't want logs
-              // console.warn(`Produto "${itemName}" não existe no catálogo Moloni.`);
-            }
-          });
-        });
 
-        return products;
+              return products;
+            }
+            const { valid } = await res.json();
+      tokenDisplayDiv.textContent = valid
+        ? "✔️ Sistema pronto a usar"
+        : "⚠️ Sistema não autenticado";
+
+      if (valid) {
+        document.getElementById("mainContent").style.display = "block";
+        renderTables();
       }
     </script>
   </body>

@@ -210,37 +210,42 @@
           faturas.sort((a, b) => new Date(b.date) - new Date(a.date));
           const table = document.createElement("table");
           table.innerHTML = `
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Número</th>
-                <th>Total</th>
-                <th>PDF</th>
-              
-              </tr>
-            </thead>
-            <tbody>
-              ${faturas
-                .map((f) => {
-                  const dataFormatada = new Date(f.date).toLocaleDateString(
-                    "pt-PT"
-                  );
-                  return `
+           <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Número</th>
+          <th>Ilíquido</th>
+          <th>Impostos</th>
+          <th>Total Liq.</th>
+          <th>Dívida</th>
+          <th>PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${faturas
+          .map((f) => {
+            const dataFormatada = new Date(f.date).toLocaleDateString("pt-PT");
+
+            const formatarValor = (v) =>
+              v != null ? parseFloat(v).toFixed(2) + " €" : "-";
+
+            return `
               <tr>
                 <td>${f.document_id}</td>
                 <td>${dataFormatada}</td>
                 <td>${f.document_number || "-"}</td>
-                <td>${
-                  f.total ? parseFloat(f.total).toFixed(2) + " €" : "-"
-                }</td>
+                <td>${formatarValor(f.net_value)}</td>
+                <td>${formatarValor(f.total_tax)}</td>
+                <td>${formatarValor(f.total_value)}</td>
+                <td>${formatarValor(f.total_due ?? f.total_balance)}</td>
                 <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
               </tr>
             `;
-                })
-                .join("")}
-            </tbody>
-          `;
+          })
+          .join("")}
+      </tbody>
+    `;
           document.getElementById("faturaContainer").innerHTML = "";
           document.getElementById("faturaContainer").appendChild(table);
         } catch (err) {
