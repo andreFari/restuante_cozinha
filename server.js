@@ -50,7 +50,7 @@ app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "login.html"));
 });
 
-app.get("/", (req, res) => res.redirect("/login.html"));
+app.get("/", (req, res) => res.redirect("./login.html"));
 // ----- Gestão de Tokens (em memória) -----
 
 // Exemplo em Express
