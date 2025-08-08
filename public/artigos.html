@@ -92,7 +92,9 @@
       <input type="number" id="tax_id" value="3630173" required />
 
       <label>Unidade *</label>
-      <input type="text" id="unit_id" value="1" required />
+      <select id="unit_id" required>
+        <option value="">-- Escolha uma unidade --</option>
+      </select>
 
       <label>Resumo</label>
       <input type="text" id="summary" />
@@ -142,6 +144,30 @@
           );
         }
       }
+
+      async function fetchUnidades() {
+        try {
+          const res = await fetch("/artigo/unidades");
+          const data = await res.json();
+
+          const select = document.getElementById("unit_id");
+          select.innerHTML =
+            '<option value="">-- Escolha uma unidade --</option>';
+
+          data.forEach((unit) => {
+            select.innerHTML += `<option value="${unit.unit_id}">${unit.name}</option>`;
+          });
+        } catch (err) {
+          console.error("Erro ao carregar unidades:", err);
+          alert(
+            "Erro ao carregar unidades. Verifique a ligação com o servidor."
+          );
+        }
+      }
+
+      // Chamar essa função na inicialização junto com categorias e produtos
+      fetchUnidades();
+
       async function fetchProducts() {
         const res = await fetch("/artigo/artigos");
         const data = await res.json();

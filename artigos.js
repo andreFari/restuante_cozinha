@@ -32,6 +32,34 @@ router.get("/artigos", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// rota para buscar unidades do Moloni
+router.get("/unidades", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+
+    const url = moloniUrl("units/getAll", token);
+
+    const body = { company_id };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 router.post("/artigos", async (req, res) => {
   try {
     const token = await getValidAccessToken();
