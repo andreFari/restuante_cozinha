@@ -183,7 +183,14 @@ router.post("/guias/:id/codigo-at", async (req, res) => {
     const rawText = await response.text();
     console.log("Moloni raw response:", rawText);
 
-    const data = JSON.parse(rawText); // cuidado: pode lançar erro se não for JSON
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return res
+        .status(500)
+        .json({ detalhe: "Resposta inválida da API Moloni", raw: rawText });
+    }
     if (!response.ok) {
       return res.status(response.status).send(rawText); // mostra HTML completo se quiser debugar
     }
