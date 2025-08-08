@@ -179,16 +179,16 @@
           e.preventDefault();
 
           const product = {
+            category_id: parseInt(document.getElementById("category_id").value),
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
             price: parseFloat(document.getElementById("price").value),
-            tax_id: parseInt(document.getElementById("tax_id").value),
             unit_id: parseInt(document.getElementById("unit_id").value),
+            tax_id: parseInt(document.getElementById("tax_id").value), // só o ID do imposto
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
-            category_id: document.getElementById("category_id").value
-              ? parseInt(document.getElementById("category_id").value)
-              : null,
+            has_stock: 0, // 0 = sem stock (muda se quiser)
+            stock: 0,
           };
 
           try {

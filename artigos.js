@@ -32,8 +32,6 @@ router.get("/artigos", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// POST - criar artigo
 router.post("/artigos", async (req, res) => {
   try {
     const token = await getValidAccessToken();
@@ -51,32 +49,49 @@ router.post("/artigos", async (req, res) => {
 
     const url = moloniUrl("products/insert", token);
 
+    // Montar o corpo conforme a API Moloni exige
+    const body = {
+      company_id,
+      category_id: parseInt(category_id),
+      type: 1, // Produto
+      name,
+      reference,
+      price: parseFloat(price),
+      unit_id: parseInt(unit_id),
+      has_stock: 0, // você controla se o produto tem stock ou não
+      stock: 0,
+      summary,
+      ean,
+      taxes: [
+        {
+          tax_id: parseInt(tax_id),
+          value: 0, // o valor será ignorado e substituído pela API Moloni
+          order: 1,
+          cumulative: 0,
+        },
+      ],
+      pos_favorite: 1,
+      visibility_id: 1,
+    };
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        company_id,
-        name,
-        reference,
-        price,
-        tax_id,
-        unit_id,
-        category_id,
-        summary,
-        ean,
-        has_stock: 0,
-        pos_favorite: 1,
-        visibility_id: 1,
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
+
+    if (!response.ok) {
+      // Retorna erro com detalhes da Moloni
+      return res.status(response.status).json(data);
+    }
+
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 // DELETE - eliminar artigo
 router.delete("/artigos/:id", async (req, res) => {
   try {
