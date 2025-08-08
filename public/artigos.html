@@ -104,40 +104,31 @@
     </form>
 
     <script>
+      function buildCategoryOptions(categories, parentId = 0, level = 0) {
+        let result = "";
+        const children = categories.filter((cat) => cat.parent_id === parentId);
+        children.forEach((cat) => {
+          const indent = "— ".repeat(level); // recuo visual
+          result += `<option value="${cat.productCategory_id}">${indent}${cat.name}</option>`;
+          result += buildCategoryOptions(
+            categories,
+            cat.productCategory_id,
+            level + 1
+          );
+        });
+        return result;
+      }
       async function fetchCategorias() {
         try {
           const res = await fetch("/artigo/categorias");
           const data = await res.json();
-          console.log("Resposta categorias raw:", data);
-
-          // Aqui o data é um array plano com productCategory_id e parent_id
-          const categorias = Array.isArray(data) ? data : [];
 
           const select = document.getElementById("category_id");
           select.innerHTML =
             '<option value="">-- Escolha uma categoria --</option>';
 
-          // Filtra categorias principais (parent_id == 0)
-          const principais = categorias.filter((cat) => cat.parent_id === 0);
-          console.log("Categorias principais:", principais);
-
-          principais.forEach((cat) => {
-            const option = document.createElement("option");
-            option.value = cat.productCategory_id; // Atenção aqui
-            option.textContent = cat.name;
-            select.appendChild(option);
-
-            // Subcategorias (parent_id igual ao id da categoria principal)
-            const subcats = categorias.filter(
-              (sub) => sub.parent_id === cat.productCategory_id
-            );
-            subcats.forEach((subcat) => {
-              const subOption = document.createElement("option");
-              subOption.value = subcat.productCategory_id;
-              subOption.textContent = "— " + subcat.name;
-              select.appendChild(subOption);
-            });
-          });
+          const optionsHtml = buildCategoryOptions(data);
+          select.innerHTML += optionsHtml;
         } catch (err) {
           console.error("Erro ao carregar categorias:", err);
           alert(
@@ -145,7 +136,6 @@
           );
         }
       }
-
       async function fetchProducts() {
         const res = await fetch("/artigo/artigos");
         const data = await res.json();
