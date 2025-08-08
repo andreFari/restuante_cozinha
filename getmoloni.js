@@ -154,6 +154,51 @@ router.get("/api/viaturas", async (req, res) => {
     });
   }
 });
+
+//Guias
+// routes/moloni.js (ou onde tens as rotas Moloni)
+
+router.post("/guias/:id/codigo-at", async (req, res) => {
+  const document_id = parseInt(req.params.id, 10);
+  const { transport_code } = req.body;
+
+  if (!transport_code || isNaN(document_id)) {
+    return res.status(400).json({
+      erro: "dados_invalidos",
+      detalhe:
+        "É necessário fornecer um código AT válido e um ID de documento.",
+    });
+  }
+
+  try {
+    const access_token = await getValidAccessToken();
+
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/billsOfLading/setTransportCode/",
+      {
+        company_id: MOLONI_COMPANY_ID,
+        document_id,
+        transport_code,
+      },
+      {
+        params: { access_token, json: true },
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    return res.json({
+      sucesso: true,
+      resposta: response.data,
+    });
+  } catch (error) {
+    console.error("Erro ao definir código AT:", error.message);
+    return res.status(500).json({
+      erro: "falha_definir_codigo_at",
+      detalhe: error.response?.data || error.message,
+    });
+  }
+});
+
 router.post("/api/guias", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();

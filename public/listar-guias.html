@@ -49,6 +49,19 @@
         border: 1px solid #ffeeba;
         border-radius: 4px;
       }
+
+      button {
+        background: #2980b9;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #1f5e85;
+      }
     </style>
   </head>
   <body>
@@ -57,8 +70,9 @@
     <div id="tabelaGuias"></div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", async () => {
+      async function carregarGuias() {
         const container = document.getElementById("tabelaGuias");
+        container.innerHTML = ""; // limpar conteúdo
 
         try {
           const res = await fetch("/molo/importar/guias");
@@ -80,6 +94,7 @@
                 <th>NIF</th>
                 <th>Total Líquido</th>
                 <th>Código AT</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -93,6 +108,9 @@
                   <td>${g.nif || "-"}</td>
                   <td>${parseFloat(g.total || 0).toFixed(2)} €</td>
                   <td>${g.codigoAT || "-"}</td>
+                  <td><button data-numero="${
+                    g.numero
+                  }">Alterar Código</button></td>
                 </tr>
               `
                 )
@@ -101,12 +119,46 @@
           `;
 
           container.appendChild(tabela);
+
+          // Adicionar event listener aos botões
+          container.querySelectorAll("button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const numero = btn.getAttribute("data-numero");
+              definirCodigoAT(numero);
+            });
+          });
         } catch (err) {
           container.innerHTML =
             '<div class="empty">Erro ao carregar guias.</div>';
           console.error("Erro ao carregar guias:", err);
         }
-      });
+      }
+
+      async function definirCodigoAT(numero) {
+        const codigo = prompt(
+          `Introduz o novo código AT para a guia nº ${numero}`
+        );
+        if (!codigo) return;
+
+        try {
+          const res = await fetch(`/molo/api/guias/${numero}/codigo-at`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transport_code: codigo }),
+          });
+
+          const result = await res.json();
+
+          if (!res.ok) throw new Error(result.detalhe || "Erro desconhecido");
+
+          alert("Código AT atualizado com sucesso!");
+          carregarGuias(); // Atualiza a lista após mudança
+        } catch (err) {
+          alert("Erro ao atualizar código AT: " + err.message);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", carregarGuias);
     </script>
   </body>
 </html>
