@@ -4,12 +4,15 @@ dotenv.config();
 
 const CLIENT_ID = process.env.MOLONI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MOLONI_CLIENT_SECRET;
+
 export const moloniTokens = {
   access_token: null,
   refresh_token: null,
   expires_at: null,
 };
-
+export function getCompanyId() {
+  return Number(process.env.COMPANY_ID);
+}
 export async function getValidAccessToken() {
   if (
     moloniTokens.access_token &&

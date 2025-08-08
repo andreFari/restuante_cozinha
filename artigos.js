@@ -1,25 +1,27 @@
 import express from "express";
 const router = express.Router();
 
-// Funções de token e company_id
-import { getAccessToken, getCompanyId } from "./moloniAuth.js";
+import { getValidAccessToken, getCompanyId } from "./moloniAuth.js";
 
 // GET produtos da categoria (ex: carne)
 router.get("/artigos", async (req, res) => {
-  const token = getAccessToken();
-  const company_id = getCompanyId();
-  const { category_id } = req.query;
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+    const { category_id } = req.query;
 
-  const response = await fetch("https://api.moloni.pt/v1/products/getAll/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ access_token: token, company_id, category_id }),
-  });
+    const response = await fetch("https://api.moloni.pt/v1/products/getAll/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: token, company_id, category_id }),
+    });
 
-  const data = await response.json();
-  res.json(data);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
-
 // POST - criar artigo
 router.post("/artigos", async (req, res) => {
   const token = getAccessToken();
