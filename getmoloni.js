@@ -307,18 +307,11 @@ router.get("/importar/guias", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
 
-    if (!access_token || !MOLONI_COMPANY_ID) {
-      return res.status(500).json({
-        erro: "missing_credentials",
-        detalhe: "Access token ou company_id em falta.",
-      });
-    }
-
-    const response = await axios.post(
+    const listaGuiasResponse = await axios.post(
       "https://api.moloni.pt/v1/billsOfLading/getAll/",
       {
         company_id: MOLONI_COMPANY_ID,
-        qty: 50, // podes ajustar se quiseres paginação
+        qty: 10, // ajusta conforme precisares
         offset: 0,
       },
       {
@@ -332,19 +325,55 @@ router.get("/importar/guias", async (req, res) => {
       }
     );
 
-    const guias = response.data.reverse().map((g) => ({
-      id: g.document_id,
-      numero: g.document_number || g.number || "-",
-      data: g.date || "-",
-      cliente: g.customer?.name || g.customer_name || "-",
-      nif: g.customer?.vat || g.customer_vat || "-",
-      total: g.net_value || g.total_value || "0.00",
-      codigoAT: g.at_code || "-",
-    }));
+    const listaGuias = listaGuiasResponse.data;
 
-    console.log("DEBUG Moloni resposta bruta:", response.data);
-    res.json(guias);
-    console.log(guias);
+    const detalhesCompletos = await Promise.all(
+      listaGuias.map(async (g) => {
+        try {
+          const detalheResponse = await axios.post(
+            "https://api.moloni.pt/v1/billsOfLading/getOne/",
+            {
+              company_id: MOLONI_COMPANY_ID,
+              document_id: g.document_id,
+            },
+            {
+              params: {
+                access_token,
+                json: true,
+              },
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const guia = detalheResponse.data;
+
+          return {
+            id: guia.document_id,
+            numero: guia.document_number || guia.number || "-",
+            data: guia.date || "-",
+            cliente: guia.customer?.name || guia.customer_name || "-",
+            nif: guia.customer?.vat || guia.customer_vat || "-",
+            total: guia.net_value || guia.total_value || "0.00",
+            codigoAT: guia.at_code || "-",
+          };
+        } catch (detalheErro) {
+          console.error("Erro ao obter guia detalhada:", detalheErro.message);
+          return {
+            id: g.document_id,
+            numero: g.number || "-",
+            data: g.date || "-",
+            cliente: "-",
+            nif: "-",
+            total: "0.00",
+            codigoAT: "-",
+          };
+        }
+      })
+    );
+
+    res.json(detalhesCompletos);
   } catch (error) {
     console.error(
       "Erro ao obter guias:",
