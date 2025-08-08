@@ -223,7 +223,12 @@ router.post("/api/guias", async (req, res) => {
         qty: 1,
         price: parseFloat(p.price) || 0,
         ...(exemptionReason && { exemption_reason: exemptionReason }),
-        tax: { tax_id: p.tax_id },
+        taxes: [
+          {
+            tax_id: p.tax_id,
+            // se necessário podes enviar value aqui
+          },
+        ],
       };
     });
 
