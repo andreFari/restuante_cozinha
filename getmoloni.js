@@ -179,20 +179,19 @@ router.post("/api/guias", async (req, res) => {
         document_set_id: 850313,
         customer_id: Number(clienteId),
         vehicle_id: Number(viaturaId),
-        date: formatDate(emissao),
-        shipping_date: formatDate(inicio),
+        date: formatDate(emissao), // só data (YYYY-MM-DD)
+        shipping_date: formatDate(inicio), // só data
         observations: observacoes,
         products: linhas,
-        address: carga.morada,
-        zip_code: carga.cp,
-        city: carga.localidade,
-        country: carga.pais,
-        delivery_address: descarga.morada,
-        delivery_zip_code: descarga.cp,
-        delivery_datetime: formatDate(inicio), // ✅ necessário
-        delivery_city: descarga.localidade,
-        delivery_method_id: 1,
+        delivery_departure_address: carga.morada,
+        delivery_departure_city: carga.localidade,
+        delivery_departure_zip_code: carga.cp,
+        delivery_destination_address: descarga.morada,
+        delivery_destination_city: descarga.localidade,
+        delivery_destination_zip_code: descarga.cp,
+        delivery_method_id: Number(req.body.deliveryMethodId) || 1,
         delivery_country: descarga.pais,
+        delivery_datetime: formatDateTime(inicio), // ISO com hora
       },
       {
         headers: { "Content-Type": "application/json" }, // importante
