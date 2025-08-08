@@ -105,22 +105,46 @@
 
     <script>
       async function fetchCategorias() {
-        const res = await fetch("/artigo/categorias");
-        const data = await res.json();
-        console.log("Resposta categorias:", data);
+        try {
+          const res = await fetch("/artigo/categorias");
+          const data = await res.json();
+          console.log("Resposta categorias raw:", data);
 
-        // Ajuste aqui para o nome correto do array no JSON, ex: 'productCategories'
-        const categorias = data || [];
+          const categorias = Array.isArray(data)
+            ? data
+            : data.productCategories || [];
 
-        const select = document.getElementById("category_id");
-        select.innerHTML = "";
+          const select = document.getElementById("category_id");
+          select.innerHTML =
+            '<option value="">-- Escolha uma categoria --</option>';
 
-        categorias.forEach((cat) => {
-          const option = document.createElement("option");
-          option.value = cat.productCategory_id;
-          option.textContent = cat.name;
-          select.appendChild(option);
-        });
+          // Filtra categorias principais (parent_id == 0)
+          const principais = categorias.filter((cat) => cat.parent_id === 0);
+
+          principais.forEach((cat) => {
+            const option = document.createElement("option");
+            option.value = cat.category_id;
+            option.textContent = cat.name;
+            select.appendChild(option);
+
+            // Procura subcategorias desta categoria principal
+            const subcats = categorias.filter(
+              (sub) => sub.parent_id === cat.category_id
+            );
+
+            subcats.forEach((subcat) => {
+              const subOption = document.createElement("option");
+              subOption.value = subcat.category_id;
+              subOption.textContent = "— " + subcat.name; // Indenta com traço para parecer hierarquia
+              select.appendChild(subOption);
+            });
+          });
+        } catch (err) {
+          console.error("Erro ao carregar categorias:", err);
+          alert(
+            "Erro ao carregar categorias. Verifique a ligação com o servidor."
+          );
+        }
       }
 
       async function fetchProducts() {
