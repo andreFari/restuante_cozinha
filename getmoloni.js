@@ -213,6 +213,9 @@ router.post("/api/guias", async (req, res) => {
     const linhas = artigos.map((artigoId) => {
       const p = todosArtigos.find((a) => a.product_id == artigoId);
       if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
+      const hasValidTaxes =
+        Array.isArray(p.taxes) && p.taxes.some((t) => t.tax_id && t.tax_id > 0);
+
       const isTaxExempt = Number(p.tax?.value) === 0;
       const exemptionReason = isTaxExempt
         ? p.exemption_reason || "M01"
