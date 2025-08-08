@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 
 // Funções de token e company_id
-import { getAccessToken, getCompanyId } from "./moloniAuth.js";
+import { getAccessToken, getCompanyId } from "./moloniAuth";
 
 // GET produtos da categoria (ex: carne)
 router.get("/artigos", async (req, res) => {
