@@ -79,7 +79,9 @@
       <label>Nome *</label>
       <input type="text" id="name" required />
       <label>Categoria *</label>
-      <select id="category_id" required></select>
+      <select id="category_id" required>
+        <option value="">-- Escolha uma categoria --</option>
+      </select>
       <label>Referência *</label>
       <input type="text" id="reference" required />
 
@@ -156,7 +158,28 @@
         .getElementById("newProductForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
+          document.addEventListener("DOMContentLoaded", async () => {
+            try {
+              // ⚠️ Altera a URL conforme onde o teu backend está hospedado
+              const res = await fetch("/api/categorias");
+              const categorias = await res.json();
 
+              const select = document.getElementById("category_id");
+
+              // Popular o dropdown com categorias
+              categorias.forEach((cat) => {
+                const option = document.createElement("option");
+                option.value = cat.productCategory_id;
+                option.textContent = cat.name;
+                select.appendChild(option);
+              });
+            } catch (err) {
+              console.error("Erro ao carregar categorias:", err);
+              alert(
+                "Erro ao carregar categorias. Verifique a ligação com o servidor."
+              );
+            }
+          });
           const product = {
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
