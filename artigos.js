@@ -242,10 +242,11 @@ router.delete("/artigos/:id", async (req, res) => {
 
     console.log("Deleting product_id:", product_id);
 
-    const url = `https://api.moloni.pt/v1/products/delete/?access_token=${token}`;
+    // Adicione json=true para envio de JSON
+    const url = `https://api.moloni.pt/v1/products/delete/?access_token=${token}&json=true`;
 
     const response = await fetch(url, {
-      method: "POST", // POST é correto aqui
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         company_id,
@@ -260,14 +261,12 @@ router.delete("/artigos/:id", async (req, res) => {
       return res.status(400).json({ error: data.error });
     }
 
-    // Sucesso
     res.json({ success: true, data });
   } catch (error) {
     console.error("Erro ao apagar produto:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
 async function fetchAllCategories(
   token,
   company_id,
