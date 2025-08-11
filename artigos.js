@@ -34,12 +34,13 @@ router.get("/artigos", async (req, res) => {
 });
 
 // rota para buscar unidades do Moloni
+// rota para buscar unidades do Moloni
 router.get("/unidades", async (req, res) => {
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
-    const url = moloniUrl("units/getAll", token);
+    const url = moloniUrl("productUnits/getAll", token); // corrigido aqui
 
     const body = { company_id };
 
@@ -55,6 +56,7 @@ router.get("/unidades", async (req, res) => {
       return res.status(response.status).json(data);
     }
 
+    // data é um array com unidades: { unit_id, name, ... }
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -125,19 +127,29 @@ router.delete("/artigos/:id", async (req, res) => {
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
-    const product_id = req.params.id;
+    const product_id = parseInt(req.params.id, 10);
 
-    const url = moloniUrl("products/delete", token);
+    const url = `https://api.moloni.pt/v1/products/delete/?access_token=${token}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company_id, product_id }),
+      body: JSON.stringify({
+        company_id,
+        product_id,
+      }),
     });
 
     const data = await response.json();
-    res.json(data);
+    console.log("Resposta Moloni delete:", data);
+
+    if (data && data.error) {
+      return res.status(400).json({ error: data.error });
+    }
+
+    res.json({ success: true, data });
   } catch (error) {
+    console.error("Erro ao apagar produto:", error);
     res.status(500).json({ error: error.message });
   }
 });
