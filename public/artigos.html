@@ -255,13 +255,29 @@
         renderTable(produtos);
       }
 
-      // Eliminar produto
       async function deleteProduct(id) {
         if (!confirm("Tens a certeza que queres eliminar este produto?"))
           return;
-        await fetch(`/artigo/artigos/${id}`, { method: "DELETE" });
-        showMessage("success", "Produto eliminado com sucesso!");
-        fetchProducts();
+
+        try {
+          const res = await fetch(`/artigo/artigos/${id}`, {
+            method: "DELETE",
+          });
+
+          if (!res.ok) {
+            const err = await res.json();
+            showMessage(
+              "error",
+              "Erro ao eliminar: " + (err.error || "Erro desconhecido")
+            );
+            return;
+          }
+
+          showMessage("success", "Produto eliminado com sucesso!");
+          fetchProducts();
+        } catch (error) {
+          showMessage("error", "Erro na requisição: " + error.message);
+        }
       }
 
       // Criar produto
