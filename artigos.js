@@ -143,7 +143,7 @@ router.get("/unidades", async (req, res) => {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
-    const url = moloniUrl("products/units/getAll", token);
+    const url = moloniUrl("/unit_id/getAll", token);
 
     const body = { company_id };
 
