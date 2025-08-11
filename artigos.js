@@ -154,7 +154,7 @@ router.get("/unidades", async (req, res) => {
     });
 
     const data = await response.json();
-
+    console.log(data);
     if (!response.ok) {
       return res.status(response.status).json(data);
     }
