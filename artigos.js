@@ -2,7 +2,111 @@ import express from "express";
 const router = express.Router();
 
 import { getValidAccessToken, getCompanyId } from "./moloniAuth.js";
+// Simulando "base de dados local" de artigos
+const artigosLocais = [
+  {
+    name: "Artigo 1",
+    reference: "REF001",
+    price: 10.0,
+    tax_id: 1,
+    unit_id: 1,
+    summary: "Descrição artigo 1",
+    ean: "1234567890123",
+    category_id: 5,
+  },
+  {
+    name: "Artigo 2",
+    reference: "REF002",
+    price: 15.5,
+    tax_id: 1,
+    unit_id: 1,
+    summary: "Descrição artigo 2",
+    ean: "1234567890456",
+    category_id: 3,
+  },
+  // ... mais artigos
+];
+// Endpoint para obter artigos locais
+router.get("/artigos-locais", (req, res) => {
+  res.json(artigosLocais);
+});
+// Função que sincroniza artigos locais com Moloni
+async function sincronizarArtigos(token, company_id) {
+  // 1. Buscar artigos na Moloni
+  const urlMoloni = moloniUrl("products/getAll", token);
+  const resMoloni = await fetch(urlMoloni, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ company_id }),
+  });
+  const artigosMoloni = await resMoloni.json();
 
+  // Criar um Set com referências dos artigos Moloni para comparação rápida
+  const referenciasMoloni = new Set(artigosMoloni.map((a) => a.reference));
+
+  // 2. Percorrer os artigos locais e inserir os que não existem na Moloni
+  for (const artigo of artigosLocais) {
+    if (!referenciasMoloni.has(artigo.reference)) {
+      // Inserir artigo na Moloni
+      const urlInserir = moloniUrl("products/insert", token);
+
+      const body = {
+        company_id,
+        category_id: parseInt(artigo.category_id),
+        type: 1,
+        name: artigo.name,
+        reference: artigo.reference,
+        price: parseFloat(artigo.price),
+        unit_id: parseInt(artigo.unit_id),
+        has_stock: 0,
+        stock: 0,
+        summary: artigo.summary,
+        ean: artigo.ean,
+        taxes: [
+          {
+            tax_id: parseInt(artigo.tax_id),
+            value: 0,
+            order: 1,
+            cumulative: 0,
+          },
+        ],
+        pos_favorite: 1,
+        visibility_id: 1,
+      };
+
+      const resInserir = await fetch(urlInserir, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const dataInserir = await resInserir.json();
+      if (!resInserir.ok) {
+        console.error(
+          `Erro ao inserir artigo ${artigo.reference}:`,
+          dataInserir
+        );
+      } else {
+        console.log(`Artigo ${artigo.reference} inserido na Moloni.`);
+      }
+    } else {
+      console.log(`Artigo ${artigo.reference} já existe na Moloni.`);
+    }
+  }
+}
+// Endpoint para disparar sincronização
+router.post("/sincronizar", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+
+    await sincronizarArtigos(token, company_id);
+
+    res.json({ message: "Sincronização concluída" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Função para criar URLs com access_token e json=true
 function moloniUrl(endpoint, token) {
   return `https://api.moloni.pt/v1/${endpoint}/?access_token=${token}&json=true&human_errors=true`;

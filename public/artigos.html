@@ -134,7 +134,6 @@
 
     <div class="message success" id="msgSuccess"></div>
     <div class="message error" id="msgError"></div>
-
     <div class="top-bar">
       <input
         type="text"
@@ -142,7 +141,10 @@
         class="search-input"
         placeholder="Pesquisar..."
       />
-      <button id="openModalBtn">➕ Criar Novo Prato</button>
+      <div>
+        <button id="syncBtn">🔄 Sincronizar</button>
+        <button id="openModalBtn">➕ Criar Novo Prato</button>
+      </div>
     </div>
 
     <table id="productTable">
@@ -244,8 +246,8 @@
           '<option value="">-- Escolha uma unidade --</option>';
 
         // Procura a unidade padrão (pode ser "Unidade")
-        const defaultUnit = data.find(
-          (unit) => unit.name.toLowerCase() === "unidade"
+        const defaultUnit = data.find((unit) =>
+          unit.name.toLowerCase().includes("unid")
         );
 
         data.forEach((unit) => {
@@ -318,7 +320,22 @@
       function closeModal() {
         modal.style.display = "none";
       }
+      // Sincronizar artigos locais com Moloni
+      document.getElementById("syncBtn").addEventListener("click", async () => {
+        if (!confirm("Queres sincronizar os pratos locais com a Moloni?"))
+          return;
 
+        try {
+          const res = await fetch("/artigo/sincronizar", { method: "POST" });
+          if (!res.ok) throw new Error();
+
+          const data = await res.json();
+          showMessage("success", data.message || "Sincronização concluída!");
+          fetchProducts(); // Atualiza a tabela após sincronizar
+        } catch {
+          showMessage("error", "Erro ao sincronizar artigos.");
+        }
+      });
       // Init
       fetchCategorias();
       fetchUnidades();
