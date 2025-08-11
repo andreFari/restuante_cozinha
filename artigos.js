@@ -12,7 +12,7 @@ const artigosLocais = [
     unit_id: 1,
     summary: "Descrição artigo 1",
     ean: "1234567890123",
-    category_id: 5,
+    category_id: 9664037,
   },
   {
     name: "Artigo 2",
@@ -22,7 +22,7 @@ const artigosLocais = [
     unit_id: 1,
     summary: "Descrição artigo 2",
     ean: "1234567890456",
-    category_id: 3,
+    category_id: 9664037,
   },
   // ... mais artigos
 ];
