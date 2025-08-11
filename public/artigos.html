@@ -238,20 +238,30 @@
         });
       }
       async function fetchUnidades() {
-        const res = await fetch("/artigo/unidades");
-        const { units, defaultUnit } = await res.json();
-
         const select = document.getElementById("unit_id");
         select.innerHTML =
-          '<option value="">-- Escolha uma unidade --</option>';
+          '<option value="1" selected>Unidade (Padrão)</option>'; // default
 
-        units.forEach((unit) => {
-          const selected =
-            defaultUnit && unit.unit_id === defaultUnit.unit_id
-              ? "selected"
-              : "";
-          select.innerHTML += `<option value="${unit.unit_id}" ${selected}>${unit.name}</option>`;
-        });
+        try {
+          const res = await fetch("/artigo/unidades");
+          if (!res.ok) throw new Error("Erro a buscar unidades");
+          const data = await res.json();
+
+          const { units, defaultUnit } = data;
+
+          select.innerHTML =
+            '<option value="">-- Escolha uma unidade --</option>';
+          units.forEach((unit) => {
+            const selected =
+              defaultUnit && unit.unit_id === defaultUnit.unit_id
+                ? "selected"
+                : "";
+            select.innerHTML += `<option value="${unit.unit_id}" ${selected}>${unit.name}</option>`;
+          });
+        } catch (err) {
+          console.error("Falha ao carregar unidades, usando default:", err);
+          // mantém o option default "Unidade (Padrão)" com value=1
+        }
       }
       // Fetch produtos
       async function fetchProducts() {
