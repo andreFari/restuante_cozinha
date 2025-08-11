@@ -138,13 +138,12 @@ router.get("/artigos", async (req, res) => {
 });
 
 // rota para buscar unidades do Moloni
-// rota para buscar unidades do Moloni
 router.get("/unidades", async (req, res) => {
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
 
-    const url = moloniUrl("productUnits/getAll", token); // corrigido aqui
+    const url = moloniUrl("productUnits/getAll", token);
 
     const body = { company_id };
 
@@ -160,12 +159,20 @@ router.get("/unidades", async (req, res) => {
       return res.status(response.status).json(data);
     }
 
-    // data é um array com unidades: { unit_id, name, ... }
-    res.json(data);
+    // Procurar unidade padrão
+    const defaultUnit = data.find(
+      (unit) => unit.name.toLowerCase() === "unidade"
+    );
+
+    res.json({
+      units: data,
+      defaultUnit: defaultUnit || null,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 router.post("/artigos", async (req, res) => {
   try {
     const token = await getValidAccessToken();
