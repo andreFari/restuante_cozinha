@@ -40,7 +40,11 @@ async function sincronizarArtigos(token, company_id) {
     body: JSON.stringify({ company_id }),
   });
   const artigosMoloni = await resMoloni.json();
-
+  console.log("Artigos na Moloni:", artigosMoloni);
+  if (!Array.isArray(artigosMoloni)) {
+    console.error("Resposta inesperada dos artigos Moloni");
+    return;
+  }
   // Criar um Set com referências dos artigos Moloni para comparação rápida
   const referenciasMoloni = new Set(artigosMoloni.map((a) => a.reference));
 
