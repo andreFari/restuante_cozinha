@@ -222,7 +222,7 @@ router.post("/artigos", async (req, res) => {
     });
 
     const data = await response.json();
-
+    console.log(data);
     if (!response.ok) {
       // Retorna erro com detalhes da Moloni
       return res.status(response.status).json(data);

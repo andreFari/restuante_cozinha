@@ -237,21 +237,15 @@
           select.innerHTML += `<option value="${cat.category_id}">${cat.name}</option>`;
         });
       }
-
       async function fetchUnidades() {
         const res = await fetch("/artigo/unidades");
-        const data = await res.json();
+        const { units, defaultUnit } = await res.json();
+
         const select = document.getElementById("unit_id");
         select.innerHTML =
           '<option value="">-- Escolha uma unidade --</option>';
 
-        // Procura a unidade padrão (pode ser "Unidade")
-        const defaultUnit = data.find((unit) =>
-          unit.name.toLowerCase().includes("unid")
-        );
-
-        data.forEach((unit) => {
-          // Se for a unidade padrão, adiciona selected
+        units.forEach((unit) => {
           const selected =
             defaultUnit && unit.unit_id === defaultUnit.unit_id
               ? "selected"
