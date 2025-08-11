@@ -242,6 +242,9 @@
       async function fetchProducts() {
         const res = await fetch("/artigo/artigos");
         produtos = await res.json();
+        if (!Array.isArray(produtos)) {
+          produtos = produtos.products || []; // adapte conforme estrutura real
+        }
         renderTable(produtos);
       }
 

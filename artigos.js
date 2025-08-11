@@ -129,8 +129,9 @@ router.get("/artigos", async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    console.log(data);
+
     const data = await response.json();
+    console.log(data);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
