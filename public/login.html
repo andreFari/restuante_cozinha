@@ -359,10 +359,7 @@
         "drinks",
         "coffee",
       ];
-      const prepared = {};
-      categories.forEach((cat) => {
-        prepared[cat] = novoPedido[cat] ? novoPedido[cat].map(() => false) : [];
-      });
+
       function renderOrderDetails(index) {
         selectedTableIndex = index;
         const table = tables[index];
@@ -633,7 +630,12 @@
           drinks: [], // se quiser pode adicionar seção para bebidas
           coffee: [],
         };
-
+        const prepared = {};
+        categories.forEach((cat) => {
+          prepared[cat] = novoPedido[cat]
+            ? novoPedido[cat].map(() => false)
+            : [];
+        });
         const novaMesa = {
           id: tables.length + 1,
           name: nomeMesa,
