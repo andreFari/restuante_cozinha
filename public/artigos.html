@@ -229,14 +229,33 @@
         data.forEach((prod) => {
           const row = document.createElement("tr");
           row.innerHTML = `
-      <td>${prod.product_id}</td>
-      <td>${prod.name}</td>
-      <td>${prod.reference}</td>
-      <td>${prod.price} €</td>
-      <td><button class="delete-btn" onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
-    `;
+            <td>${prod.product_id}</td>
+            <td>${prod.name}</td>
+            <td>${prod.reference}</td>
+            <td>${prod.price} €</td>
+               <button class="edit-btn" onclick="openEdit(${prod.product_id})">✏️</button>
+            <td><button class="delete-btn" onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
+          `;
           tbody.appendChild(row);
         });
+      }
+      // Função para abrir modal com dados do produto para editar
+      function openEdit(id) {
+        const product = produtos.find((p) => p.product_id === id);
+        if (!product) return;
+
+        document.getElementById("name").value = product.name;
+        document.getElementById("category_id").value = product.category_id;
+        document.getElementById("reference").value = product.reference;
+        document.getElementById("price").value = product.price;
+        document.getElementById("tax_id").value = product.tax_id;
+        document.getElementById("summary").value = product.summary || "";
+        document.getElementById("ean").value = product.ean || "";
+
+        // Armazena o id do produto no formulário para diferenciar criação/edição
+        document.getElementById("newProductForm").dataset.editId = id;
+
+        modal.style.display = "flex";
       }
 
       // Fetch categorias
@@ -308,21 +327,32 @@
         .getElementById("newProductForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
+          const editId = e.target.dataset.editId;
           const product = {
+            product_id: editId ? parseInt(editId) : undefined,
             category_id: parseInt(document.getElementById("category_id").value),
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
             price: parseFloat(document.getElementById("price").value),
             unit_id: 1, // hardcoded unit_id
+
             tax_id: parseInt(document.getElementById("tax_id").value),
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
             has_stock: 0,
             stock: 0,
           };
+
           try {
-            const res = await fetch("/artigo/artigos", {
-              method: "POST",
+            let url = "/artigo/artigos";
+            let method = "POST";
+            if (editId) {
+              url = `/artigo/artigos/${editId}`;
+              method = "PUT"; // ou PATCH, conforme sua API
+            }
+
+            const res = await fetch(url, {
+              method,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(product),
             });

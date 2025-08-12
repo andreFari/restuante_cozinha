@@ -181,7 +181,74 @@ router.get("/unidades", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+router.put("/artigos/:id", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+    const product_id = parseInt(req.params.id, 10);
 
+    const {
+      name,
+      reference,
+      price,
+      tax_id,
+      unit_id,
+      summary,
+      ean,
+      category_id,
+      has_stock = 0,
+      stock = 0,
+      pos_favorite = 1,
+      exemption_reason = "",
+    } = req.body;
+
+    // Montar corpo conforme API Moloni update exige
+    const url = `https://api.moloni.pt/v1/products/update/?access_token=${token}`;
+
+    const body = {
+      company_id,
+      product_id,
+      category_id: parseInt(category_id),
+      type: 1, // Produto
+      name,
+      reference,
+      price: parseFloat(price),
+      unit_id: parseInt(unit_id),
+      has_stock: parseInt(has_stock),
+      stock: parseFloat(stock),
+      summary,
+      ean,
+      pos_favorite: parseInt(pos_favorite),
+      exemption_reason, // se necessário
+
+      // array de impostos
+      taxes: [
+        {
+          tax_id: parseInt(tax_id),
+          value: 0, // valor será ajustado pela Moloni
+          order: 1,
+          cumulative: 0,
+        },
+      ],
+    };
+
+    const response = await fetch(url, {
+      method: "POST", // Moloni usa POST mesmo para update
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 router.post("/artigos", async (req, res) => {
   try {
     const token = await getValidAccessToken();
