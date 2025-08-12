@@ -308,7 +308,7 @@
             plates: [], // no plates
             extras: [], // no extras
             drinks: [], // no drinks
-            desserts: ["Bolo"], // only Bolo
+            desserts: [{ id: 210061572, name: "Bolo" }], // only Bolo
             coffee: [], // no coffee
           },
           prepared: {
@@ -527,12 +527,12 @@
         const products = [];
 
         sections.forEach((section) => {
-          order[section].forEach((itemName) => {
-            const product = moloniProductMap[itemName];
+          order[section].forEach((item) => {
+            const product = moloniProductMap[item.name];
             if (product) {
               products.push({
                 product_id: product.product_id,
-                name: itemName,
+                name: item.name,
                 qty: 1,
                 price: product.price,
                 taxes: [{ tax_id: product.tax_id }],
@@ -616,19 +616,22 @@
           return;
         }
 
-        function getSelectedValues(selectId) {
+        function getSelectedObjects(selectId) {
           return Array.from(
             document.getElementById(selectId).selectedOptions
-          ).map((opt) => opt.textContent); // <-- pega o nome do artigo
+          ).map((opt) => ({
+            id: opt.value, // id do artigo
+            name: opt.textContent, // nome do artigo
+          }));
         }
         const novoPedido = {
           status: "unpaid",
-          plates: getSelectedValues("principalArticles"),
-          secondaryPlates: getSelectedValues("secondaryArticles"),
-          sides: getSelectedValues("sideArticles"),
-          desserts: getSelectedValues("dessertArticles"),
-          extras: [], // se quiser, pode adicionar seleção para extras
-          drinks: [], // se quiser pode adicionar seção para bebidas
+          plates: getSelectedObjects("principalArticles"),
+          secondaryPlates: getSelectedObjects("secondaryArticles"),
+          sides: getSelectedObjects("sideArticles"),
+          desserts: getSelectedObjects("dessertArticles"),
+          extras: [],
+          drinks: [],
           coffee: [],
         };
         const prepared = {};
