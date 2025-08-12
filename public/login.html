@@ -3,164 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Painel de Admin / Recessão</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        background: #f2f2f2;
-      }
-      header {
-        background: #fff;
-        padding: 1rem 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #ddd;
-        flex-wrap: wrap;
-        gap: 1rem;
-      }
-      header h1 {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 600;
-        flex-grow: 1;
-        min-width: 200px;
-      }
-
-      .logo-title {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-      }
-
-      .logo {
-        height: 40px;
-        width: auto;
-      }
-      .system-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #333;
-      }
-      header .links-container {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      header .links-container a {
-        color: #007bff;
-        text-decoration: none;
-        font-weight: 600;
-      }
-
-      header .links-container a:hover {
-        color: #0056b3;
-      }
-      .page-title {
-        font-size: 1.6rem;
-        font-weight: bold;
-        margin: 20px 30px 10px;
-        color: #333;
-      }
-      #tokenDisplay {
-        color: #555;
-        font-size: 0.9rem;
-        margin: 10px 20px;
-        text-align: right;
-      }
-      .login-section {
-        background: #fff;
-        padding: 15px;
-        margin: 10px auto;
-        width: 300px;
-        border-radius: 5px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-      }
-      .login-section input {
-        width: 100%;
-        padding: 8px;
-        margin: 6px 0;
-        box-sizing: border-box;
-      }
-      .btn {
-        padding: 6px 12px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-top: 10px;
-      }
-      .btn:hover {
-        background: #0056b3;
-      }
-      .container {
-        display: flex;
-        padding: 20px;
-      }
-      .table-lists {
-        width: 30%;
-        padding-right: 20px;
-      }
-      .table-section {
-        margin-bottom: 30px;
-      }
-      .table-section h3 {
-        margin-bottom: 10px;
-        color: #333;
-      }
-      .table-item {
-        background: white;
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin-bottom: 8px;
-        cursor: pointer;
-      }
-      .table-item.open {
-        border-left: 5px solid green;
-      }
-      .table-item.closed {
-        border-left: 5px solid red;
-      }
-      .order-details {
-        flex-grow: 1;
-        padding-left: 20px;
-      }
-      .section {
-        background: white;
-        margin-bottom: 20px;
-        padding: 10px;
-        border: 1px solid #ccc;
-      }
-      .section h3 {
-        margin-top: 0;
-      }
-      .item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
-      }
-      .item input {
-        margin-right: 10px;
-      }
-      .status {
-        font-size: 0.9em;
-        padding: 5px 10px;
-        margin-bottom: 10px;
-        display: inline-block;
-        border-radius: 4px;
-      }
-      .status.paid {
-        background: #d4edda;
-        color: #155724;
-      }
-      .status.unpaid {
-        background: #f8d7da;
-        color: #721c24;
-      }
-    </style>
+    <link rel="stylesheet" href="login.css" />
   </head>
 
   <body>
@@ -179,14 +22,6 @@
         <a href="/artigos.html">🍽️ Gerir Pratos (Moloni)</a>
       </div>
       <div id="tokenDisplay"></div>
-      <!-- Login antigo via username/password (comentado) 
-      <div id="moloniLoginForm" style="margin-top: 15px">
-        <input id="username" type="email" placeholder="Email Moloni" />
-        <input id="password" type="password" placeholder="Password Moloni" />
-        <button onclick="loginMoloni()">Login</button>
-        <p id="loginStatus"></p>
-      </div>
-        -->
     </header>
     <div id="mainContent" style="display: none">
       <h1>Painel de Admin / Recessão</h1>
@@ -470,15 +305,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-                                      <strong>${table.name}</strong> - ${
+                                            <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-                                      ${
-                                        table.kitchenNote
-                                          ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                                          : ""
-                                      }
-                                    `;
+                                            ${
+                                              table.kitchenNote
+                                                ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                                                : ""
+                                            }
+                                          `;
 
           div.onclick = () => renderOrderDetails(index);
 
@@ -499,96 +334,98 @@
         function renderSection(title, items, prepState, key) {
           if (items.length === 0) return "";
           return `
-                                      <div class="section">
-                                        <h3>${title}</h3>
-                                        ${items
-                                          .map(
-                                            (item, i) => `
-                                          <div class="item">
-                                            <input type="checkbox" ${
-                                              prepState[i] ? "checked" : ""
-                                            }
-                                              onchange="togglePrepared(${index}, '${key}', ${i})">
-                                            <label>${item}</label>
-                                          </div>
-                                        `
-                                          )
-                                          .join("")}
-                                      </div>
-                                    `;
+                                            <div class="section">
+                                              <h3>${title}</h3>
+                                              ${items
+                                                .map(
+                                                  (item, i) => `
+                                                <div class="item">
+                                                  <input type="checkbox" ${
+                                                    prepState[i]
+                                                      ? "checked"
+                                                      : ""
+                                                  }
+                                                    onchange="togglePrepared(${index}, '${key}', ${i})">
+                                                  <label>${item}</label>
+                                                </div>
+                                              `
+                                                )
+                                                .join("")}
+                                            </div>
+                                          `;
         }
 
         orderDetails.innerHTML = `
-                                    <h2>${table.name} - ${
+                                          <h2>${table.name} - ${
           table.open ? "Aberta" : "Fechada"
         }</h2>
 
-                                    <div class="section">
-                                      <label><strong>Nota da cozinha :</strong></label><br>
-                                      <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-                                        table.kitchenNote
-                                      }</textarea>
-                                      <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-                                    </div>
+                                          <div class="section">
+                                            <label><strong>Nota da cozinha :</strong></label><br>
+                                            <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+                                              table.kitchenNote
+                                            }</textarea>
+                                            <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+                                          </div>
 
-                                    <div class="status ${
-                                      order.status === "paid"
-                                        ? "paid"
-                                        : "unpaid"
-                                    }">
-                                      ${
-                                        order.status === "paid"
-                                          ? "Pago"
-                                          : "Por Pagar"
-                                      }
-                                    </div>
-                                    <button class="btn" onclick="togglePaid(${index})">
-                                      Marcar como ${
-                                        order.status === "paid"
-                                          ? "Por Pagar"
-                                          : "Pago"
-                                      }
-                                    </button>
+                                          <div class="status ${
+                                            order.status === "paid"
+                                              ? "paid"
+                                              : "unpaid"
+                                          }">
+                                            ${
+                                              order.status === "paid"
+                                                ? "Pago"
+                                                : "Por Pagar"
+                                            }
+                                          </div>
+                                          <button class="btn" onclick="togglePaid(${index})">
+                                            Marcar como ${
+                                              order.status === "paid"
+                                                ? "Por Pagar"
+                                                : "Pago"
+                                            }
+                                          </button>
 
-                                    <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-                                      ${
-                                        table.open
-                                          ? "Fechar Mesa"
-                                          : "Abrir Mesa"
-                                      }
-                                    </button>
-                        <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
-                                    ${renderSection(
-                                      "Pratos",
-                                      order.plates,
-                                      prepared.plates,
-                                      "plates"
-                                    )}
-                                    ${renderSection(
-                                      "Extras",
-                                      order.extras,
-                                      prepared.extras,
-                                      "extras"
-                                    )}
-                                    ${renderSection(
-                                      "Bebidas",
-                                      order.drinks,
-                                      prepared.drinks,
-                                      "drinks"
-                                    )}
-                                    ${renderSection(
-                                      "Sobremesas",
-                                      order.desserts,
-                                      prepared.desserts,
-                                      "desserts"
-                                    )}
-                                    ${renderSection(
-                                      "Cafés",
-                                      order.coffee,
-                                      prepared.coffee,
-                                      "coffee"
-                                    )}
-                                  `;
+                                          <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+                                            ${
+                                              table.open
+                                                ? "Fechar Mesa"
+                                                : "Abrir Mesa"
+                                            }
+                                          </button>
+                              <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+                                          ${renderSection(
+                                            "Pratos",
+                                            order.plates,
+                                            prepared.plates,
+                                            "plates"
+                                          )}
+                                          ${renderSection(
+                                            "Extras",
+                                            order.extras,
+                                            prepared.extras,
+                                            "extras"
+                                          )}
+                                          ${renderSection(
+                                            "Bebidas",
+                                            order.drinks,
+                                            prepared.drinks,
+                                            "drinks"
+                                          )}
+                                          ${renderSection(
+                                            "Sobremesas",
+                                            order.desserts,
+                                            prepared.desserts,
+                                            "desserts"
+                                          )}
+                                          ${renderSection(
+                                            "Cafés",
+                                            order.coffee,
+                                            prepared.coffee,
+                                            "coffee"
+                                          )}
+                                        `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
@@ -700,23 +537,32 @@
         document.getElementById("mainContent").style.display = "block";
         renderTables();
       }
-      function openCreateTableModal() {
-        // Preenche select com artigos do moloniProductMap
+      async function openCreateTableModal() {
         const select = document.getElementById("newTableArticles");
         select.innerHTML = ""; // limpa
-        Object.keys(moloniProductMap).forEach((artigo) => {
-          const option = document.createElement("option");
-          option.value = artigo;
-          option.textContent = artigo;
-          select.appendChild(option);
-        });
+
+        try {
+          const response = await fetch("/artigo/api/artigos"); // ajustar URL conforme necessário
+          if (!response.ok) throw new Error("Erro ao buscar artigos");
+
+          const artigos = await response.json();
+
+          // Assumindo que 'artigos' é um array de objetos com a propriedade 'name' ou 'description'
+          artigos.forEach((artigo) => {
+            const option = document.createElement("option");
+            // Ajusta o campo abaixo conforme o formato da resposta da tua API:
+            option.value =
+              artigo.name || artigo.description || artigo.product_name;
+            option.textContent =
+              artigo.name || artigo.description || artigo.product_name;
+            select.appendChild(option);
+          });
+        } catch (err) {
+          alert("Não foi possível carregar os artigos: " + err.message);
+        }
 
         document.getElementById("newTableName").value = "";
         document.getElementById("createTableModal").style.display = "flex";
-      }
-
-      function closeCreateTableModal() {
-        document.getElementById("createTableModal").style.display = "none";
       }
 
       function createNewTable() {
