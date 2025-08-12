@@ -368,7 +368,10 @@
           }
 
           const token = localStorage.getItem("moloni_token");
-
+          if (!token) {
+            alert("Por favor, faça login no Moloni primeiro!");
+            return;
+          }
           console.log("📤 Sending request:", { method, url, product, token });
 
           try {
