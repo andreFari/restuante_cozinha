@@ -182,6 +182,10 @@ router.get("/unidades", async (req, res) => {
   }
 });
 router.put("/artigos/:id", async (req, res) => {
+  console.log("📡 PUT /artigos/:id hit");
+  console.log("🆔 Product ID:", req.params.id);
+  console.log("📥 Headers:", req.headers);
+  console.log("📥 Body:", req.body);
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
@@ -195,6 +199,7 @@ router.put("/artigos/:id", async (req, res) => {
       unit_id,
       summary,
       ean,
+
       category_id,
       has_stock = 0,
       stock = 0,
@@ -203,7 +208,7 @@ router.put("/artigos/:id", async (req, res) => {
     } = req.body;
 
     // Montar corpo conforme API Moloni update exige
-    const url = `https://api.moloni.pt/v1/products/update/?access_token=${token}`;
+    const url = `https://api.moloni.pt/v1/products/update`;
 
     const body = {
       company_id,
@@ -236,6 +241,7 @@ router.put("/artigos/:id", async (req, res) => {
       method: "POST", // Moloni usa POST mesmo para update
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      Authorization: `Bearer ${token}`,
     });
 
     const data = await response.json();
@@ -447,10 +453,6 @@ router.post("/categorias", async (req, res) => {
 
 // Editar categoria
 router.put("/categorias/:id", async (req, res) => {
-  console.log("📡 PUT /artigos/:id hit");
-  console.log("🆔 Product ID:", req.params.id);
-  console.log("📥 Headers:", req.headers);
-  console.log("📥 Body:", req.body);
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
