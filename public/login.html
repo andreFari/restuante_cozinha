@@ -350,6 +350,15 @@
           }
         });
       }
+      const categories = [
+        "plates",
+        "secondaryPlates",
+        "sides",
+        "extras",
+        "desserts",
+        "drinks",
+        "coffee",
+      ];
       const prepared = {};
       categories.forEach((cat) => {
         prepared[cat] = novoPedido[cat] ? novoPedido[cat].map(() => false) : [];
@@ -379,15 +388,6 @@
       </div>
     `;
         }
-        const categories = [
-          "plates",
-          "secondaryPlates",
-          "sides",
-          "extras",
-          "desserts",
-          "drinks",
-          "coffee",
-        ];
 
         // Mapeia títulos bonitinhos para as categorias
         const categoryTitles = {
