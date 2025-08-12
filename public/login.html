@@ -273,6 +273,7 @@
               tableName: table.name,
               notes: notes,
               order: table.order,
+              products: products,
             }),
           });
 
@@ -377,7 +378,7 @@
           <div class="item">
             <input type="checkbox" ${prepState[i] ? "checked" : ""}
               onchange="togglePrepared(${index}, '${key}', ${i})">
-            <label>${item}</label>
+            <label>${item.nome}</label>
           </div>
         `
           )
@@ -617,9 +618,8 @@
         function getSelectedValues(selectId) {
           return Array.from(
             document.getElementById(selectId).selectedOptions
-          ).map((opt) => opt.value);
+          ).map((opt) => opt.textContent); // <-- pega o nome do artigo
         }
-
         const novoPedido = {
           status: "unpaid",
           plates: getSelectedValues("principalArticles"),
