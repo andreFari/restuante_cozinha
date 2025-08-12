@@ -170,8 +170,15 @@
           <label>Nome *</label>
           <input type="text" id="name" required />
 
-          <label>Descrição</label>
-          <input type="text" id="description" />
+          <label for="description">Descrição</label>
+          <select id="description" required>
+            <option value="" disabled selected>Selecione uma categoria</option>
+            <option value="prato principal">Prato Principal</option>
+            <option value="prato secundário">Prato Secundário</option>
+            <option value="acompanhamento">Acompanhamento</option>
+            <option value="sobremesa">Sobremesa</option>
+          </select>
+
           <button type="submit">Guardar</button>
         </form>
       </div>
@@ -277,7 +284,11 @@
             showMessage("error", "Erro ao guardar categoria.");
           }
         });
-
+      const descriptionSelect = document.getElementById("description");
+      if (!descriptionSelect.value) {
+        alert("Por favor, selecione uma descrição válida.");
+        return; // interrompe o envio
+      }
       const modal = document.getElementById("categoryModal");
       document.getElementById("closeModal").onclick = () =>
         (modal.style.display = "none");

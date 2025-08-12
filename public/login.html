@@ -78,17 +78,43 @@
             placeholder="Ex: Mesa 3"
           />
 
-          <label>Escolha artigos para pedido (ctrl+click para múltiplos):</label
-          ><br />
-          <select
-            id="newTableArticles"
-            multiple
-            style="width: 100%; height: 120px; margin-bottom: 10px"
-          >
-            <!-- opções serão inseridas pelo JS -->
-          </select>
+          <div class="category-section">
+            <h4>Pratos Principais</h4>
+            <select
+              id="principalArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
 
-          <div style="text-align: right">
+          <div class="category-section">
+            <h4>Pratos Secundários</h4>
+            <select
+              id="secondaryArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
+
+          <div class="category-section">
+            <h4>Acompanhamentos</h4>
+            <select
+              id="sideArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
+
+          <div class="category-section">
+            <h4>Sobremesas</h4>
+            <select
+              id="dessertArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
+
+          <div style="text-align: right; margin-top: 10px">
             <button
               onclick="closeCreateTableModal()"
               style="margin-right: 10px"
@@ -549,52 +575,67 @@
       }
 
       async function openCreateTableModal() {
-        const select = document.getElementById("newTableArticles");
-        select.innerHTML = ""; // limpa
+        // Limpar selects
+        [
+          "principalArticles",
+          "secondaryArticles",
+          "sideArticles",
+          "dessertArticles",
+        ].forEach((id) => {
+          document.getElementById(id).innerHTML = "";
+        });
 
         try {
-          const response = await fetch("/artigo/artigos"); // ajustar URL conforme necessário
+          const response = await fetch("/artigo/artigos");
           if (!response.ok) throw new Error("Erro ao buscar artigos");
 
           const artigos = await response.json();
 
-          // Assumindo que 'artigos' é um array de objetos com a propriedade 'name' ou 'description'
           artigos.forEach((artigo) => {
             const option = document.createElement("option");
-            // Ajusta o campo abaixo conforme o formato da resposta da tua API:
-            option.value =
-              artigo.name || artigo.description || artigo.product_name;
-            option.textContent =
-              artigo.name || artigo.description || artigo.product_name;
-            select.appendChild(option);
+            option.value = artigo.id || artigo.name; // adapte conforme sua API
+            option.textContent = artigo.name || artigo.description;
+
+            // Categorizar baseado na descrição (ou outro campo)
+            const desc = (artigo.description || "").toLowerCase();
+
+            if (desc.includes("prato principal")) {
+              document.getElementById("principalArticles").appendChild(option);
+            } else if (desc.includes("prato secundário")) {
+              document.getElementById("secondaryArticles").appendChild(option);
+            } else if (desc.includes("acompanhamento")) {
+              document.getElementById("sideArticles").appendChild(option);
+            } else if (desc.includes("sobremesa")) {
+              document.getElementById("dessertArticles").appendChild(option);
+            }
           });
+
+          document.getElementById("newTableName").value = "";
+          document.getElementById("createTableModal").style.display = "flex";
         } catch (err) {
           alert("Não foi possível carregar os artigos: " + err.message);
         }
-
-        document.getElementById("newTableName").value = "";
-        document.getElementById("createTableModal").style.display = "flex";
       }
-
       function createNewTable() {
-        const nameInput = document.getElementById("newTableName");
-        const selectedArticles = Array.from(
-          document.getElementById("newTableArticles").selectedOptions
-        ).map((opt) => opt.value);
-
-        const nomeMesa = nameInput.value.trim();
+        const nomeMesa = document.getElementById("newTableName").value.trim();
         if (!nomeMesa) {
           alert("Por favor, insira um nome para a mesa.");
           return;
         }
 
-        // Criar novo pedido só com sobremesas (exemplo: adapta conforme necessário)
+        function getSelectedValues(selectId) {
+          return Array.from(
+            document.getElementById(selectId).selectedOptions
+          ).map((opt) => opt.value);
+        }
+
         const novoPedido = {
           status: "unpaid",
-          plates: [],
-          extras: [],
-          drinks: [],
-          desserts: selectedArticles, // por exemplo: todos artigos selecionados como sobremesas
+          plates: getSelectedValues("principalArticles"),
+          secondaryPlates: getSelectedValues("secondaryArticles"),
+          sides: getSelectedValues("sideArticles"),
+          desserts: getSelectedValues("dessertArticles"),
+          drinks: [], // se quiser pode adicionar seção para bebidas
           coffee: [],
         };
 
@@ -605,10 +646,11 @@
           kitchenNote: "",
           order: novoPedido,
           prepared: {
-            plates: [],
-            extras: [],
+            plates: novoPedido.plates.map(() => false),
+            secondaryPlates: novoPedido.secondaryPlates.map(() => false),
+            sides: novoPedido.sides.map(() => false),
+            desserts: novoPedido.desserts.map(() => false),
             drinks: [],
-            desserts: selectedArticles.map(() => false),
             coffee: [],
           },
         };
