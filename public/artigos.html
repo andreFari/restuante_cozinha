@@ -166,7 +166,6 @@
           <th>Nome</th>
           <th>Referência</th>
           <th>Preço</th>
-          <th>Editar</th>
           <th>Eliminar</th>
         </tr>
       </thead>
@@ -240,7 +239,6 @@
           tbody.appendChild(row);
         });
       }
-      // Função para abrir modal com dados do produto para editar
       function openEdit(id) {
         const product = produtos.find((p) => p.product_id === id);
         if (!product) return;
@@ -277,6 +275,18 @@
 
         modal.style.display = "flex";
       };
+
+      // Fetch categorias
+      async function fetchCategorias() {
+        const res = await fetch("/artigo/categorias");
+        const data = await res.json();
+        const select = document.getElementById("category_id");
+        select.innerHTML =
+          '<option value="">-- Escolha uma categoria --</option>';
+        data.forEach((cat) => {
+          select.innerHTML += `<option value="${cat.category_id}">${cat.name}</option>`;
+        });
+      }
 
       // Fetch produtos
       async function fetchProducts() {
