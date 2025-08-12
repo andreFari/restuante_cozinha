@@ -253,22 +253,29 @@
         document.getElementById("ean").value = product.ean || "";
 
         // Armazena o id do produto no formulário para diferenciar criação/edição
-        document.getElementById("newProductForm").dataset.editId = id;
+        const form = document.getElementById("newProductForm");
+        form.dataset.editId = id;
+
+        // Ajustar título e botão
+        document.querySelector("#productModal h2").textContent =
+          "✏️ Editar Prato";
+        form.querySelector("button[type='submit']").textContent = "Salvar";
 
         modal.style.display = "flex";
       }
 
-      // Fetch categorias
-      async function fetchCategorias() {
-        const res = await fetch("/artigo/categorias");
-        const data = await res.json();
-        const select = document.getElementById("category_id");
-        select.innerHTML =
-          '<option value="">-- Escolha uma categoria --</option>';
-        data.forEach((cat) => {
-          select.innerHTML += `<option value="${cat.category_id}">${cat.name}</option>`;
-        });
-      }
+      // Para abrir modal novo produto:
+      document.getElementById("openModalBtn").onclick = () => {
+        const form = document.getElementById("newProductForm");
+        form.reset();
+        delete form.dataset.editId;
+
+        document.querySelector("#productModal h2").textContent =
+          "➕ Criar Novo Prato";
+        form.querySelector("button[type='submit']").textContent = "Criar";
+
+        modal.style.display = "flex";
+      };
 
       // Fetch produtos
       async function fetchProducts() {
