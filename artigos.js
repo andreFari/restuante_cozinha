@@ -447,6 +447,10 @@ router.post("/categorias", async (req, res) => {
 
 // Editar categoria
 router.put("/categorias/:id", async (req, res) => {
+  console.log("📡 PUT /artigos/:id hit");
+  console.log("🆔 Product ID:", req.params.id);
+  console.log("📥 Headers:", req.headers);
+  console.log("📥 Body:", req.body);
   try {
     const token = await getValidAccessToken();
     const company_id = getCompanyId();
@@ -471,6 +475,7 @@ router.put("/categorias/:id", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
+    console.error("❌ Backend error:", error);
     res.status(500).json({ error: error.message });
   }
 });
