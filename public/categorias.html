@@ -167,8 +167,10 @@
           <input type="hidden" id="category_id" />
           <label>Nome *</label>
           <input type="text" id="name" required />
-          <label>Parent ID</label>
-          <input type="number" id="parent_id" value="0" />
+          <label>Parent *</label>
+          <select id="parent_id">
+            <option value="0">0 - Sem pai</option>
+          </select>
           <label>Descrição</label>
           <input type="text" id="description" />
           <button type="submit">Guardar</button>
@@ -211,8 +213,18 @@
         const res = await fetch("/artigo/categorias");
         categorias = await res.json();
         renderTable(categorias);
+        preencherDropdownCategorias();
       }
+      function preencherDropdownCategorias() {
+        const select = document.getElementById("parent_id");
+        select.innerHTML = '<option value="0">0 - Sem pai</option>'; // reset
 
+        categorias.forEach((cat) => {
+          select.innerHTML += `<option value="${cat.category_id}">
+      ${cat.name} (ID: ${cat.category_id})
+    </option>`;
+        });
+      }
       async function deleteCategory(id) {
         if (!confirm("Tens a certeza que queres eliminar esta categoria?"))
           return;
