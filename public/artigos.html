@@ -366,6 +366,7 @@
             let url = "/artigo/artigos";
             let method = "POST";
             if (editId) {
+              console.log("Id do artigo a atualizar", editId);
               url = `/artigo/artigos/${editId}`;
               method = "PUT"; // ou PATCH, conforme sua API
             }
