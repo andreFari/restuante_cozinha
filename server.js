@@ -341,7 +341,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
     }
 
-    // 🔹 Extrair e juntar todos os itens do pedido
     const items = [
       ...(order.plates || []),
       ...(order.drinks || []),
@@ -349,12 +348,12 @@ app.post("/api/emitir-fatura", async (req, res) => {
       ...(order.extras || []),
       ...(order.coffee || []),
     ];
-
     // 🔹 Converter cada item num produto da Moloni
     const products = items
+      .map((item) => (item && item.name ? item.name : null))
       .filter((name) => typeof name === "string" && name.trim().length > 0)
       .map((name) => {
-        const product = moloniProductMap[name]; // ← pode estar no backend ou vir do frontend
+        const product = moloniProductMap[name];
         if (!product) {
           return {
             product_id: 210061572, // fallback
@@ -372,7 +371,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
           taxes: [{ tax_id: product.tax_id }],
         };
       });
-
     if (!products.length) {
       return res.status(400).json({ error: "sem_produtos_validos" });
     }
