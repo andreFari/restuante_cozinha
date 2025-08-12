@@ -349,5 +349,87 @@ router.get("/categorias", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Criar categoria
+router.post("/categorias", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+    const { name, parent_id = 0, description = "" } = req.body;
 
+    const url = moloniUrl("productCategories/insert", token);
+    const body = {
+      company_id,
+      parent_id: parseInt(parent_id),
+      name,
+      description,
+      pos_enabled: 1,
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Editar categoria
+router.put("/categorias/:id", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+    const { name, parent_id = 0, description = "" } = req.body;
+
+    const url = moloniUrl("productCategories/update", token);
+    const body = {
+      company_id,
+      category_id: parseInt(req.params.id),
+      parent_id: parseInt(parent_id),
+      name,
+      description,
+      pos_enabled: 1,
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Apagar categoria
+router.delete("/categorias/:id", async (req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    const company_id = getCompanyId();
+
+    const url = moloniUrl("productCategories/delete", token);
+    const body = {
+      company_id,
+      category_id: parseInt(req.params.id),
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 export default router;
