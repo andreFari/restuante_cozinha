@@ -70,7 +70,7 @@ async function sincronizarArtigos(token, company_id) {
         taxes: [
           {
             tax_id: parseInt(artigo.tax_id),
-            value: 0,
+            value: null,
             order: 1,
             cumulative: 0,
           },
