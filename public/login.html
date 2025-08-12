@@ -46,44 +46,85 @@
           <p>Selecione uma mesa para ver os detalhes do pedido</p>
         </div>
       </div>
-      <div id="createTableModal" class="modal">
-        <div class="modal-content">
-          <h2>Abrir Nova Mesa</h2>
+      <div
+        id="createTableModal"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          justify-content: center;
+          align-items: center;
+        "
+      >
+        <div
+          style="
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 350px;
+            max-width: 90%;
+          "
+        >
+          <h3>Abrir Nova Mesa</h3>
+          <label for="newTableName">Nome da Mesa:</label><br />
+          <input
+            type="text"
+            id="newTableName"
+            style="width: 100%; margin-bottom: 10px"
+            placeholder="Ex: Mesa 3"
+          />
 
-          <label for="newTableName">Nome da Mesa:</label>
-          <input type="text" id="newTableName" placeholder="Ex: Mesa 3" />
-
-          <div class="menu-section">
-            <h3>Pratos Principais</h3>
-            <div class="items-list" id="principalArticles"></div>
+          <div class="category-section">
+            <h4>Pratos Principais</h4>
+            <select
+              id="principalArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
           </div>
 
-          <div class="menu-section">
-            <h3>Pratos Secundários</h3>
-            <div class="items-list" id="secondaryArticles"></div>
+          <div class="category-section">
+            <h4>Pratos Secundários</h4>
+            <select
+              id="secondaryArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
           </div>
 
-          <div class="menu-section">
-            <h3>Acompanhamentos</h3>
-            <div class="items-list" id="sideArticles"></div>
+          <div class="category-section">
+            <h4>Acompanhamentos</h4>
+            <select
+              id="sideArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
           </div>
 
-          <div class="menu-section">
-            <h3>Sobremesas</h3>
-            <div class="items-list" id="dessertArticles"></div>
+          <div class="category-section">
+            <h4>Sobremesas</h4>
+            <select
+              id="dessertArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
           </div>
 
-          <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeCreateTableModal()">
+          <div style="text-align: right; margin-top: 10px">
+            <button
+              onclick="closeCreateTableModal()"
+              style="margin-right: 10px"
+            >
               Cancelar
             </button>
-            <button class="btn-confirm" onclick="createNewTable()">
-              Abrir Mesa
-            </button>
+            <button onclick="createNewTable()">Abrir Mesa</button>
           </div>
         </div>
       </div>
-
       <div
         id="invoiceModal"
         style="
@@ -267,7 +308,6 @@
             drinks: [], // no drinks
             desserts: ["Bolo"], // only Bolo
             coffee: [], // no coffee
-            sides: [],
           },
           prepared: {
             plates: [],
@@ -275,7 +315,6 @@
             drinks: [],
             desserts: [false], // Bolo not prepared yet
             coffee: [],
-            sides: [],
           },
         },
       ];
@@ -411,12 +450,6 @@
                                             order.coffee,
                                             prepared.coffee,
                                             "coffee"
-                                          )}
-                                          ${renderSection(
-                                            "Acompanhamentos",
-                                            order.sides || [],
-                                            prepared.sides || [],
-                                            "sides"
                                           )}
                                         `;
       }
@@ -594,24 +627,6 @@
           alert("Não foi possível carregar os artigos: " + err.message);
         }
       }
-      function renderArticles(articles, containerId) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = "";
-        articles.forEach((artigo) => {
-          const tag = document.createElement("div");
-          tag.className = "item-tag";
-          tag.textContent = artigo.name || artigo.description;
-          tag.dataset.value = artigo.id;
-          tag.onclick = () => tag.classList.toggle("selected");
-          container.appendChild(tag);
-        });
-      }
-
-      function getSelectedValuesFromTags(containerId) {
-        return Array.from(
-          document.querySelectorAll(`#${containerId} .item-tag.selected`)
-        ).map((tag) => tag.dataset.value);
-      }
       function createNewTable() {
         const nomeMesa = document.getElementById("newTableName").value.trim();
         if (!nomeMesa) {
@@ -628,13 +643,13 @@
         const novoPedido = {
           status: "unpaid",
           plates: getSelectedValues("principalArticles"),
-          extras: getSelectedValues("secondaryArticles").concat(
-            getSelectedValues("sideArticles")
-          ),
-          drinks: [],
+          secondaryPlates: getSelectedValues("secondaryArticles"),
+          sides: getSelectedValues("sideArticles"),
           desserts: getSelectedValues("dessertArticles"),
+          drinks: [], // se quiser pode adicionar seção para bebidas
           coffee: [],
         };
+
         const novaMesa = {
           id: tables.length + 1,
           name: nomeMesa,
@@ -643,9 +658,10 @@
           order: novoPedido,
           prepared: {
             plates: novoPedido.plates.map(() => false),
-            extras: novoPedido.extras.map(() => false),
-            drinks: [],
+            secondaryPlates: novoPedido.secondaryPlates.map(() => false),
+            sides: novoPedido.sides.map(() => false),
             desserts: novoPedido.desserts.map(() => false),
+            drinks: [],
             coffee: [],
           },
         };
