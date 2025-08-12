@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Painel de Admin / Recessão</title>
-    <link rel="stylesheet" href="login.css" />
+    <link rel="stylesheet" href="../css/login.css" />
   </head>
 
   <body>
@@ -542,7 +542,7 @@
         select.innerHTML = ""; // limpa
 
         try {
-          const response = await fetch("/artigo/api/artigos"); // ajustar URL conforme necessário
+          const response = await fetch("/api/artigos"); // ajustar URL conforme necessário
           if (!response.ok) throw new Error("Erro ao buscar artigos");
 
           const artigos = await response.json();
