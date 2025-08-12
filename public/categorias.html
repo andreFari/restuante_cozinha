@@ -52,6 +52,7 @@
       td {
         padding: 12px 15px;
         border-bottom: 1px solid #eee;
+        text-align: center; /* <-- adiciona isso */
       }
       th {
         background: #f1f3f5;
@@ -167,10 +168,7 @@
           <input type="hidden" id="category_id" />
           <label>Nome *</label>
           <input type="text" id="name" required />
-          <label>Parent *</label>
-          <select id="parent_id">
-            <option value="0">0 - Sem pai</option>
-          </select>
+
           <label>Descrição</label>
           <input type="text" id="description" />
           <button type="submit">Guardar</button>
@@ -199,7 +197,7 @@
           row.innerHTML = `
           <td>${cat.category_id}</td>
           <td>${cat.name}</td>
-          <td>${cat.parent_id}</td>
+        
           <td>
             <button class="edit-btn" onclick="openEdit(${cat.category_id})">✏️</button>
             <button class="delete-btn" onclick="deleteCategory(${cat.category_id})">🗑️</button>
@@ -213,18 +211,8 @@
         const res = await fetch("/artigo/categorias");
         categorias = await res.json();
         renderTable(categorias);
-        preencherDropdownCategorias();
       }
-      function preencherDropdownCategorias() {
-        const select = document.getElementById("parent_id");
-        select.innerHTML = '<option value="0">0 - Sem pai</option>'; // reset
 
-        categorias.forEach((cat) => {
-          select.innerHTML += `<option value="${cat.category_id}">
-      ${cat.name} (ID: ${cat.category_id})
-    </option>`;
-        });
-      }
       async function deleteCategory(id) {
         if (!confirm("Tens a certeza que queres eliminar esta categoria?"))
           return;
@@ -266,8 +254,7 @@
           const id = document.getElementById("category_id").value;
           const body = {
             name: document.getElementById("name").value,
-            parent_id:
-              parseInt(document.getElementById("parent_id").value) || 0,
+            parent_id: 0,
             description: document.getElementById("description").value,
           };
           try {
