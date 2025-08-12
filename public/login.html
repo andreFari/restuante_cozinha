@@ -261,6 +261,8 @@
         }
 
         const products = convertOrderToMoloniProducts(table.order);
+        console.log("Produtos para fatura:", products);
+        console.log("Pedido da mesa:", table.order);
 
         try {
           const response = await fetch("/api/emitir-fatura", {
@@ -529,6 +531,10 @@
         const products = [];
 
         sections.forEach((section) => {
+          if (!order[section]) {
+            console.warn(`Categoria ${section} ausente no pedido`);
+            return;
+          }
           order[section].forEach((item) => {
             const product = moloniProductMap[item.name];
             if (product) {
@@ -539,6 +545,10 @@
                 price: product.price,
                 taxes: [{ tax_id: product.tax_id }],
               });
+            } else {
+              console.warn(
+                `Produto não encontrado no moloniProductMap: ${item.name}`
+              );
             }
           });
         });
