@@ -365,12 +365,14 @@
           try {
             let url = "/artigo/artigos";
             let method = "POST";
-            const token = localStorage.getItem("moloni_token");
+
             if (editId) {
               console.log("Id do artigo a atualizar", editId);
               url = `/artigo/artigos/${editId}`;
               method = "PUT"; // ou PATCH, conforme a API
             }
+
+            const token = localStorage.getItem("moloni_token");
 
             const res = await fetch(url, {
               method,
