@@ -341,7 +341,6 @@
         }
       }
 
-      // Criar produto
       document
         .getElementById("newProductForm")
         .addEventListener("submit", async (e) => {
@@ -353,8 +352,7 @@
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
             price: parseFloat(document.getElementById("price").value),
-            unit_id: 1, // hardcoded unit_id
-
+            unit_id: 1,
             tax_id: parseInt(document.getElementById("tax_id").value),
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
@@ -362,18 +360,18 @@
             stock: 0,
           };
 
+          let url = "/artigo/artigos";
+          let method = "POST";
+          if (editId) {
+            url = `/artigo/artigos/${editId}`;
+            method = "PUT";
+          }
+
+          const token = localStorage.getItem("moloni_token");
+
+          console.log("📤 Sending request:", { method, url, product, token });
+
           try {
-            let url = "/artigo/artigos";
-            let method = "POST";
-
-            if (editId) {
-              console.log("Id do artigo a atualizar", editId);
-              url = `/artigo/artigos/${editId}`;
-              method = "PUT"; // ou PATCH, conforme a API
-            }
-
-            const token = localStorage.getItem("moloni_token");
-
             const res = await fetch(url, {
               method,
               headers: {
@@ -381,8 +379,14 @@
                 Authorization: "Bearer " + token,
               },
               body: JSON.stringify(product),
+              credentials: "include",
             });
-            if (!res.ok) throw new Error();
+
+            console.log("📥 Response status:", res.status);
+            const text = await res.text();
+            console.log("📥 Response body:", text);
+
+            if (!res.ok) throw new Error("Request failed");
 
             showMessage(
               "success",
@@ -394,14 +398,13 @@
             closeModal();
             fetchProducts();
           } catch (err) {
-            console.error(err);
+            console.error("❌ Error in fetch:", err);
             showMessage(
               "error",
               editId ? "Erro ao atualizar prato." : "Erro ao criar prato."
             );
           }
         });
-
       // Modal
       const modal = document.getElementById("productModal");
       document.getElementById("openModalBtn").onclick = () =>
