@@ -40,7 +40,7 @@ async function sincronizarArtigos(token, company_id) {
     body: JSON.stringify({ company_id }),
   });
   const artigosMoloni = await resMoloni.json();
-  console.log("Artigos na Moloni:", artigosMoloni);
+  // console.log("Artigos na Moloni:", artigosMoloni);
   if (!Array.isArray(artigosMoloni)) {
     console.error("Resposta inesperada dos artigos Moloni");
     return;
@@ -135,7 +135,7 @@ router.get("/artigos", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -159,7 +159,7 @@ router.get("/unidades", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
     if (!response.ok) {
       return res.status(response.status).json(data);
     }
@@ -227,7 +227,7 @@ router.post("/artigos", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
     if (!response.ok) {
       // Retorna erro com detalhes da Moloni
       return res.status(response.status).json(data);
@@ -259,7 +259,7 @@ router.delete("/artigos/:id", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log("Resposta Moloni delete:", data);
+    // console.log("Resposta Moloni delete:", data);
 
     if (data && data.error) {
       return res.status(400).json({ error: data.error });
