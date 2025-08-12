@@ -377,12 +377,8 @@
           try {
             const res = await fetch(url, {
               method,
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: "Bearer " + token,
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify(product),
-              credentials: "include",
             });
 
             console.log("📥 Response status:", res.status);
