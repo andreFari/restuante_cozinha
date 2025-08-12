@@ -533,10 +533,19 @@
 
         return products;
       }
+      let valid = false;
+
+      // Alguma lógica que define valid = true se algo der certo
+      // Exemplo simplificado:
+      if (localStorage.getItem("moloni_token")) {
+        valid = true;
+      }
+
       if (valid) {
         document.getElementById("mainContent").style.display = "block";
         renderTables();
       }
+
       async function openCreateTableModal() {
         const select = document.getElementById("newTableArticles");
         select.innerHTML = ""; // limpa
