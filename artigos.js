@@ -238,7 +238,7 @@ router.put("/artigos/:id", async (req, res) => {
     };
 
     const response = await fetch(url, {
-      method: "POST",
+      method: "POST", // Moloni usa POST mesmo para update
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
