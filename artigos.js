@@ -40,6 +40,7 @@ async function sincronizarArtigos(token, company_id) {
     body: JSON.stringify({ company_id }),
   });
   const artigosMoloni = await resMoloni.json();
+
   // console.log("Artigos na Moloni:", artigosMoloni);
   if (!Array.isArray(artigosMoloni)) {
     console.error("Resposta inesperada dos artigos Moloni");
@@ -83,8 +84,11 @@ async function sincronizarArtigos(token, company_id) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      console.log("Tentando inserir:", artigo.reference, artigo.name);
 
       const dataInserir = await resInserir.json();
+      console.log("Resposta Moloni:", dataInserir);
+
       if (!resInserir.ok) {
         console.error(
           `Erro ao inserir artigo ${artigo.reference}:`,
