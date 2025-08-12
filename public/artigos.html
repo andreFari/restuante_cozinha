@@ -365,24 +365,37 @@
           try {
             let url = "/artigo/artigos";
             let method = "POST";
+
             if (editId) {
               console.log("Id do artigo a atualizar", editId);
               url = `/artigo/artigos/${editId}`;
-              method = "PUT"; // ou PATCH, conforme sua API
+              method = "PUT"; // ou PATCH, conforme a API
             }
 
             const res = await fetch(url, {
               method,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(product),
+              credentials: "include", // 🔹 garante que cookies de login sejam enviados
             });
+
             if (!res.ok) throw new Error();
-            showMessage("success", "Prato criado com sucesso!");
+
+            showMessage(
+              "success",
+              editId
+                ? "Prato atualizado com sucesso!"
+                : "Prato criado com sucesso!"
+            );
             e.target.reset();
             closeModal();
             fetchProducts();
-          } catch {
-            showMessage("error", "Erro ao criar prato.");
+          } catch (err) {
+            console.error(err);
+            showMessage(
+              "error",
+              editId ? "Erro ao atualizar prato." : "Erro ao criar prato."
+            );
           }
         });
 
