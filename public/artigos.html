@@ -365,7 +365,7 @@
           try {
             let url = "/artigo/artigos";
             let method = "POST";
-
+            const token = localStorage.getItem("moloni_token");
             if (editId) {
               console.log("Id do artigo a atualizar", editId);
               url = `/artigo/artigos/${editId}`;
@@ -374,11 +374,12 @@
 
             const res = await fetch(url, {
               method,
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
               body: JSON.stringify(product),
-              credentials: "include", // 🔹 garante que cookies de login sejam enviados
             });
-
             if (!res.ok) throw new Error();
 
             showMessage(
