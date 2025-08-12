@@ -208,8 +208,8 @@ router.put("/artigos/:id", async (req, res) => {
     } = req.body;
 
     // Montar corpo conforme API Moloni update exige
-    const url = `https://api.moloni.pt/v1/products/update/?access_token=${token}&json=true`;
 
+    const url = moloniUrl("/products/update", token);
     const body = {
       company_id,
       product_id,
@@ -236,7 +236,8 @@ router.put("/artigos/:id", async (req, res) => {
         },
       ],
     };
-
+    console.log("🔍 Moloni URL:", url);
+    console.log("📦 Moloni body:", body);
     const response = await fetch(url, {
       method: "POST", // Moloni usa POST mesmo para update
       headers: { "Content-Type": "application/json" },
