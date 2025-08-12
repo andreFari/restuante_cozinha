@@ -350,7 +350,10 @@
           }
         });
       }
-
+      const prepared = {};
+      categories.forEach((cat) => {
+        prepared[cat] = novoPedido[cat] ? novoPedido[cat].map(() => false) : [];
+      });
       function renderOrderDetails(index) {
         selectedTableIndex = index;
         const table = tables[index];
@@ -358,100 +361,80 @@
         const prepared = table.prepared;
 
         function renderSection(title, items, prepState, key) {
-          if (items.length === 0) return "";
+          if (!items || items.length === 0) return "";
           return `
-                                            <div class="section">
-                                              <h3>${title}</h3>
-                                              ${items
-                                                .map(
-                                                  (item, i) => `
-                                                <div class="item">
-                                                  <input type="checkbox" ${
-                                                    prepState[i]
-                                                      ? "checked"
-                                                      : ""
-                                                  }
-                                                    onchange="togglePrepared(${index}, '${key}', ${i})">
-                                                  <label>${item}</label>
-                                                </div>
-                                              `
-                                                )
-                                                .join("")}
-                                            </div>
-                                          `;
+      <div class="section">
+        <h3>${title}</h3>
+        ${items
+          .map(
+            (item, i) => `
+          <div class="item">
+            <input type="checkbox" ${prepState[i] ? "checked" : ""}
+              onchange="togglePrepared(${index}, '${key}', ${i})">
+            <label>${item}</label>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    `;
+        }
+        const categories = [
+          "plates",
+          "secondaryPlates",
+          "sides",
+          "extras",
+          "desserts",
+          "drinks",
+          "coffee",
+        ];
+
+        // Mapeia títulos bonitinhos para as categorias
+        const categoryTitles = {
+          plates: "Pratos",
+          secondaryPlates: "Pratos Secundários",
+          sides: "Acompanhamentos",
+          extras: "Extras",
+          desserts: "Sobremesas",
+          drinks: "Bebidas",
+          coffee: "Cafés",
+        };
+
+        let sectionsHtml = "";
+        for (const key in order) {
+          if (key === "status") continue; // pular status
+          const items = order[key];
+          const prepState = prepared[key] || [];
+          const title = categoryTitles[key] || key;
+          sectionsHtml += renderSection(title, items, prepState, key);
         }
 
         orderDetails.innerHTML = `
-                                          <h2>${table.name} - ${
-          table.open ? "Aberta" : "Fechada"
-        }</h2>
+    <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
 
-                                          <div class="section">
-                                            <label><strong>Nota da cozinha :</strong></label><br>
-                                            <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-                                              table.kitchenNote
-                                            }</textarea>
-                                            <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-                                          </div>
+    <div class="section">
+      <label><strong>Nota da cozinha :</strong></label><br>
+      <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+        table.kitchenNote
+      }</textarea>
+      <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+    </div>
 
-                                          <div class="status ${
-                                            order.status === "paid"
-                                              ? "paid"
-                                              : "unpaid"
-                                          }">
-                                            ${
-                                              order.status === "paid"
-                                                ? "Pago"
-                                                : "Por Pagar"
-                                            }
-                                          </div>
-                                          <button class="btn" onclick="togglePaid(${index})">
-                                            Marcar como ${
-                                              order.status === "paid"
-                                                ? "Por Pagar"
-                                                : "Pago"
-                                            }
-                                          </button>
+    <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
+      ${order.status === "paid" ? "Pago" : "Por Pagar"}
+    </div>
+    <button class="btn" onclick="togglePaid(${index})">
+      Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+    </button>
 
-                                          <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-                                            ${
-                                              table.open
-                                                ? "Fechar Mesa"
-                                                : "Abrir Mesa"
-                                            }
-                                          </button>
-                              <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
-                                          ${renderSection(
-                                            "Pratos",
-                                            order.plates,
-                                            prepared.plates,
-                                            "plates"
-                                          )}
-                                          ${renderSection(
-                                            "Extras",
-                                            order.extras,
-                                            prepared.extras,
-                                            "extras"
-                                          )}
-                                          ${renderSection(
-                                            "Bebidas",
-                                            order.drinks,
-                                            prepared.drinks,
-                                            "drinks"
-                                          )}
-                                          ${renderSection(
-                                            "Sobremesas",
-                                            order.desserts,
-                                            prepared.desserts,
-                                            "desserts"
-                                          )}
-                                          ${renderSection(
-                                            "Cafés",
-                                            order.coffee,
-                                            prepared.coffee,
-                                            "coffee"
-                                          )}
-                                        `;
+    <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+      ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+    </button>
+
+    <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+
+    ${sectionsHtml}
+  `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
@@ -646,6 +629,7 @@
           secondaryPlates: getSelectedValues("secondaryArticles"),
           sides: getSelectedValues("sideArticles"),
           desserts: getSelectedValues("dessertArticles"),
+          extras: [], // se quiser, pode adicionar seleção para extras
           drinks: [], // se quiser pode adicionar seção para bebidas
           coffee: [],
         };
