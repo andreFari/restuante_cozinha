@@ -292,6 +292,7 @@
         Bolo: {
           product_id: 210061572,
           price: 10,
+          name: "bolo",
           tax_id: 3630173,
         },
         // adiciona mais produtos aqui conforme fores criando
@@ -378,7 +379,7 @@
           <div class="item">
             <input type="checkbox" ${prepState[i] ? "checked" : ""}
               onchange="togglePrepared(${index}, '${key}', ${i})">
-            <label>${item.nome}</label>
+            <label>${item.name}</label>
           </div>
         `
           )
