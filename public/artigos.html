@@ -353,7 +353,7 @@
       async function populateUnitSelect() {
         const units = await fetchUnits();
         const select = document.getElementById("unit_id");
-
+        select.innerHTML = "";
         units.forEach((unit) => {
           const option = document.createElement("option");
           option.value = unit.id;
@@ -434,6 +434,7 @@
       const modal = document.getElementById("productModal");
       document.getElementById("openModalBtn").onclick = () =>
         (modal.style.display = "flex");
+      populateUnitSelect(); // Popula o dropdown de unidades
       document.getElementById("closeModal").onclick = () =>
         (modal.style.display = "none");
       window.onclick = (e) => {
@@ -462,7 +463,6 @@
       fetchCategorias();
       fetchTaxes();
       fetchProducts();
-      populateUnitSelect();
     </script>
   </body>
 </html>
