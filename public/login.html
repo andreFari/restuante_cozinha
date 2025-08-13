@@ -260,9 +260,30 @@
           return;
         }
 
+        // Converte o pedido para o formato Moloni
         const products = convertOrderToMoloniProducts(table.order);
-        console.log("Produtos para fatura:", products);
-        console.log("Pedido da mesa:", table.order);
+
+        // Exemplo de payload mínimo para a API Moloni
+        const payload = {
+          // Aqui indica o documento/serie que queres criar
+          document: {
+            date: new Date().toISOString().split("T")[0], // data de hoje no formato YYYY-MM-DD
+            client_id: 0, // 0 = consumidor final
+            language: "pt",
+            observations: notes,
+            // Para testes, se tiveres série específica:
+            // serie_id: 1
+          },
+          products: products.map((p) => ({
+            product_id: p.product_id,
+            name: p.name,
+            qty: p.qty,
+            price: p.price,
+            taxes: p.taxes, // [{ tax_id: 3630173 }]
+            unit_name: p.unit_name, // "Unidade"
+            unit_short_name: p.unit_short_name, // "Un"
+          })),
+        };
 
         try {
           const response = await fetch("/api/emitir-fatura", {
@@ -271,16 +292,11 @@
               "Content-Type": "application/json",
               Authorization: "Bearer " + token,
             },
-            body: JSON.stringify({
-              tableName: table.name,
-              notes: notes,
-              order: table.order,
-              products: products,
-            }),
+            body: JSON.stringify(payload),
           });
 
           const data = await response.json();
-          console.log("Resposta da API emitir-fatura:", data); // <---- aqui
+          console.log("Resposta da API emitir-fatura:", data);
 
           if (data.pdfUrl) {
             window.open(data.pdfUrl, "_blank");
@@ -292,6 +308,7 @@
           alert("Erro na comunicação com o servidor.");
         }
       }
+
       const moloniProductMap = {
         Bolo: {
           product_id: 210061572,
