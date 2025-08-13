@@ -525,31 +525,20 @@
         }
       }); // fecha o DOMContentLoaded corretamente aqui
 
-      // Função convertOrderToMoloniProducts fora do DOMContentLoaded
       function convertOrderToMoloniProducts(order) {
         const sections = ["plates", "extras", "drinks", "desserts", "coffee"];
         const products = [];
 
         sections.forEach((section) => {
-          if (!order[section]) {
-            console.warn(`Categoria ${section} ausente no pedido`);
-            return;
-          }
+          if (!order[section]) return;
           order[section].forEach((item) => {
-            const product = moloniProductMap[item.name];
-            if (product) {
-              products.push({
-                product_id: product.product_id,
-                name: item.name,
-                qty: 1,
-                price: product.price,
-                taxes: [{ tax_id: product.tax_id }],
-              });
-            } else {
-              console.warn(
-                `Produto não encontrado no moloniProductMap: ${item.name}`
-              );
-            }
+            products.push({
+              product_id: item.product_id,
+              name: item.name,
+              qty: 1,
+              price: item.price,
+              taxes: [{ tax_id: item.tax_id }],
+            });
           });
         });
 
@@ -588,7 +577,6 @@
           artigos.forEach((artigo) => {
             const option = document.createElement("option");
 
-            option.value = artigo.id || artigo.product_id || artigo.name;
             option.textContent = artigo.name || artigo.summary || "Sem nome";
 
             // Pega o summary e normaliza (sem acentos, minúsculas e sem espaços extras)
@@ -614,12 +602,25 @@
                 categoria
               );
             }
+            option.value = JSON.stringify({
+              product_id: artigo.product_id,
+              name: artigo.name,
+              price: artigo.price,
+              tax_id: artigo.tax_id,
+            });
           });
           document.getElementById("newTableName").value = "";
           document.getElementById("createTableModal").style.display = "flex";
         } catch (err) {
           alert("Não foi possível carregar os artigos: " + err.message);
         }
+      }
+
+      function getSelectedProducts(selectId) {
+        const select = document.getElementById(selectId);
+        return Array.from(select.selectedOptions).map((opt) =>
+          JSON.parse(opt.value)
+        );
       }
       function createNewTable() {
         const nomeMesa = document.getElementById("newTableName").value.trim();
@@ -628,42 +629,23 @@
           return;
         }
 
-        function getSelectedObjects(selectId) {
-          return Array.from(
-            document.getElementById(selectId).selectedOptions
-          ).map((opt) => ({
-            id: opt.value, // id do artigo
-            name: opt.textContent, // nome do artigo
-          }));
-        }
-        const novoPedido = {
-          status: "unpaid",
-          plates: getSelectedObjects("principalArticles"),
-          secondaryPlates: getSelectedObjects("secondaryArticles"),
-          sides: getSelectedObjects("sideArticles"),
-          desserts: getSelectedObjects("dessertArticles"),
-          extras: [],
-          drinks: [],
-          coffee: [],
-        };
-        const prepared = {};
-        categories.forEach((cat) => {
-          prepared[cat] = novoPedido[cat]
-            ? novoPedido[cat].map(() => false)
-            : [];
-        });
         const novaMesa = {
-          id: tables.length + 1,
+          id: Date.now(),
           name: nomeMesa,
           open: true,
-          kitchenNote: "",
-          order: novoPedido,
+          order: {
+            status: "unpaid",
+            plates: getSelectedProducts("principalArticles"),
+            extras: getSelectedProducts("secondaryArticles"),
+            drinks: getSelectedProducts("sideArticles"),
+            desserts: getSelectedProducts("dessertArticles"),
+            coffee: [],
+          },
           prepared: {
-            plates: novoPedido.plates.map(() => false),
-            secondaryPlates: novoPedido.secondaryPlates.map(() => false),
-            sides: novoPedido.sides.map(() => false),
-            desserts: novoPedido.desserts.map(() => false),
+            plates: [],
+            extras: [],
             drinks: [],
+            desserts: [],
             coffee: [],
           },
         };
