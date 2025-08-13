@@ -548,22 +548,27 @@
 
         sections.forEach((section) => {
           if (!order[section]) return;
+
           order[section].forEach((item) => {
+            const mapped = moloniProductMap[item.name];
+            if (!mapped) {
+              console.warn("Artigo sem categoria reconhecida:", item.name);
+              return;
+            }
+
             products.push({
-              product_id: item.product_id,
-              name: item.name,
+              product_id: mapped.product_id,
+              name: mapped.name,
               qty: 1,
               unit_name: "Unidade",
               unit_short_name: "Un",
-              price: item.price,
-              taxes: [{ tax_id: item.tax_id }],
+              price: mapped.price,
+              taxes: [{ tax_id: mapped.tax_id }],
             });
           });
         });
-        console.log(
-          "Produto que vai no convertOrderToMoloniProducts",
-          products
-        );
+
+        console.log("Produtos que vão para Moloni:", products);
         return products;
       }
       let valid = false;
