@@ -367,6 +367,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
         ],
       };
     });
+    if (!taxInfo)
+      console.warn(`Taxa não encontrada para tax_id ${tax_id}, usando 23%`);
     console.log(
       "Payload final para Moloni:",
       JSON.stringify(productsWithUnitsAndTaxes, null, 2)
@@ -420,9 +422,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
     );
 
     const pdfUrl = pdfResp?.data?.url || pdfResp?.data;
+    if (!pdfUrl) console.warn("PDF retornado vazio:", pdfResp.data);
     return res.status(200).json({ pdfUrl, document_id });
   } catch (e) {
     console.error("Erro ao emitir fatura:", e.response?.data || e.message || e);
+    console.error("Payload enviado:", JSON.stringify(payload, null, 2));
     const status = e.response?.status || 500;
     return res.status(status).json({
       error: "emitir_fatura_failed",
