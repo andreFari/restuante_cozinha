@@ -368,6 +368,12 @@ app.post("/api/emitir-fatura", async (req, res) => {
       const moloniProduct = allProducts.find(
         (mp) => mp.product_id === Number(p.product_id)
       );
+      console.log(
+        "Moloni unit:",
+        moloniProduct.unit_id,
+        moloniProduct.unit_name,
+        moloniProduct.unit_short_name
+      );
 
       console.log("Moloni product encontrado:", moloniProduct);
       return {
