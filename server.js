@@ -448,7 +448,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       { company_id, document_id },
       { headers: { "Content-Type": "application/json" } }
     );
-    console.log(pdfResp.data);
+    console.log("pdf data ", pdfResp.data);
 
     const pdfUrl =
       typeof pdfResp?.data?.url === "string" ? pdfResp.data.url : null;
