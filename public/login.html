@@ -536,12 +536,17 @@
               product_id: item.product_id,
               name: item.name,
               qty: 1,
+              unit_name: "Unidade",
+              unit_short_name: "Un",
               price: item.price,
               taxes: [{ tax_id: item.tax_id }],
             });
           });
         });
-
+        console.log(
+          "Produto que vai no convertOrderToMoloniProducts",
+          products
+        );
         return products;
       }
       let valid = false;
