@@ -409,7 +409,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_type: "FT",
       value: totalValue,
       serie_id: 1,
-      status: 0,
+      status: 1,
       products: productsWithUnitsAndTaxes,
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
