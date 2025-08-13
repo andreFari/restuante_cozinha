@@ -345,6 +345,26 @@ app.post("/api/emitir-fatura", async (req, res) => {
       return res.status(400).json({ error: "sem_produtos_validos" });
     }
 
+    // 🔹 Obter todas as taxas disponíveis
+    const taxesResp = await axios.get(`http://localhost:3000/api/moloni-taxes`);
+    const allTaxes = taxesResp.data;
+
+    // 🔹 Adicionar o value correto de cada imposto aos produtos
+    const productsWithTaxes = products.map((p) => {
+      const tax_id = p.taxes?.[0]?.tax_id;
+      const taxInfo = allTaxes.find((t) => t.id === tax_id);
+
+      return {
+        ...p,
+        taxes: [
+          {
+            tax_id: tax_id,
+            value: taxInfo?.valor || 23, // fallback 23% se não encontrar
+          },
+        ],
+      };
+    });
+
     // 🔹 Preparar o payload da fatura
     const today = new Date().toISOString().slice(0, 10);
     const payload = {
@@ -356,7 +376,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_type: "FT",
       serie_id: 1,
       status: 1,
-      products, // já vem do frontend
+      products: productsWithTaxes,
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
     };
