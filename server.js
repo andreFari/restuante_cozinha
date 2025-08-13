@@ -353,20 +353,24 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const productsWithUnitsAndTaxes = products.map((p) => {
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
-      const taxes = [
-        {
-          tax_id: Number(tax_id),
-          value: parseFloat(taxInfo?.valor ?? 23),
-        },
-      ];
 
-      const exemption_reason = "M00";
+      let exemption_reason = "M00";
       if (!taxes.length || taxes.every((t) => t.value === 0)) {
         exemption_reason = "M00"; // exemplo de código de isenção
       }
       const moloniProduct = allProducts.find(
         (mp) => mp.product_id === Number(p.product_id)
       );
+
+      const taxes = [
+        {
+          tax_id: Number(tax_id),
+          value: parseFloat(
+            taxInfo?.valor ?? moloniProduct?.taxes?.[0]?.value ?? 23
+          ),
+        },
+      ];
+
       console.log("Moloni product encontrado:", moloniProduct);
       return {
         product_id: Number(p.product_id),
@@ -374,13 +378,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
         qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1,
         summary: moloniProduct?.summary || String(p.name || "Produto"),
         price: parseFloat(p.price) || 0,
-        unit_id: moloniProduct?.unit_id || 1, // 1 geralmente é "Unidade"
-        unit_name: p.unit_name || "Unidade", // força sempre
-        unit_short_name: p.unit_short_name || "Un", // força sempre
+        unit_id: moloniProduct?.unit_id || 1,
+        unit_name: moloniProduct?.unit_name || "Unidade",
+        unit_short_name: moloniProduct?.unit_short_name || "Un",
         taxes, // usa o taxes formatado
-        unit_short_name:
-          moloniProduct?.unit_short_name ?? p.unit_short_name ?? "Un",
-        ...(exemption_reason ? { exemption_reason } : {}),
       };
     });
 
@@ -413,10 +414,13 @@ app.post("/api/emitir-fatura", async (req, res) => {
       "Payload final enviado à Moloni este está na api:",
       JSON.stringify(payload, null, 2)
     );
-    console.log(JSON.stringify(products, null, 2));
+
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
-      payload,
+      {
+        ...payload,
+        products: productsWithUnitsAndTaxes, // ✅ usar o array correto
+      },
       {
         headers: {
           "Content-Type": "application/json",
