@@ -366,7 +366,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
       "Payload final para Moloni:",
       JSON.stringify(productsWithUnitsAndTaxes, null, 2)
     );
-
+    const totalValue = productsWithUnitsAndTaxes.reduce(
+      (sum, p) => sum + p.qty * p.price,
+      0
+    );
     // 🔹 Preparar payload da fatura
     const today = new Date().toISOString().slice(0, 10);
     const payload = {
@@ -376,8 +379,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
       date: today,
       expiration_date: today,
       document_type: "FT",
+      value: totalValue,
       serie_id: 1,
-      status: 1,
+      status: 0,
       products: productsWithUnitsAndTaxes,
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
