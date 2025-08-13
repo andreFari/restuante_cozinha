@@ -268,10 +268,10 @@
         const productsForMoloni = products.map((p) => ({
           product_id: p.product_id,
           name: p.name,
-          qty: p.qty,
+          quantity: p.qty,
           price: p.price,
           unit_name: p.unit_name || "Unidade",
-          unit_short_name: p.unit_short_name || "Un",
+          unit_abbreviation: p.unit_short_name || "Un",
           taxes:
             p.taxes && p.taxes.length
               ? p.taxes

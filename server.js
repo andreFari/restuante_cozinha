@@ -358,10 +358,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
       return {
         product_id: Number(p.product_id),
         name: String(p.name || "Produto"),
-        qty: Number(p.qty || 1),
+        quantity: Number(p.qty || 1),
         price: Number(p.price || 0),
         unit_name: String(p.unit_name || "Unidade").trim(),
-        unit_short_name: String(p.unit_short_name || "Un").trim(),
+        unit_abbreviation: String(p.unit_short_name || "Un").trim(), // mudou
         taxes: [
           {
             tax_id: Number(tax_id),
