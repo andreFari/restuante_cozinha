@@ -264,20 +264,18 @@
           return;
         }
 
-        // Prepara os produtos garantindo unit_name, unit_short_name e taxes
         const productsForMoloni = products.map((p) => ({
           product_id: p.product_id,
           name: p.name,
-          quantity: p.qty,
-          price: p.price,
+          qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1, // garante > 0
+          price: parseFloat(p.price) || 0,
           unit_name: p.unit_name || "Unidade",
-          unit_abbreviation: p.unit_short_name || "Un",
+          unit_short_name: p.unit_short_name || "Un",
           taxes:
             p.taxes && p.taxes.length
               ? p.taxes
-              : [{ tax_id: 3630173, value: 23 }], // fallback para imposto padrão 23%
+              : [{ tax_id: 3630173, value: 23 }],
         }));
-
         // Payload enviado para o backend
         const payload = {
           notes, // nota do modal

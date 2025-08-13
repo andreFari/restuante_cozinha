@@ -346,22 +346,17 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const taxesResp = await axios.get(`http://localhost:3000/api/moloni-taxes`);
     const allTaxes = taxesResp.data;
 
-    // 🔹 Garantir que cada produto tem unit_name, unit_short_name e taxes corretos
     const productsWithUnitsAndTaxes = products.map((p) => {
-      // Garantir tax_id válido
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
 
-      if (!taxInfo) {
-        console.warn(`Taxa não encontrada para tax_id ${tax_id}, usando 23%`);
-      }
       return {
         product_id: Number(p.product_id),
         name: String(p.name || "Produto"),
-        quantity: Number(p.qty || 1),
-        price: Number(p.price || 0),
+        qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1, // garante > 0
+        price: parseFloat(p.price) || 0,
         unit_name: String(p.unit_name || "Unidade").trim(),
-        unit_abbreviation: String(p.unit_short_name || "Un").trim(), // mudou
+        unit_short_name: String(p.unit_short_name || "Un").trim(),
         taxes: [
           {
             tax_id: Number(tax_id),
