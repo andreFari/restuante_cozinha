@@ -326,10 +326,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const access_token = await getValidAccessToken();
 
     // 🔹 Dados vindos do frontend
-    const mesa = req.body || {};
-    const { notes, tableName, order } = mesa;
+    const { notes, tableName, products } = req.body || {};
 
-    // 🔹 IDs ainda definidos no backend (podes passar para o frontend depois se quiseres)
+    // 🔹 IDs da empresa
     const company_id = MOLONI_COMPANY_ID;
     const document_set_id = MOLONI_DOCUMENT_SET_ID;
     const customer_id = MOLONI_CUSTOMER_ID;
@@ -341,37 +340,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
     }
 
-    const items = [
-      ...(order.plates || []),
-      ...(order.drinks || []),
-      ...(order.desserts || []),
-      ...(order.extras || []),
-      ...(order.coffee || []),
-    ];
-    // 🔹 Converter cada item num produto da Moloni
-    const products = items
-      .map((item) => (item && item.name ? item.name : null))
-      .filter((name) => typeof name === "string" && name.trim().length > 0)
-      .map((name) => {
-        const product = moloniProductMap[name];
-        if (!product) {
-          return {
-            product_id: 210061572, // fallback
-            name,
-            qty: 1,
-            price: 10,
-            taxes: [{ tax_id: 3630173 }],
-          };
-        }
-        return {
-          product_id: product.product_id,
-          name,
-          qty: 1,
-          price: product.price,
-          taxes: [{ tax_id: product.tax_id }],
-        };
-      });
-    if (!products.length) {
+    // 🔹 Verifica se existem produtos
+    if (!products || !products.length) {
       return res.status(400).json({ error: "sem_produtos_validos" });
     }
 
@@ -382,11 +352,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
       customer_id,
       document_set_id,
       date: today,
+      expiration_date: today,
       document_type: "FT",
       serie_id: 1,
-      expiration_date: today,
       status: 1,
-      products,
+      products, // já vem do frontend
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
     };
@@ -418,13 +388,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
     // 🔹 Obter link do PDF
     const pdfResp = await axios.post(
       `https://api.moloni.pt/v1/documents/getPDFLink/?access_token=${access_token}&json=true`,
-      {
-        company_id,
-        document_id,
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      { company_id, document_id },
+      { headers: { "Content-Type": "application/json" } }
     );
 
     const pdfUrl = pdfResp?.data?.url || pdfResp?.data;
