@@ -367,7 +367,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       const moloniProduct = allProducts.find(
         (mp) => mp.product_id === Number(p.product_id)
       );
-
+      console.log("Moloni product encontrado:", moloniProduct);
       return {
         product_id: Number(p.product_id),
         name: moloniProduct?.name || String(p.name || "Produto"),
@@ -386,6 +386,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       "Payload final para Moloni:",
       JSON.stringify(productsWithUnitsAndTaxes, null, 2)
     );
+
     const totalValue = productsWithUnitsAndTaxes.reduce(
       (sum, p) => sum + p.qty * p.price,
       0
