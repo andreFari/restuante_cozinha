@@ -477,9 +477,17 @@
         const code = params.get("code");
         const error = params.get("error");
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
-
+        let valid = false;
+        let moloniProducts = [];
         console.log("Code da URL:", code);
-
+        if (localStorage.getItem("moloni_token")) {
+          valid = true;
+        }
+        // Mostra mainContent se válido
+        if (valid) {
+          document.getElementById("mainContent").style.display = "block";
+          renderTables();
+        }
         if (code) {
           try {
             const res = await fetch("/api/moloni-exchange-code", {
