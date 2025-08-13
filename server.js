@@ -357,8 +357,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
         name: String(p.name || "Produto"),
         qty: Number(p.qty || 1),
         price: Number(p.price || 0),
-        unit_name: p.unit_name?.trim() || "Unidade",
-        unit_short_name: p.unit_short_name?.trim() || "Un",
+        unit_name: String(p.unit_name || "Unidade").trim(),
+        unit_short_name: String(p.unit_short_name || "Un").trim(),
         taxes: [
           {
             tax_id: Number(tax_id),
