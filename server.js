@@ -360,7 +360,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         },
       ];
 
-      let exemption_reason;
+      const exemption_reason = "M00";
       if (!taxes.length || taxes.every((t) => t.value === 0)) {
         exemption_reason = "M00"; // exemplo de código de isenção
       }
