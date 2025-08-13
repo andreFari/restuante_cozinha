@@ -244,7 +244,7 @@
         closeModal();
 
         // Chama a função que emite a fatura passando as notas
-        await emitirFatura(currentTableIndex, notes);
+        await emitirFatura(selectedTableIndex, notes);
       }
 
       async function emitirFatura(index, notes = "") {
