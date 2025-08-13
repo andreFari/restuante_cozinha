@@ -356,10 +356,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         unit_name: p.unit_name || "Unidade",
         unit_short_name: p.unit_short_name || "Un",
         taxes: [
-          {
-            tax_id: tax_id || allTaxes[0]?.id, // fallback para a primeira taxa caso não venha do frontend
-            value: taxInfo?.valor || 23, // fallback 23% se não encontrar a taxa
-          },
+          { tax_id: tax_id || allTaxes[0]?.id, value: taxInfo?.valor || 23 },
         ],
       };
     });

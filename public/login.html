@@ -244,7 +244,6 @@
         // Chama a função que emite a fatura passando as notas
         await emitirFatura(selectedTableIndex, notes);
       }
-
       async function emitirFatura(index, notes = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {
@@ -260,32 +259,32 @@
 
         // Converte o pedido para o formato Moloni
         const products = convertOrderToMoloniProducts(table.order);
-
-        // Exemplo de payload mínimo para a API Moloni
-        const payload = {
-          // Aqui indica o documento/serie que queres criar
-          document: {
-            date: new Date().toISOString().split("T")[0], // data de hoje no formato YYYY-MM-DD
-            client_id: 0, // 0 = consumidor final
-            language: "pt",
-            observations: notes,
-            // Para testes, se tiveres série específica:
-            // serie_id: 1
-          },
-          products: products.map((p) => ({
-            product_id: p.product_id,
-            name: p.name,
-            qty: p.qty,
-            price: p.price,
-            taxes: p.taxes, // [{ tax_id: 3630173 }]
-            unit_name: p.unit_name, // "Unidade"
-            unit_short_name: p.unit_short_name, // "Un"
-          })),
-        };
-        if (!payload.products || payload.products.length === 0) {
+        if (!products || products.length === 0) {
           alert("Não há produtos selecionados para emitir a fatura.");
           return;
         }
+
+        // Prepara os produtos garantindo unit_name, unit_short_name e taxes
+        const productsForMoloni = products.map((p) => ({
+          product_id: p.product_id,
+          name: p.name,
+          qty: p.qty,
+          price: p.price,
+          unit_name: p.unit_name || "Unidade",
+          unit_short_name: p.unit_short_name || "Un",
+          taxes:
+            p.taxes && p.taxes.length
+              ? p.taxes
+              : [{ tax_id: 3630173, value: 23 }], // fallback para imposto padrão 23%
+        }));
+
+        // Payload enviado para o backend
+        const payload = {
+          notes, // nota do modal
+          tableName: table.name,
+          products: productsForMoloni,
+        };
+
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
