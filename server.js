@@ -324,8 +324,6 @@ const moloniProductMap = {
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-
-    // 🔹 Dados vindos do frontend
     const { notes, tableName, products } = req.body || {};
 
     // 🔹 IDs da empresa
@@ -340,7 +338,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
     }
 
-    // 🔹 Verifica se existem produtos
     if (!products || !products.length) {
       return res.status(400).json({ error: "sem_produtos_validos" });
     }
@@ -349,23 +346,25 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const taxesResp = await axios.get(`http://localhost:3000/api/moloni-taxes`);
     const allTaxes = taxesResp.data;
 
-    // 🔹 Adicionar o value correto de cada imposto aos produtos
-    const productsWithTaxes = products.map((p) => {
+    // 🔹 Garantir que cada produto tem unit_name, unit_short_name e taxes corretos
+    const productsWithUnitsAndTaxes = products.map((p) => {
       const tax_id = p.taxes?.[0]?.tax_id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
 
       return {
         ...p,
+        unit_name: p.unit_name || "Unidade",
+        unit_short_name: p.unit_short_name || "Un",
         taxes: [
           {
-            tax_id: tax_id,
-            value: taxInfo?.valor || 23, // fallback 23% se não encontrar
+            tax_id: tax_id || allTaxes[0]?.id, // fallback para a primeira taxa caso não venha do frontend
+            value: taxInfo?.valor || 23, // fallback 23% se não encontrar a taxa
           },
         ],
       };
     });
 
-    // 🔹 Preparar o payload da fatura
+    // 🔹 Preparar payload da fatura
     const today = new Date().toISOString().slice(0, 10);
     const payload = {
       company_id,
@@ -376,12 +375,12 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_type: "FT",
       serie_id: 1,
       status: 1,
-      products: productsWithTaxes,
+      products: productsWithUnitsAndTaxes,
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
     };
 
-    // 🔹 Inserir a fatura na Moloni
+    // 🔹 Inserir fatura na Moloni
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
       payload,
@@ -395,9 +394,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     const insertData = insertResp.data;
     const document_id =
-      insertData?.document_id ||
-      insertData?.document?.document_id ||
-      insertData?.documentId;
+      insertData?.document_id || insertData?.document?.document_id;
 
     if (!document_id) {
       return res
@@ -423,7 +420,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
     });
   }
 });
-
 app.get("/api/moloni-document-sets", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
