@@ -349,20 +349,31 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const productsWithUnitsAndTaxes = products.map((p) => {
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
+      const taxes = [
+        {
+          tax_id: Number(tax_id),
+          value: Number(taxInfo?.valor ?? 23),
+        },
+      ];
+
+      let exemption_reason;
+      if (!taxes.length || taxes.every((t) => t.value === 0)) {
+        exemption_reason = "M00"; // exemplo de código de isenção
+      }
 
       return {
         product_id: Number(p.product_id),
         name: String(p.name || "Produto"),
-        qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1, // garante > 0
+        qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1,
         price: parseFloat(p.price) || 0,
-        unit_name: String(p.unit_name || "Unidade").trim(),
-        unit_short_name: String(p.unit_short_name || "Un").trim(),
-        taxes: [
-          {
-            tax_id: Number(tax_id),
-            value: Number(taxInfo?.valor ?? 23),
-          },
-        ],
+        unit_name:
+          p.unit_name && p.unit_name.trim() ? p.unit_name.trim() : "Unidade",
+        unit_short_name:
+          p.unit_short_name && p.unit_short_name.trim()
+            ? p.unit_short_name.trim()
+            : "Un",
+        taxes,
+        ...(exemption_reason ? { exemption_reason } : {}),
       };
     });
 

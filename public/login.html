@@ -287,7 +287,7 @@
           tableName: table.name,
           products: productsForMoloni,
         };
-        console.log("Produto com erro possível:", productsWithUnitsAndTaxes);
+        console.log("Produtos enviados para o backend:", productsForMoloni);
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
