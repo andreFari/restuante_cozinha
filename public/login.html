@@ -221,11 +221,9 @@
         }
       }
       let selectedTableIndex = null;
-      let currentTableIndex = null;
+
       function openModal(index) {
-        // Aqui podes setar currentTableIndex consoante a mesa selecionada —
-        // ou adapta para receber o index.
-        currentTableIndex = index; // exemplo fixo, muda conforme a tua lógica
+        selectedTableIndex = index; // exemplo fixo, muda conforme a tua lógica
         const textarea = document.getElementById("modalInvoiceNotes");
         textarea.value = "";
         document.getElementById("invoiceModal").style.display = "flex";
@@ -318,29 +316,7 @@
         },
         // adiciona mais produtos aqui conforme fores criando
       };
-      const tables = [
-        {
-          id: 1,
-          name: "Mesa 1",
-          open: true,
-          kitchenNote: "Só tem Bolo na sobremesa",
-          order: {
-            status: "unpaid",
-            plates: [], // no plates
-            extras: [], // no extras
-            drinks: [], // no drinks
-            desserts: [{ id: 210061572, name: "Bolo" }], // only Bolo
-            coffee: [], // no coffee
-          },
-          prepared: {
-            plates: [],
-            extras: [],
-            drinks: [],
-            desserts: [false], // Bolo not prepared yet
-            coffee: [],
-          },
-        },
-      ];
+      let tables = [];
 
       const openTablesDiv = document.getElementById("openTables");
       const closedTablesDiv = document.getElementById("closedTables");
@@ -354,16 +330,13 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-                                            <strong>${table.name}</strong> - ${
-            table.open ? "Aberta" : "Fechada"
-          }
-                                            ${
-                                              table.kitchenNote
-                                                ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                                                : ""
-                                            }
-                                          `;
-
+      <strong>${table.name}</strong> - ${table.open ? "Aberta" : "Fechada"}
+      ${
+        table.kitchenNote
+          ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+          : ""
+      }
+    `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -451,7 +424,7 @@
       ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
     </button>
 
-    <button class="btn" onclick="openModal(selectedTableIndex)">Emitir Fatura</button>
+    <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
 
     ${sectionsHtml}
   `;
@@ -543,27 +516,30 @@
       }); // fecha o DOMContentLoaded corretamente aqui
 
       function convertOrderToMoloniProducts(order) {
-        const sections = ["plates", "extras", "drinks", "desserts", "coffee"];
+        const sections = [
+          "plates",
+          "secondaryPlates",
+          "sides",
+          "extras",
+          "desserts",
+          "drinks",
+          "coffee",
+        ];
         const products = [];
 
         sections.forEach((section) => {
-          if (!order[section]) return;
+          if (!order[section]) order[section] = [];
 
           order[section].forEach((item) => {
-            const mapped = moloniProductMap[item.name];
-            if (!mapped) {
-              console.warn("Artigo sem categoria reconhecida:", item.name);
-              return;
-            }
-
+            // item já tem product_id, name, price, tax_id
             products.push({
-              product_id: mapped.product_id,
-              name: mapped.name,
-              qty: 1,
+              product_id: item.product_id,
+              name: item.name,
+              qty: item.qty || 1,
               unit_name: "Unidade",
               unit_short_name: "Un",
-              price: mapped.price,
-              taxes: [{ tax_id: mapped.tax_id }],
+              price: item.price,
+              taxes: [{ tax_id: item.tax_id }],
             });
           });
         });
@@ -584,6 +560,8 @@
         renderTables();
       }
 
+      let moloniProducts = []; // global, para todas as funções
+
       async function openCreateTableModal() {
         // Limpar selects
         [
@@ -600,35 +578,28 @@
           if (!response.ok) throw new Error("Erro ao buscar artigos");
 
           const artigos = await response.json();
+          moloniProducts = artigos; // guarda globalmente
 
           artigos.forEach((artigo) => {
             const option = document.createElement("option");
-
             option.textContent = artigo.name || artigo.summary || "Sem nome";
 
-            // Pega o summary e normaliza (sem acentos, minúsculas e sem espaços extras)
             const categoria = (artigo.summary || "")
               .trim()
               .toLowerCase()
               .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, ""); // remove acentos
+              .replace(/[\u0300-\u036f]/g, "");
 
             if (categoria === "prato principal") {
               document.getElementById("principalArticles").appendChild(option);
             } else if (categoria === "prato secundario") {
-              // sem acento para garantir
               document.getElementById("secondaryArticles").appendChild(option);
             } else if (categoria === "acompanhamento") {
               document.getElementById("sideArticles").appendChild(option);
             } else if (categoria === "sobremesa") {
               document.getElementById("dessertArticles").appendChild(option);
-            } else {
-              console.warn(
-                "Artigo sem categoria reconhecida:",
-                artigo.name,
-                categoria
-              );
             }
+
             option.value = JSON.stringify({
               product_id: artigo.product_id,
               name: artigo.name,
@@ -636,50 +607,56 @@
               tax_id: artigo.tax_id,
             });
           });
+
           document.getElementById("newTableName").value = "";
           document.getElementById("createTableModal").style.display = "flex";
         } catch (err) {
           alert("Não foi possível carregar os artigos: " + err.message);
         }
       }
-
       function getSelectedProducts(selectId) {
         const select = document.getElementById(selectId);
         return Array.from(select.selectedOptions).map((opt) =>
           JSON.parse(opt.value)
         );
       }
+
       function createNewTable() {
-        const nomeMesa = document.getElementById("newTableName").value.trim();
-        if (!nomeMesa) {
-          alert("Por favor, insira um nome para a mesa.");
+        const tableName = document.getElementById("newTableName").value.trim();
+        if (!tableName) {
+          alert("Insere um nome para a mesa!");
           return;
         }
 
-        const novaMesa = {
-          id: Date.now(),
-          name: nomeMesa,
+        const newTable = {
+          id: tables.length + 1,
+          name: tableName,
           open: true,
+          kitchenNote: "", // podes preencher se houver nota da cozinha
           order: {
             status: "unpaid",
             plates: getSelectedProducts("principalArticles"),
-            extras: getSelectedProducts("secondaryArticles"),
-            drinks: getSelectedProducts("sideArticles"),
+            secondaryPlates: getSelectedProducts("secondaryArticles"),
+            sides: getSelectedProducts("sideArticles"),
             desserts: getSelectedProducts("dessertArticles"),
+            drinks: [],
             coffee: [],
+            extras: [],
           },
           prepared: {
             plates: [],
-            extras: [],
-            drinks: [],
+            secondaryPlates: [],
+            sides: [],
             desserts: [],
+            drinks: [],
             coffee: [],
+            extras: [],
           },
         };
 
-        tables.push(novaMesa);
-        closeCreateTableModal();
+        tables.push(newTable);
         renderTables();
+        document.getElementById("createTableModal").style.display = "none";
       }
     </script>
   </body>
