@@ -187,6 +187,10 @@
           <input type="text" id="reference" required />
           <label>Preço (sem IVA) *</label>
           <input type="number" step="0.01" id="price" required />
+          <label for="unit_id">Unidade *</label>
+          <select id="unit_id" required>
+            <!-- Será populado via JS -->
+          </select>
           <label>IVA *</label>
           <select id="tax_id" required>
             <option value="">-- Escolha o IVA --</option>
@@ -340,6 +344,28 @@
           console.error("Erro ao buscar taxas:", err);
         }
       }
+      async function fetchUnits() {
+        const res = await fetch("/api/moloni-units"); // Endpoint que retorna unidades
+        const units = await res.json();
+        return units; // Ex: [{id: 1, name: "Unidade"}, {id: 2, name: "Kg"}, ...]
+      }
+      // Função para popular o select
+      async function populateUnitSelect() {
+        const units = await fetchUnits();
+        const select = document.getElementById("unit_id");
+
+        units.forEach((unit) => {
+          const option = document.createElement("option");
+          option.value = unit.id;
+          option.textContent = unit.name;
+          select.appendChild(option);
+        });
+
+        // Define a unidade padrão como "Unidade"
+        const defaultUnit =
+          units.find((u) => u.name === "Unidade")?.id || units[0].id;
+        select.value = defaultUnit;
+      }
 
       document
         .getElementById("newProductForm")
@@ -352,7 +378,7 @@
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
             price: parseFloat(document.getElementById("price").value),
-            unit_id: 1,
+            unit_id: parseInt(document.getElementById("unit_id").value),
             tax_id: parseInt(document.getElementById("tax_id").value),
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
@@ -436,6 +462,7 @@
       fetchCategorias();
       fetchTaxes();
       fetchProducts();
+      populateUnitSelect();
     </script>
   </body>
 </html>
