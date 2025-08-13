@@ -30,7 +30,7 @@ const artigosLocais = [
 router.get("/artigos-locais", (req, res) => {
   res.json(artigosLocais);
 });
-// Função que sincroniza artigos locais com Moloni
+// Função que sincroniza artigos locais com Moloni (insert ou update)
 async function sincronizarArtigos(token, company_id) {
   // 1. Buscar artigos na Moloni
   const urlMoloni = moloniUrl("products/getAll", token);
@@ -41,21 +41,69 @@ async function sincronizarArtigos(token, company_id) {
   });
   const artigosMoloni = await resMoloni.json();
 
-  // console.log("Artigos na Moloni:", artigosMoloni);
   if (!Array.isArray(artigosMoloni)) {
     console.error("Resposta inesperada dos artigos Moloni");
     return;
   }
-  // Criar um Set com referências dos artigos Moloni para comparação rápida
-  const referenciasMoloni = new Set(artigosMoloni.map((a) => a.reference));
 
-  // 2. Percorrer os artigos locais e inserir os que não existem na Moloni
+  // Map rápido de referência → product_id
+  const referenciasMoloni = new Map();
+  artigosMoloni.forEach((a) =>
+    referenciasMoloni.set(a.reference, a.product_id)
+  );
+
+  // 2. Percorrer os artigos locais
   for (const artigo of artigosLocais) {
-    if (!referenciasMoloni.has(artigo.reference)) {
-      // Inserir artigo na Moloni
-      const urlInserir = moloniUrl("products/insert", token);
+    const product_id = referenciasMoloni.get(artigo.reference);
 
-      const body = {
+    if (product_id) {
+      // Artigo existe, fazer UPDATE
+      console.log(
+        `Artigo ${artigo.reference} já existe na Moloni. Atualizando...`
+      );
+      const urlUpdate = moloniUrl("products/update", token);
+      const bodyUpdate = {
+        company_id,
+        product_id,
+        category_id: parseInt(artigo.category_id),
+        type: 1,
+        name: artigo.name,
+        reference: artigo.reference,
+        price: parseFloat(artigo.price),
+        unit_id: parseInt(artigo.unit_id),
+        has_stock: 0,
+        stock: 0,
+        summary: artigo.summary,
+        ean: artigo.ean,
+        pos_favorite: 1,
+        taxes: [
+          {
+            tax_id: parseInt(artigo.tax_id),
+            value: 0,
+            order: 1,
+            cumulative: 0,
+          },
+        ],
+      };
+
+      const resUpdate = await fetch(urlUpdate, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyUpdate),
+      });
+      const dataUpdate = await resUpdate.json();
+      console.log("Resposta update:", dataUpdate);
+      if (!resUpdate.ok) {
+        console.error(
+          `Erro ao atualizar artigo ${artigo.reference}:`,
+          dataUpdate
+        );
+      }
+    } else {
+      // Artigo não existe, criar
+      console.log(`Artigo ${artigo.reference} não existe. Criando...`);
+      const urlInsert = moloniUrl("products/insert", token);
+      const bodyInsert = {
         company_id,
         category_id: parseInt(artigo.category_id),
         type: 1,
@@ -67,41 +115,35 @@ async function sincronizarArtigos(token, company_id) {
         stock: 0,
         summary: artigo.summary,
         ean: artigo.ean,
+        pos_favorite: 1,
+        visibility_id: 1,
         taxes: [
           {
             tax_id: parseInt(artigo.tax_id),
-            value: null,
+            value: 0,
             order: 1,
             cumulative: 0,
           },
         ],
-        pos_favorite: 1,
-        visibility_id: 1,
       };
 
-      const resInserir = await fetch(urlInserir, {
+      const resInsert = await fetch(urlInsert, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(bodyInsert),
       });
-      console.log("Tentando inserir:", artigo.reference, artigo.name);
-
-      const dataInserir = await resInserir.json();
-      console.log("Resposta Moloni:", dataInserir);
-
-      if (!resInserir.ok) {
+      const dataInsert = await resInsert.json();
+      console.log("Resposta insert:", dataInsert);
+      if (!resInsert.ok) {
         console.error(
           `Erro ao inserir artigo ${artigo.reference}:`,
-          dataInserir
+          dataInsert
         );
-      } else {
-        console.log(`Artigo ${artigo.reference} inserido na Moloni.`);
       }
-    } else {
-      console.log(`Artigo ${artigo.reference} já existe na Moloni.`);
     }
   }
 }
+
 // Endpoint para disparar sincronização
 router.post("/sincronizar", async (req, res) => {
   try {
