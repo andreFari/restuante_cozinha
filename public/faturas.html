@@ -200,7 +200,7 @@
         try {
           const response = await fetch("/api/faturas");
           faturas = await response.json();
-
+          faturas = Array.isArray(data) ? data : [];
           if (faturas.length === 0) {
             document.getElementById("faturaContainer").innerText =
               "Nenhuma fatura encontrada.";

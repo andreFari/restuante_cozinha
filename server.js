@@ -567,10 +567,10 @@ app.get("/api/moloni-taxes", async (req, res) => {
     });
   }
 });
-
 app.get("/api/faturas", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
+
     const resp = await axios.post(
       "https://api.moloni.pt/v1/invoices/getAll/?access_token=" +
         access_token +
@@ -581,32 +581,41 @@ app.get("/api/faturas", async (req, res) => {
         filter: {
           field: "date",
           comparison: "between",
-          value: ["2025-01-01", "2025-12-31"], // ajusta datas conforme necessário
+          value: ["2025-01-01", "2025-12-31"],
         },
       }
     );
 
     const invoices = resp.data || [];
-    const pdfUrl = pdfResp?.data?.url;
-    if (!pdfUrl) {
-      console.warn("PDF retornado vazio ou inválido:", pdfResp.data);
-    }
-    // opcional: obter link PDF para cada fatura
+
+    // Obter link PDF para cada fatura
     const withPdf = await Promise.all(
       invoices.map(async (f) => {
-        const pdfResp = await axios.post(
-          "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
-            access_token +
-            "&json=true",
-          {
-            company_id: 355755,
-            document_id: f.document_id,
-          }
-        );
-        return {
-          ...f,
-          pdfUrl: pdfResp?.data?.url || "",
-        };
+        try {
+          const pdfResp = await axios.post(
+            "https://api.moloni.pt/v1/documents/getPDFLink/?access_token=" +
+              access_token +
+              "&json=true",
+            {
+              company_id: 355755,
+              document_id: f.document_id,
+            }
+          );
+          return {
+            ...f,
+            pdfUrl: pdfResp?.data?.url || "",
+          };
+        } catch (pdfErr) {
+          console.warn(
+            "Erro ao obter PDF para fatura",
+            f.document_id,
+            pdfErr.message
+          );
+          return {
+            ...f,
+            pdfUrl: "",
+          };
+        }
       })
     );
 
@@ -616,6 +625,7 @@ app.get("/api/faturas", async (req, res) => {
     res.status(500).json({ error: "erro_listar_faturas", detail: e.message });
   }
 });
+
 app.post(
   "/api/fatura-com-auto",
   upload.fields([
