@@ -352,7 +352,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       const taxes = [
         {
           tax_id: Number(tax_id),
-          value: Number(taxInfo?.valor ?? 23),
+          value: parseFloat(taxInfo?.valor ?? 23),
         },
       ];
 
@@ -365,13 +365,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
         product_id: Number(p.product_id),
         name: String(p.name || "Produto"),
         qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1,
+        summary: String(p.name || "Produto"), //
         price: parseFloat(p.price) || 0,
-        unit_name:
-          p.unit_name && p.unit_name.trim() ? p.unit_name.trim() : "Unidade",
-        unit_short_name:
-          p.unit_short_name && p.unit_short_name.trim()
-            ? p.unit_short_name.trim()
-            : "Un",
+        unit_name: String(p.unit_name || "Unidade").trim(),
+        unit_short_name: String(p.unit_short_name || "Un").trim(),
         taxes,
         ...(exemption_reason ? { exemption_reason } : {}),
       };
@@ -401,7 +398,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
       notes: notes || "",
       internal_notes: `Mesa: ${tableName || ""}`,
     };
-
+    console.log(
+      "Payload final enviado à Moloni este está na api:",
+      JSON.stringify(payload, null, 2)
+    );
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
       payload,

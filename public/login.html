@@ -269,16 +269,13 @@
           name: p.name,
           qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1, // garante > 0
           price: parseFloat(p.price) || 0,
-          unit_name:
-            p.unit_name && p.unit_name.trim() ? p.unit_name.trim() : "Unidade",
-          unit_short_name:
-            p.unit_short_name && p.unit_short_name.trim()
-              ? p.unit_short_name.trim()
-              : "Un",
+          summary: String(p.name || "Produto"), //
+          unit_name: String(p.unit_name || "Unidade").trim(),
+          unit_short_name: String(p.unit_short_name || "Un").trim(),
           taxes:
             p.taxes && p.taxes.length
               ? p.taxes
-              : [{ tax_id: 3630173, value: 23 }],
+              : [{ tax_id: 3630173, value: parseFloat(taxInfo?.valor ?? 23) }],
         }));
 
         // Payload enviado para o backend
@@ -287,7 +284,11 @@
           tableName: table.name,
           products: productsForMoloni,
         };
-        console.log("Produtos enviados para o backend:", productsForMoloni);
+        console.log(
+          "Payload final enviado à Moloni:",
+          JSON.stringify(payload, null, 2)
+        );
+
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
