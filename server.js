@@ -348,18 +348,23 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     // 🔹 Garantir que cada produto tem unit_name, unit_short_name e taxes corretos
     const productsWithUnitsAndTaxes = products.map((p) => {
-      // Se o produto não tiver tax_id, usar a primeira tax disponível
+      // Garantir tax_id válido
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
 
       return {
-        product_id: p.product_id,
-        name: p.name,
-        qty: p.qty || 1,
-        price: p.price,
-        unit_name: p.unit_name || "Unidade",
-        unit_short_name: p.unit_short_name || "Un",
-        taxes: [{ tax_id: tax_id, value: taxInfo?.valor || 23 }],
+        product_id: Number(p.product_id),
+        name: String(p.name || "Produto"),
+        qty: Number(p.qty || 1),
+        price: Number(p.price || 0),
+        unit_name: String(p.unit_name || "Unidade"),
+        unit_short_name: String(p.unit_short_name || "Un"),
+        taxes: [
+          {
+            tax_id: Number(tax_id),
+            value: Number(taxInfo?.valor || 23),
+          },
+        ],
       };
     });
     console.log(
