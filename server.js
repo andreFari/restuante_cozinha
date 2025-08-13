@@ -448,8 +448,10 @@ app.post("/api/emitir-fatura", async (req, res) => {
       { company_id, document_id },
       { headers: { "Content-Type": "application/json" } }
     );
+    console.log(pdfResp.data);
 
-    const pdfUrl = pdfResp?.data?.url || pdfResp?.data;
+    const pdfUrl =
+      typeof pdfResp?.data?.url === "string" ? pdfResp.data.url : null;
     if (!pdfUrl) console.warn("PDF retornado vazio:", pdfResp.data);
     return res.status(200).json({ pdfUrl, document_id });
   } catch (e) {

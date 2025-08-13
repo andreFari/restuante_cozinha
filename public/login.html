@@ -304,10 +304,10 @@
           const data = await response.json();
           console.log("Resposta da API emitir-fatura:", data);
 
-          if (data.pdfUrl) {
-            console.log("PDF URL retornada:", data.pdfUrl);
+          if (data.pdfUrl && typeof data.pdfUrl === "string") {
             window.open(data.pdfUrl, "_blank");
           } else {
+            console.error("PDF inválido:", data.pdfUrl);
             alert("Erro: Fatura criada mas sem PDF.");
           }
         } catch (err) {
@@ -339,13 +339,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-      <strong>${table.name}</strong> - ${table.open ? "Aberta" : "Fechada"}
-      ${
-        table.kitchenNote
-          ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-          : ""
-      }
-    `;
+            <strong>${table.name}</strong> - ${
+            table.open ? "Aberta" : "Fechada"
+          }
+            ${
+              table.kitchenNote
+                ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                : ""
+            }
+          `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -374,21 +376,21 @@
         function renderSection(title, items, prepState, key) {
           if (!items || items.length === 0) return "";
           return `
-      <div class="section">
-        <h3>${title}</h3>
-        ${items
-          .map(
-            (item, i) => `
-          <div class="item">
-            <input type="checkbox" ${prepState[i] ? "checked" : ""}
-              onchange="togglePrepared(${index}, '${key}', ${i})">
-            <label>${item.name}</label>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-    `;
+            <div class="section">
+              <h3>${title}</h3>
+              ${items
+                .map(
+                  (item, i) => `
+                <div class="item">
+                  <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                    onchange="togglePrepared(${index}, '${key}', ${i})">
+                  <label>${item.name}</label>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -412,31 +414,31 @@
         }
 
         orderDetails.innerHTML = `
-    <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+          <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
 
-    <div class="section">
-      <label><strong>Nota da cozinha :</strong></label><br>
-      <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-        table.kitchenNote
-      }</textarea>
-      <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-    </div>
+          <div class="section">
+            <label><strong>Nota da cozinha :</strong></label><br>
+            <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+              table.kitchenNote
+            }</textarea>
+            <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+          </div>
 
-    <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
-      ${order.status === "paid" ? "Pago" : "Por Pagar"}
-    </div>
-    <button class="btn" onclick="togglePaid(${index})">
-      Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-    </button>
+          <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
+            ${order.status === "paid" ? "Pago" : "Por Pagar"}
+          </div>
+          <button class="btn" onclick="togglePaid(${index})">
+            Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+          </button>
 
-    <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-      ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-    </button>
+          <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+            ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+          </button>
 
-    <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
+          <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
 
-    ${sectionsHtml}
-  `;
+          ${sectionsHtml}
+        `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
