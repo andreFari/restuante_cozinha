@@ -345,7 +345,11 @@ app.post("/api/emitir-fatura", async (req, res) => {
     // 🔹 Obter todas as taxas disponíveis
     const taxesResp = await axios.get(`http://localhost:3000/api/moloni-taxes`);
     const allTaxes = taxesResp.data;
-
+    const productsResp = await axios.post(
+      `https://api.moloni.pt/v1/products/getAll/?access_token=${access_token}&json=true`,
+      { company_id }
+    );
+    const allProducts = productsResp.data;
     const productsWithUnitsAndTaxes = products.map((p) => {
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
@@ -360,6 +364,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
       if (!taxes.length || taxes.every((t) => t.value === 0)) {
         exemption_reason = "M00"; // exemplo de código de isenção
       }
+      const moloniProduct = allProducts.find(
+        (mp) => mp.product_id === Number(p.product_id)
+      );
 
       return {
         product_id: Number(p.product_id),
@@ -368,6 +375,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         summary: String(p.name || "Produto"),
         price: parseFloat(p.price) || 0,
         unit_name: String(p.unit_name || "Unidade").trim(),
+        unit_id: p.unit_id ? Number(p.unit_id) : undefined,
         unit_short_name: String(
           p.unit_short_name || p.unit_short || "Un"
         ).trim(),
