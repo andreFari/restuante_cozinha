@@ -353,15 +353,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
     const productsWithUnitsAndTaxes = products.map((p) => {
       const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
-
-      let exemption_reason = "M00";
-      if (!taxes.length || taxes.every((t) => t.value === 0)) {
-        exemption_reason = "M00"; // exemplo de código de isenção
-      }
-      const moloniProduct = allProducts.find(
-        (mp) => mp.product_id === Number(p.product_id)
-      );
-
       const taxes = [
         {
           tax_id: Number(tax_id),
@@ -370,6 +361,13 @@ app.post("/api/emitir-fatura", async (req, res) => {
           ),
         },
       ];
+      let exemption_reason = "M00";
+      if (!taxes.length || taxes.every((t) => t.value === 0)) {
+        exemption_reason = "M00"; // exemplo de código de isenção
+      }
+      const moloniProduct = allProducts.find(
+        (mp) => mp.product_id === Number(p.product_id)
+      );
 
       console.log("Moloni product encontrado:", moloniProduct);
       return {
