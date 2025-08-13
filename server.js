@@ -368,7 +368,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         summary: String(p.name || "Produto"), //
         price: parseFloat(p.price) || 0,
         unit_name: String(p.unit_name || "Unidade").trim(),
-        unit_short_name: String(p.unit_short_name || "Un").trim(),
+        unit_short: String(p.unit_short_name || p.unit_short || "Un").trim(),
         taxes,
         ...(exemption_reason ? { exemption_reason } : {}),
       };
