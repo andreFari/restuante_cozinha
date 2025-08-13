@@ -462,6 +462,33 @@ app.post("/api/emitir-fatura", async (req, res) => {
     });
   }
 });
+
+app.get("/api/moloni-units", async (req, res) => {
+  try {
+    const access_token = await getValidAccessToken();
+    const company_id = process.env.MOLONI_COMPANY_ID;
+
+    if (!company_id) {
+      return res.status(400).json({ error: "company_id em falta" });
+    }
+
+    // Chamada à API Moloni
+    const response = await axios.post(
+      `https://api.moloni.pt/v1/units/getAll/?access_token=${access_token}&json=true`,
+      { company_id },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const units = response.data; // Lista de unidades
+    return res.status(200).json(units);
+  } catch (e) {
+    console.error("Erro ao obter unidades:", e.response?.data || e.message);
+    return res.status(500).json({
+      error: "erro_obter_unidades",
+      detail: e.response?.data || e.message,
+    });
+  }
+});
 app.get("/api/moloni-document-sets", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
