@@ -357,12 +357,12 @@ app.post("/api/emitir-fatura", async (req, res) => {
         name: String(p.name || "Produto"),
         qty: Number(p.qty || 1),
         price: Number(p.price || 0),
-        unit_name: String(p.unit_name || "Unidade"),
-        unit_short_name: String(p.unit_short_name || "Un"),
+        unit_name: p.unit_name?.trim() || "Unidade",
+        unit_short_name: p.unit_short_name?.trim() || "Un",
         taxes: [
           {
             tax_id: Number(tax_id),
-            value: Number(taxInfo?.valor || 23),
+            value: Number(taxInfo?.valor ?? 23),
           },
         ],
       };
@@ -395,7 +395,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
     // 🔹 Inserir fatura na Moloni
     const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
-      payload,
+      JSON.stringify(payload),
       {
         headers: {
           "Content-Type": "application/json",
