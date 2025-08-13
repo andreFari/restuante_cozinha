@@ -288,11 +288,15 @@
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+          if (!response.ok) {
+            const text = await response.text();
+            console.error("Erro do backend:", text);
+            alert("Erro ao emitir fatura.");
+            return;
+          }
 
           const data = await response.json();
           console.log("Resposta da API emitir-fatura:", data);
