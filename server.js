@@ -348,18 +348,24 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     // 🔹 Garantir que cada produto tem unit_name, unit_short_name e taxes corretos
     const productsWithUnitsAndTaxes = products.map((p) => {
-      const tax_id = p.taxes?.[0]?.tax_id;
+      // Se o produto não tiver tax_id, usar a primeira tax disponível
+      const tax_id = p.taxes?.[0]?.tax_id || allTaxes[0]?.id;
       const taxInfo = allTaxes.find((t) => t.id === tax_id);
 
       return {
-        ...p,
+        product_id: p.product_id,
+        name: p.name,
+        qty: p.qty || 1,
+        price: p.price,
         unit_name: p.unit_name || "Unidade",
         unit_short_name: p.unit_short_name || "Un",
-        taxes: [
-          { tax_id: tax_id || allTaxes[0]?.id, value: taxInfo?.valor || 23 },
-        ],
+        taxes: [{ tax_id: tax_id, value: taxInfo?.valor || 23 }],
       };
     });
+    console.log(
+      "Payload final para Moloni:",
+      JSON.stringify(productsWithUnitsAndTaxes, null, 2)
+    );
 
     // 🔹 Preparar payload da fatura
     const today = new Date().toISOString().slice(0, 10);
