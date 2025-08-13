@@ -382,6 +382,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
       customer_id,
       document_set_id,
       date: today,
+      document_type: "FT",
+      serie_id: 1,
       expiration_date: today,
       status: 1,
       products,

@@ -282,7 +282,10 @@
             unit_short_name: p.unit_short_name, // "Un"
           })),
         };
-
+        if (!payload.products || payload.products.length === 0) {
+          alert("Não há produtos selecionados para emitir a fatura.");
+          return;
+        }
         try {
           const response = await fetch("/api/emitir-fatura", {
             method: "POST",
