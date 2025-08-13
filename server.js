@@ -587,7 +587,10 @@ app.get("/api/faturas", async (req, res) => {
     );
 
     const invoices = resp.data || [];
-
+    const pdfUrl = pdfResp?.data?.url;
+    if (!pdfUrl) {
+      console.warn("PDF retornado vazio ou inválido:", pdfResp.data);
+    }
     // opcional: obter link PDF para cada fatura
     const withPdf = await Promise.all(
       invoices.map(async (f) => {

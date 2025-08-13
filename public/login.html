@@ -305,6 +305,7 @@
           console.log("Resposta da API emitir-fatura:", data);
 
           if (data.pdfUrl) {
+            console.log("PDF URL retornada:", data.pdfUrl);
             window.open(data.pdfUrl, "_blank");
           } else {
             alert("Erro: Fatura criada mas sem PDF.");
