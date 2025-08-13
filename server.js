@@ -392,10 +392,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
       internal_notes: `Mesa: ${tableName || ""}`,
     };
 
-    // 🔹 Inserir fatura na Moloni
-    axios.post(
+    const insertResp = await axios.post(
       `https://api.moloni.pt/v1/invoices/insert/?access_token=${access_token}&json=true&human_errors=true`,
-      JSON.stringify(payload),
+      payload,
       {
         headers: {
           "Content-Type": "application/json",
@@ -403,7 +402,6 @@ app.post("/api/emitir-fatura", async (req, res) => {
         },
       }
     );
-
     const insertData = insertResp.data;
     const document_id =
       insertData?.document_id || insertData?.document?.document_id;
