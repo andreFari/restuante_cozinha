@@ -5,22 +5,22 @@ import { getValidAccessToken, getCompanyId } from "./moloniAuth.js";
 // Simulando "base de dados local" de artigos
 const artigosLocais = [
   {
-    name: "Artigo 1",
+    name: "Sopa",
     reference: "REF001",
     price: 10.0,
     tax_id: 3630173,
     unit_id: 1,
-    summary: "Descrição artigo 1",
+    summary: "Entrada",
     ean: "1234567890123",
     category_id: 9664037,
   },
   {
-    name: "Artigo 2",
+    name: "Bife da Vazia",
     reference: "REF002",
     price: 15.5,
     tax_id: 3630173,
     unit_id: 1,
-    summary: "Descrição artigo 2",
+    summary: "Prato principal",
     ean: "1234567890456",
     category_id: 9664037,
   },
