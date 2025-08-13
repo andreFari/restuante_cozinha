@@ -376,6 +376,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
         price: parseFloat(p.price) || 0,
         unit_id: moloniProduct?.unit_id || 1, // 1 geralmente é "Unidade"
         unit_name: moloniProduct?.unit_name ?? p.unit_name ?? "Unidade",
+        taxes,
         unit_short_name:
           moloniProduct?.unit_short_name ?? p.unit_short_name ?? "Un",
         ...(exemption_reason ? { exemption_reason } : {}),
