@@ -256,7 +256,8 @@
         document.getElementById("tax_id").value = product.tax_id;
         document.getElementById("summary").value = product.summary || "";
         document.getElementById("ean").value = product.ean || "";
-        document.getElementById("unit_id").value = product.unit_id;
+        document.getElementById("unit_id").value =
+          parseInt(product.unit_id) || "";
         // Armazena o id do produto no formulário para diferenciar criação/edição
         const form = document.getElementById("newProductForm");
         form.dataset.editId = id;
@@ -387,7 +388,7 @@
             name: document.getElementById("name").value,
             reference: document.getElementById("reference").value,
             price: parseFloat(document.getElementById("price").value),
-            unit_id: parseInt(document.getElementById("unit_id").value),
+            unit_id: parseInt(document.getElementById("unit_id").value), // importante
             tax_id: parseInt(document.getElementById("tax_id").value),
             summary: document.getElementById("summary").value,
             ean: document.getElementById("ean").value,
