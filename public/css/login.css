@@ -126,59 +126,126 @@ header {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-
 /* ====== Modal ====== */
 .modal {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0,0,0,0.45);
   justify-content: center;
   align-items: center;
   padding: 20px;
   z-index: 999;
 }
 
+.modal.show {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .modal-content {
+  display: flex;
+  flex-direction: row; /* horizontal */
+  gap: 20px;
   background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 450px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 900px;
   max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  animation: slideIn 0.3s ease;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ====== Colunas internas ====== */
+.modal-left, .modal-right {
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 15px;
 }
 
+.modal-left {
+  flex: 1;
+  border-right: 1px solid #eee;
+  max-width: 250px;
+}
+
+.modal-right {
+  flex: 2;
+}
+
+/* ====== Títulos ====== */
 .modal-content h3 {
-  margin-bottom: 15px;
-  font-size: 1.2rem;
-  color: #444;
-}
-
-/* ====== Inputs ====== */
-input, select, textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  margin-bottom: 12px;
-  font-size: 0.95rem;
-}
-
-textarea {
-  resize: vertical;
-}
-
-/* ====== Categorias ====== */
-.category-section {
+  font-size: 1.4rem;
+  color: #333;
   margin-bottom: 15px;
 }
 
-.category-section h4 {
-  margin-bottom: 8px;
+.modal-left h4, .modal-right h4 {
   font-size: 1rem;
   color: #555;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+/* ====== Lista de Itens Interativos ====== */
+.modal-left .item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.modal-left .item:hover {
+  background: #f1f1f1;
+  border-color: #007bff;
+}
+
+.modal-left .item.active {
+  background: #007bff;
+  color: #fff;
+  border-color: #0056b3;
+}
+
+/* ====== Inputs e Selects ====== */
+.modal-right input, 
+.modal-right select, 
+.modal-right textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  transition: all 0.2s ease;
+}
+
+.modal-right input:focus, 
+.modal-right select:focus, 
+.modal-right textarea:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* ====== Selects Multiplos Melhorados ====== */
+.modal-right select[multiple] {
+  height: 120px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
 /* ====== Ações do Modal ====== */
@@ -186,4 +253,35 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 15px;
+}
+
+.modal-actions .btn {
+  min-width: 80px;
+}
+
+/* ====== Scroll interno elegante ====== */
+.modal-left::-webkit-scrollbar,
+.modal-right::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-left::-webkit-scrollbar-thumb,
+.modal-right::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+/* ====== Responsividade ====== */
+@media (max-width: 768px) {
+  .modal-content {
+    flex-direction: column;
+    max-width: 95%;
+  }
+  
+  .modal-left {
+    border-right: none;
+    max-width: 100%;
+    margin-bottom: 15px;
+  }
 }
