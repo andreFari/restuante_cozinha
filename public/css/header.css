@@ -2,7 +2,7 @@ header {
   background: #fff;
   padding: 1rem 2rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* mantém logo e links em extremidades */
   align-items: center;
   border-bottom: 1px solid #e3e3e3;
   flex-wrap: wrap;
@@ -22,6 +22,8 @@ header {
 .links-container {
   display: flex;
   gap: 1rem;
+  align-items: center; /* centraliza verticalmente os links */
+  flex-wrap: wrap;
 }
 
 .links-container a {
@@ -29,8 +31,19 @@ header {
   text-decoration: none;
   font-weight: 600;
   transition: color 0.2s ease;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
 }
 
 .links-container a:hover {
-  color: #0056b3;
+  color: #fff;
+  background-color: #007bff;
+}
+
+#tokenDisplay {
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  width: 100%;
+  margin-top: 0.5rem; /* pequeno espaçamento abaixo do header principal */
 }

@@ -13,10 +13,12 @@ body {
 h1, h3, h4 {
   margin-bottom: 0.75rem;
   font-weight: 600;
+
 }h1 {
   font-size: 2rem;
   margin-bottom: 1rem;
   margin-left: 3%;
+  margin-top: 1%;
 }
 
 h3 {
@@ -31,7 +33,7 @@ p {
   margin-bottom: 1rem;
   line-height: 1.5;
 }
-/* ====== Cabeçalho ====== */
+
 
 /* ====== Botões ====== */
 .btn {

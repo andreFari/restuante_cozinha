@@ -9,10 +9,12 @@
 
   <body>
     <header>
+      <div class="logo-title">
+        <img src="" alt="Logo" class="logo" />
+        <h1>Painel Admin</h1>
+      </div>
+
       <div class="links-container">
-        <div class="logo-title">
-          <img src="" alt="Logo" class="logo" />
-        </div>
         <a
           href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=249928302_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
         >
@@ -20,11 +22,12 @@
         </a>
         <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
         <a href="./guiasTransporte.html" class="protected"
-          >Guias de Tranporte</a
+          >Guias de Transporte</a
         >
-        <a href="./artigos.html" class="protected">🍽️ Gerir Pratos (Moloni)</a>
+        <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
       </div>
-      <div id="tokenDisplay"></div>
+
+      <div id="tokenDisplay">⚠️ Sistema não autenticado</div>
     </header>
     <div id="mainContent" style="display: none">
       <h1>Painel de Admin / Recessão</h1>
