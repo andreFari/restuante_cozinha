@@ -367,7 +367,7 @@
         select.innerHTML = "";
         units.forEach((unit) => {
           const option = document.createElement("option");
-          option.value = unit.id;
+          option.value = unit.unit_id;
           option.textContent = unit.name;
           select.appendChild(option);
         });
