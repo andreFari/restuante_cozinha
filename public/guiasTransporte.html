@@ -15,6 +15,7 @@
         font-family: "Segoe UI", Arial, sans-serif;
         background-color: #f7f8fa;
         color: #333;
+        padding: 20px;
       }
       h1 {
         text-align: center;
@@ -30,9 +31,10 @@
       }
       .top-bar {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem; /* Espaço entre a top-bar e o formulário */
+        flex-direction: column; /* coloca os elementos em coluna */
+        align-items: center; /* centraliza horizontalmente */
+        margin-bottom: 2rem;
+        gap: 1rem; /* espaçamento entre título e botão */
       }
 
       .top-bar button {
