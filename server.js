@@ -477,7 +477,7 @@ app.get("/api/moloni-units", async (req, res) => {
 
     // Chamada à API Moloni
     const response = await axios.post(
-      `https://api.moloni.pt/v1/units/getAll/?access_token=${access_token}&json=true`,
+      `https://api.moloni.pt/v1/measurementUnits/getAll/?access_token=${access_token}&json=true`,
       { company_id },
       { headers: { "Content-Type": "application/json" } }
     );
