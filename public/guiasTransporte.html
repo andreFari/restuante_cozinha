@@ -56,42 +56,14 @@
         border: 1px solid #ccc;
       }
 
-      input:required,
-      select:required,
-      textarea:required {
-        border-left: 3px solid #e67e22;
-      }
-
       .grid-2 {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem 1.5rem;
       }
 
-      .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem 1.5rem;
-      }
-
       .full-width {
         grid-column: 1 / -1;
-      }
-
-      #artigosContainer {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 0.8rem;
-      }
-
-      .artigo-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #fdfdfd;
-        padding: 0.5rem;
-        border-radius: 6px;
-        border: 1px solid #ddd;
       }
 
       button {
@@ -115,13 +87,67 @@
       }
 
       @media (max-width: 800px) {
-        .grid-2,
-        .grid-3 {
+        .grid-2 {
           grid-template-columns: 1fr;
         }
         .actions {
           flex-direction: column;
         }
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        max-width: 800px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      .modal-body {
+        overflow-y: auto;
+        flex: 1;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .artigo-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fdfdfd;
+      }
+
+      .search-input {
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 100%;
+        margin-bottom: 1rem;
       }
     </style>
   </head>
@@ -134,9 +160,16 @@
         <select id="cliente" required></select>
 
         <label>Artigos:</label>
-        <div id="artigosContainer"></div>
+        <div class="actions full-width">
+          <button type="button" id="openArtigosModal">
+            ➕ Selecionar Artigos
+          </button>
+          <span id="artigosResumo">Nenhum artigo selecionado</span>
+        </div>
+
         <label for="deliveryMethod">Método de Entrega:</label>
         <select id="deliveryMethod" required></select>
+
         <label for="viatura">Viaturas:</label>
         <select id="viatura" required></select>
 
@@ -178,23 +211,81 @@
 
       <button type="submit">Criar Guia</button>
     </form>
+
     <button type="button" onclick="window.location.href='listar-guias.html'">
       📋 Ver Guias
     </button>
 
+    <!-- Modal -->
+    <div class="modal" id="artigosModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Selecionar Artigos</h3>
+          <button type="button" id="closeArtigosModal">❌</button>
+        </div>
+        <input
+          type="text"
+          id="searchArtigos"
+          class="search-input"
+          placeholder="Pesquisar artigos..."
+        />
+        <div class="modal-body" id="artigosLista"></div>
+        <button type="button" id="confirmArtigos">Confirmar Seleção</button>
+      </div>
+    </div>
+
     <script>
+      let artigosData = [];
+      let artigosSelecionados = [];
+
       document.addEventListener("DOMContentLoaded", async () => {
-        // Preencher campos com data atual
         const now = new Date().toISOString().slice(0, 16);
         document.getElementById("emissao").value = now;
         document.getElementById("inicio").value = now;
 
-        // Preencher dropdowns
         await preencherClientes();
-        await preencherArtigos();
         await preencherViaturas();
         await preencherDeliveryMethods();
       });
+
+      document
+        .getElementById("openArtigosModal")
+        .addEventListener("click", async () => {
+          document.getElementById("artigosModal").style.display = "flex";
+          if (artigosData.length === 0) await carregarArtigos();
+        });
+
+      document
+        .getElementById("closeArtigosModal")
+        .addEventListener("click", () => {
+          document.getElementById("artigosModal").style.display = "none";
+        });
+
+      document
+        .getElementById("searchArtigos")
+        .addEventListener("input", (e) => {
+          renderArtigos(e.target.value.toLowerCase());
+        });
+
+      document
+        .getElementById("confirmArtigos")
+        .addEventListener("click", () => {
+          artigosSelecionados = Array.from(
+            document.querySelectorAll(
+              ".artigo-item input[type=checkbox]:checked"
+            )
+          ).map((cb) => {
+            const id = cb.value;
+            const qtd =
+              cb.parentElement.querySelector(".quantidade").value || 1;
+            return { artigoId: id, quantidade: parseFloat(qtd) };
+          });
+          document.getElementById("artigosResumo").textContent =
+            artigosSelecionados.length > 0
+              ? `${artigosSelecionados.length} artigo(s) selecionado(s)`
+              : "Nenhum artigo selecionado";
+          document.getElementById("artigosModal").style.display = "none";
+        });
 
       async function preencherClientes() {
         const res = await fetch("/molo/api/moloni-customers");
@@ -208,62 +299,9 @@
         });
       }
 
-      async function preencherArtigos() {
-        const res = await fetch("/molo/api/artigos");
-        const artigos = await res.json();
-        const container = document.getElementById("artigosContainer");
-        container.innerHTML = "";
-
-        artigos.forEach((a) => {
-          const div = document.createElement("div");
-          div.classList.add("artigo-item");
-          div.style.display = "flex";
-          div.style.alignItems = "center";
-          div.style.gap = "0.5rem";
-          div.style.marginBottom = "0.5rem";
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.id = `artigo-${a.id}`;
-          checkbox.value = a.id;
-
-          const label = document.createElement("label");
-          label.htmlFor = `artigo-${a.id}`;
-          label.textContent = `${a.nome} - ${a.preco}€`;
-
-          const quantidade = document.createElement("input");
-          quantidade.type = "number";
-          quantidade.min = "1";
-          quantidade.value = "1";
-          quantidade.classList.add("quantidade");
-          quantidade.style.width = "60px";
-          quantidade.disabled = true;
-
-          // Habilitar quantidade só quando artigo for selecionado
-          checkbox.addEventListener("change", () => {
-            quantidade.disabled = !checkbox.checked;
-          });
-
-          div.appendChild(checkbox);
-          div.appendChild(label);
-          div.appendChild(quantidade);
-
-          container.appendChild(div);
-        });
-      }
       async function preencherViaturas() {
         const res = await fetch("/molo/api/viaturas");
-        if (!res.ok) {
-          console.error("Failed to fetch viaturas", res.status);
-          return;
-        }
         const viaturas = await res.json();
-
-        if (!Array.isArray(viaturas)) {
-          console.error("Erro: viaturas não é um array", viaturas);
-          return;
-        }
-
         const select = document.getElementById("viatura");
         viaturas.forEach((v) => {
           const opt = document.createElement("option");
@@ -273,33 +311,58 @@
         });
       }
 
+      async function preencherDeliveryMethods() {
+        const res = await fetch("/molo/api/delivery-methods");
+        const methods = await res.json();
+        const select = document.getElementById("deliveryMethod");
+        methods.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = m.name;
+          select.appendChild(opt);
+        });
+      }
+
+      async function carregarArtigos() {
+        const res = await fetch("/molo/api/artigos");
+        artigosData = await res.json();
+        renderArtigos();
+      }
+
+      function renderArtigos(filtro = "") {
+        const lista = document.getElementById("artigosLista");
+        lista.innerHTML = "";
+        artigosData
+          .filter((a) => a.nome.toLowerCase().includes(filtro))
+          .forEach((a) => {
+            const div = document.createElement("div");
+            div.className = "artigo-item";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = a.id;
+            const label = document.createElement("label");
+            label.textContent = `${a.nome} - ${a.preco}€`;
+            const quantidade = document.createElement("input");
+            quantidade.type = "number";
+            quantidade.min = "1";
+            quantidade.value = "1";
+            quantidade.className = "quantidade";
+            quantidade.style.width = "60px";
+            div.append(checkbox, label, quantidade);
+            lista.appendChild(div);
+          });
+      }
+
       document
         .getElementById("guiaForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
-          const submitBtn = e.target.querySelector("button[type=submit]");
-          submitBtn.disabled = true;
-          submitBtn.textContent = "A criar...";
-          // Pegar artigos selecionados no momento do submit
-          const artigosSelecionados = Array.from(
-            document.querySelectorAll("#artigosContainer .artigo-item")
-          )
-            .filter((div) => div.querySelector("input[type=checkbox]").checked)
-            .map((div) => ({
-              artigoId: div.querySelector("input[type=checkbox]").value,
-              quantidade:
-                parseFloat(div.querySelector(".quantidade").value) || 1,
-            }));
-
-          const emissaoISO = document.getElementById("emissao").value;
-          const inicioISO = document.getElementById("inicio").value;
-
           const dados = {
             clienteId: document.getElementById("cliente").value,
             artigos: artigosSelecionados,
             viaturaId: document.getElementById("viatura").value,
-            emissao: emissaoISO.split("T")[0],
-            inicio: inicioISO.split("T")[0],
+            emissao: document.getElementById("emissao").value.split("T")[0],
+            inicio: document.getElementById("inicio").value.split("T")[0],
             carga: {
               morada: document.getElementById("moradaCarga").value,
               cp: document.getElementById("cpCarga").value,
@@ -316,47 +379,23 @@
             observacoes: document.getElementById("obs").value,
           };
 
-          try {
-            const res = await fetch("/molo/api/guias", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(dados),
-            });
+          const res = await fetch("/molo/api/guias", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dados),
+          });
 
-            if (!res.ok) {
-              const result = await res.json();
-              throw new Error(result.detalhe || "Erro desconhecido");
-            }
-
+          if (res.ok) {
             alert("Guia criada com sucesso!");
             document.getElementById("guiaForm").reset();
-          } catch (err) {
-            alert("Erro ao criar guia: " + err.message);
+            artigosSelecionados = [];
+            document.getElementById("artigosResumo").textContent =
+              "Nenhum artigo selecionado";
+          } else {
+            const erro = await res.json();
+            alert("Erro: " + (erro.detalhe || "Erro desconhecido"));
           }
-
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Criar Guia";
         });
-      async function preencherDeliveryMethods() {
-        try {
-          const res = await fetch("/molo/api/delivery-methods");
-          if (!res.ok) throw new Error("Erro ao carregar métodos de entrega");
-          const methods = await res.json();
-
-          const select = document.getElementById("deliveryMethod");
-          select.innerHTML = ""; // Limpar se necessário
-
-          methods.forEach((m) => {
-            const opt = document.createElement("option");
-            opt.value = m.id;
-            opt.textContent = m.name;
-            select.appendChild(opt);
-          });
-        } catch (err) {
-          console.error("Erro ao carregar métodos de entrega:", err);
-          alert("Erro ao carregar métodos de entrega. Ver consola.");
-        }
-      }
     </script>
   </body>
 </html>
