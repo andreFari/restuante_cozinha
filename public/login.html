@@ -78,7 +78,7 @@
             placeholder="Ex: Mesa 3"
           />
 
-          <div class="category-section">
+          <div class="category-section" id="principalArticles">
             <h4>Pratos Principais</h4>
             <select
               id="principalArticles"
@@ -87,7 +87,7 @@
             ></select>
           </div>
 
-          <div class="category-section">
+          <div class="category-section" id="principalArticles">
             <h4>Pratos Secundários</h4>
             <select
               id="secondaryArticles"
@@ -96,7 +96,7 @@
             ></select>
           </div>
 
-          <div class="category-section">
+          <div class="category-section" id="principalArticles">
             <h4>Acompanhamentos</h4>
             <select
               id="sideArticles"
@@ -105,10 +105,27 @@
             ></select>
           </div>
 
-          <div class="category-section">
+          <div class="category-section" id="principalArticles">
             <h4>Sobremesas</h4>
             <select
               id="dessertArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
+          <div class="category-section" id="principalArticles">
+            <h4>Bebidas</h4>
+            <select
+              id="drinkArticles"
+              multiple
+              style="width: 100%; height: 100px"
+            ></select>
+          </div>
+
+          <div class="category-section" id="principalArticles">
+            <h4>Extras</h4>
+            <select
+              id="extraArticles"
               multiple
               style="width: 100%; height: 100px"
             ></select>
@@ -339,15 +356,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-            <strong>${table.name}</strong> - ${
+                  <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-            ${
-              table.kitchenNote
-                ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                : ""
-            }
-          `;
+                  ${
+                    table.kitchenNote
+                      ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                      : ""
+                  }
+                `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -376,21 +393,21 @@
         function renderSection(title, items, prepState, key) {
           if (!items || items.length === 0) return "";
           return `
-            <div class="section">
-              <h3>${title}</h3>
-              ${items
-                .map(
-                  (item, i) => `
-                <div class="item">
-                  <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                    onchange="togglePrepared(${index}, '${key}', ${i})">
-                  <label>${item.name}</label>
-                </div>
-              `
-                )
-                .join("")}
-            </div>
-          `;
+                  <div class="section">
+                    <h3>${title}</h3>
+                    ${items
+                      .map(
+                        (item, i) => `
+                      <div class="item">
+                        <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                          onchange="togglePrepared(${index}, '${key}', ${i})">
+                        <label>${item.name}</label>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -414,31 +431,33 @@
         }
 
         orderDetails.innerHTML = `
-          <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+                <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
 
-          <div class="section">
-            <label><strong>Nota da cozinha :</strong></label><br>
-            <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-              table.kitchenNote
-            }</textarea>
-            <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-          </div>
+                <div class="section">
+                  <label><strong>Nota da cozinha :</strong></label><br>
+                  <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
+                    table.kitchenNote
+                  }</textarea>
+                  <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
+                </div>
 
-          <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
-            ${order.status === "paid" ? "Pago" : "Por Pagar"}
-          </div>
-          <button class="btn" onclick="togglePaid(${index})">
-            Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-          </button>
+                <div class="status ${
+                  order.status === "paid" ? "paid" : "unpaid"
+                }">
+                  ${order.status === "paid" ? "Pago" : "Por Pagar"}
+                </div>
+                <button class="btn" onclick="togglePaid(${index})">
+                  Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+                </button>
 
-          <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-            ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-          </button>
+                <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
+                  ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+                </button>
 
-          <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
+                <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
 
-          ${sectionsHtml}
-        `;
+                ${sectionsHtml}
+              `;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {
@@ -588,6 +607,8 @@
           "secondaryArticles",
           "sideArticles",
           "dessertArticles",
+          "drinkArticles",
+          "extraArticles",
         ].forEach((id) => {
           document.getElementById(id).innerHTML = "";
         });
@@ -617,6 +638,10 @@
               document.getElementById("sideArticles").appendChild(option);
             } else if (categoria === "sobremesa") {
               document.getElementById("dessertArticles").appendChild(option);
+            } else if (categoria === "bebida") {
+              document.getElementById("drinkArticles").appendChild(option);
+            } else if (categoria === "extra") {
+              document.getElementById("extraArticles").appendChild(option);
             }
 
             option.value = JSON.stringify({
@@ -654,13 +679,14 @@
           kitchenNote: "", // podes preencher se houver nota da cozinha
           order: {
             status: "unpaid",
-            plates: getSelectedProducts("principalArticles"),
-            secondaryPlates: getSelectedProducts("secondaryArticles"),
-            sides: getSelectedProducts("sideArticles"),
-            desserts: getSelectedProducts("dessertArticles"),
-            drinks: [],
+            plates: getSelectedProductsFromButtons("principalArticles"),
+            secondaryPlates:
+              getSelectedProductsFromButtons("secondaryArticles"),
+            sides: getSelectedProductsFromButtons("sideArticles"),
+            desserts: getSelectedProductsFromButtons("dessertArticles"),
+            drinks: getSelectedProducts("drinkArticles"), // adicionado
+            extras: getSelectedProducts("extraArticles"), // adicionado
             coffee: [],
-            extras: [],
           },
           prepared: {
             plates: [],
@@ -676,6 +702,30 @@
         tables.push(newTable);
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
+      }
+      function renderArticleButtons(containerId, articles) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = "";
+        articles.forEach((article) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = article.name;
+          btn.className = "article-btn";
+          btn.dataset.selected = "false";
+          btn.onclick = () => {
+            btn.dataset.selected =
+              btn.dataset.selected === "true" ? "false" : "true";
+            btn.classList.toggle("selected");
+          };
+          btn.value = JSON.stringify(article);
+          container.appendChild(btn);
+        });
+      }
+
+      function getSelectedProductsFromButtons(containerId) {
+        return Array.from(
+          document.querySelectorAll(`#${containerId} .article-btn.selected`)
+        ).map((btn) => JSON.parse(btn.value));
       }
     </script>
   </body>

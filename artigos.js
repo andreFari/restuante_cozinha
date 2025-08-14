@@ -9,7 +9,7 @@ const artigosLocais = [
     reference: "REF001",
     price: 10.0,
     tax_id: 3630173,
-    unit_id: 1,
+    unit_id: 3323458, //unidade
     summary: "Entrada",
     ean: "1234567890123",
     category_id: 9664037,
@@ -19,7 +19,7 @@ const artigosLocais = [
     reference: "REF002",
     price: 15.5,
     tax_id: 3630173,
-    unit_id: 1,
+    unit_id: 3323458,
     summary: "Prato principal",
     ean: "1234567890456",
     category_id: 9664037,
