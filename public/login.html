@@ -17,15 +17,17 @@
         >
           Login com Moloni
         </a>
-        <a href="./faturas.html">📄 Ver Faturas</a>
-        <a href="./guiasTransporte.html">Guias de Tranporte</a>
-        <a href="./artigos.html">🍽️ Gerir Pratos (Moloni)</a>
+        <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
+        <a href="./guiasTransporte.html" class="protected"
+          >Guias de Tranporte</a
+        >
+        <a href="./artigos.html" class="protected">🍽️ Gerir Pratos (Moloni)</a>
       </div>
       <div id="tokenDisplay"></div>
     </header>
     <div id="mainContent" style="display: none">
       <h1>Painel de Admin / Recessão</h1>
-      <button class="btn" onclick="openCreateTableModal()">
+      <button class="btn protected" onclick="openCreateTableModal()">
         Abrir Nova Mesa
       </button>
 
@@ -476,13 +478,22 @@
         let valid = false;
         let moloniProducts = [];
         console.log("Code da URL:", code);
+
         if (localStorage.getItem("moloni_token")) {
           valid = true;
         }
+        // Esconder todos os elementos protegidos por default
+        document.querySelectorAll(".protected").forEach((el) => {
+          el.style.display = "none";
+        });
+
         // Mostra mainContent se válido
         if (valid) {
           document.getElementById("mainContent").style.display = "block";
-          renderTables();
+          document.querySelectorAll(".protected").forEach((el) => {
+            el.style.display = "inline-block"; // links e botões
+          });
+          if (typeof renderTables === "function") renderTables();
         }
         if (code) {
           try {
@@ -496,9 +507,17 @@
 
             alert("Tokens armazenados com sucesso!");
             history.replaceState({}, "", "/login.html");
+            valid = true;
+            tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+            document.getElementById("mainContent").style.display = "block";
+            document.querySelectorAll(".protected").forEach((el) => {
+              el.style.display = "inline-block";
+            });
+            if (typeof renderTables === "function") renderTables();
           } catch (err) {
             console.error("Erro a obter tokens:", err);
             alert("Erro no login com Moloni.");
+            tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
           }
         }
 
@@ -511,7 +530,10 @@
 
           if (valid) {
             document.getElementById("mainContent").style.display = "block";
-            renderTables();
+            document.querySelectorAll(".protected").forEach((el) => {
+              el.style.display = "inline-block";
+            });
+            if (typeof renderTables === "function") renderTables();
           }
 
           if (error) {
