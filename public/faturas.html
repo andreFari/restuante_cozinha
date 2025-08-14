@@ -219,7 +219,9 @@
           <th>Impostos</th>
           <th>Total Liq.</th>
           <th>Dívida</th>
+             <th>Email</th>
           <th>PDF</th>
+       
         </tr>
       </thead>
       <tbody>
@@ -239,6 +241,13 @@
                 <td>${formatarValor(f.total_tax)}</td>
                 <td>${formatarValor(f.total_value)}</td>
                 <td>${formatarValor(f.total_due ?? f.total_balance)}</td>
+                <td>
+  <button class="btn btn-secondary" onclick="enviarFaturaEmail('${
+    f.document_id
+  }')">
+    📧 Enviar
+  </button>
+</td>
                 <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
               </tr>
             `;
@@ -256,6 +265,31 @@
       }
 
       fetchFaturas();
+
+      async function enviarFaturaEmail(documentId) {
+        const email = prompt("Digite o email do destinatário:");
+
+        if (!email) return;
+
+        try {
+          const response = await fetch("/api/enviar-fatura", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ document_id: documentId, email }),
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Erro ao enviar fatura: ${text}`);
+          }
+
+          alert("Fatura enviada com sucesso!");
+        } catch (err) {
+          alert(err.message);
+        }
+      }
     </script>
   </body>
 </html>

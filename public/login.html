@@ -392,33 +392,49 @@
         }
 
         orderDetails.innerHTML = `
-                <h2>${table.name} - ${table.open ? "Aberta" : "Fechada"}</h2>
+  <h2 style="margin-bottom: 1rem;">
+    ${table.name} - <span style="color: ${
+          table.open ? "#28a745" : "#dc3545"
+        };">${table.open ? "Aberta" : "Fechada"}</span>
+  </h2>
 
-                <div class="section">
-                  <label><strong>Nota da cozinha :</strong></label><br>
-                  <textarea id="kitchenNote" rows="3" style="width:100%;box-sizing:border-box;">${
-                    table.kitchenNote
-                  }</textarea>
-                  <button class="btn" onclick="saveKitchenNote(${index})" style="margin-top:5px;">Guardar Nota</button>
-                </div>
+  <!-- Nota da Cozinha -->
+  <div class="section" style="margin-bottom: 20px;">
+    <label for="kitchenNote" style="font-weight:600; margin-bottom:5px; display:block;">Nota da Cozinha:</label>
+    <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
+      table.kitchenNote
+    }</textarea>
+    <button class="btn btn-primary" onclick="saveKitchenNote(${index})" style="margin-top:10px;">Guardar Nota</button>
+  </div>
 
-                <div class="status ${
-                  order.status === "paid" ? "paid" : "unpaid"
-                }">
-                  ${order.status === "paid" ? "Pago" : "Por Pagar"}
-                </div>
-                <button class="btn" onclick="togglePaid(${index})">
-                  Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-                </button>
+  <!-- Status de Pagamento -->
+  <div class="section" style="margin-bottom:20px;">
+    <label style="font-weight:600; margin-bottom:5px; display:block;">Status do Pagamento:</label>
+    <div class="status ${
+      order.status === "paid" ? "paid" : "unpaid"
+    }" style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
+          order.status === "paid" ? "#d4edda" : "#f8d7da"
+        }; color:${order.status === "paid" ? "#155724" : "#721c24"};">
+      ${order.status === "paid" ? "Pago" : "Por Pagar"}
+    </div>
+    <button class="btn btn-secondary" onclick="togglePaid(${index})">
+      Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+    </button>
+  </div>
 
-                <button class="btn" style="margin-left:10px;" onclick="toggleOpenClose(${index})">
-                  ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-                </button>
+  <!-- Abrir/Fechar Mesa e Fatura -->
+  <div class="section" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
+    <button class="btn btn-secondary" onclick="toggleOpenClose(${index})">
+      ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+    </button>
+    <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
+  </div>
 
-                <button class="btn" onclick="openModal(${index})">Emitir Fatura</button>
-
-                ${sectionsHtml}
-              `;
+  <!-- Seções adicionais -->
+  <div class="section">
+    ${sectionsHtml}
+  </div>
+`;
       }
 
       window.togglePrepared = function (tableIndex, section, itemIndex) {

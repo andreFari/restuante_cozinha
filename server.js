@@ -321,6 +321,24 @@ const moloniProductMap = {
   },
   // outros produtos
 };
+app.post("/api/enviar-fatura", async (req, res) => {
+  const { document_id, email } = req.body;
+  if (!document_id || !email) {
+    return res.status(400).send("document_id e email são obrigatórios");
+  }
+  try {
+    // Chamada API Moloni: enviar fatura
+    const result = await moloni.faturas.sendEmail({
+      document_id,
+      email,
+    });
+
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Erro ao enviar fatura via Moloni");
+  }
+});
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
