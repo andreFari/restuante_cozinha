@@ -256,11 +256,10 @@ router.post("/api/guias", async (req, res) => {
     const todosArtigos = artigosResponse.data;
 
     // 4. Verificar se todos os artigos existem
-    const linhas = artigos.map((artigoId, quantidade) => {
+    const linhas = artigos.map(({ artigoId, quantidade }) => {
       const p = todosArtigos.find((a) => a.product_id == artigoId);
       if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
 
-      // Verifique se tem impostos válidos:
       const hasValidTaxes =
         Array.isArray(p.taxes) && p.taxes.some((t) => t.tax_id && t.tax_id > 0);
 
