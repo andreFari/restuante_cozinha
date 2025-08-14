@@ -234,20 +234,21 @@
         data.forEach((prod) => {
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td>${prod.product_id}</td>
-            <td>${prod.name}</td>
-            <td>${prod.reference}</td>
-            <td>${prod.price} €</td>
-               <button class="edit-btn" onclick="openEdit(${prod.product_id})">✏️</button>
-            <td><button class="delete-btn" onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
-          `;
+                    <td>${prod.product_id}</td>
+                    <td>${prod.name}</td>
+                    <td>${prod.reference}</td>
+                    <td>${prod.price} €</td>
+                       <button class="edit-btn" onclick="openEdit(${prod.product_id})">✏️</button>
+                    <td><button class="delete-btn" onclick="deleteProduct(${prod.product_id})">🗑️</button></td>
+                  `;
           tbody.appendChild(row);
         });
       }
-      function openEdit(id) {
+      async function openEdit(id) {
         const product = produtos.find((p) => p.product_id === id);
         if (!product) return;
-
+        // Garante que selects estão carregados antes de atribuir valores
+        await Promise.all([fetchTaxes(), populateUnitSelect()]);
         document.getElementById("name").value = product.name;
         document.getElementById("category_id").value = product.category_id;
         document.getElementById("reference").value = product.reference;
@@ -255,7 +256,7 @@
         document.getElementById("tax_id").value = product.tax_id;
         document.getElementById("summary").value = product.summary || "";
         document.getElementById("ean").value = product.ean || "";
-
+        document.getElementById("unit_id").value = product.unit_id;
         // Armazena o id do produto no formulário para diferenciar criação/edição
         const form = document.getElementById("newProductForm");
         form.dataset.editId = id;
