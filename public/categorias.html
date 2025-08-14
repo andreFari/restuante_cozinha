@@ -282,13 +282,16 @@
             description: document.getElementById("description").value,
           };
           try {
-            const url = id ? `/artigo/categorias/${id}` : "/categorias";
+            const url = id ? `/artigo/categorias/${id}` : "/artigo/categorias";
             const method = id ? "PUT" : "POST";
+
+            console.log("URL:", url, "Method:", method);
             const res = await fetch(url, {
               method,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
+            console.log("Resposta do fetch:", res);
             if (!res.ok) throw new Error();
             showMessage(
               "success",
