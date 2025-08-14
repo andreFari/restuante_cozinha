@@ -48,42 +48,51 @@
       </div>
       <div id="createTableModal" class="modal">
         <div class="modal-content">
-          <!-- Coluna esquerda: categorias de artigos -->
+          <!-- Left Column: Categories -->
           <div class="modal-left">
             <h3>Abrir Nova Mesa</h3>
+
             <div class="category-section">
               <h4>Pratos Principais</h4>
               <div id="principalArticles" class="article-list"></div>
             </div>
+
             <div class="category-section">
               <h4>Pratos Secundários</h4>
               <div id="secondaryArticles" class="article-list"></div>
             </div>
+
             <div class="category-section">
               <h4>Acompanhamentos</h4>
               <div id="sideArticles" class="article-list"></div>
             </div>
+
             <div class="category-section">
               <h4>Sobremesas</h4>
               <div id="dessertArticles" class="article-list"></div>
             </div>
+
             <div class="category-section">
               <h4>Bebidas</h4>
               <div id="drinkArticles" class="article-list"></div>
             </div>
+
             <div class="category-section">
               <h4>Extras</h4>
               <div id="extraArticles" class="article-list"></div>
             </div>
           </div>
 
-          <!-- Coluna direita: detalhes da mesa -->
+          <!-- Right Column: Table Info -->
           <div class="modal-right">
             <label for="newTableName">Nome da Mesa:</label>
             <input type="text" id="newTableName" placeholder="Ex: Mesa 3" />
 
             <div class="modal-actions">
-              <button class="btn" onclick="closeCreateTableModal()">
+              <button
+                class="btn btn-secondary"
+                onclick="closeCreateTableModal()"
+              >
                 Cancelar
               </button>
               <button class="btn btn-primary" onclick="createNewTable()">
@@ -93,6 +102,7 @@
           </div>
         </div>
       </div>
+
       <div
         id="invoiceModal"
         style="

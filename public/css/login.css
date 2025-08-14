@@ -10,7 +10,26 @@ body {
   background-color: #f7f8fa;
   color: #333;
 }
+h1, h3, h4 {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
 
+h3 {
+  font-size: 1.25rem;
+}
+
+h4 {
+  font-size: 1rem;
+}
+
+p {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
 /* ====== Cabeçalho ====== */
 header {
   background: #fff;
@@ -51,22 +70,34 @@ header {
 
 /* ====== Botões ====== */
 .btn {
-  padding: 8px 16px;
+    padding: 10px 18px;
   background: #007bff;
   color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+    cursor: pointer;
+  
+}
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  border: none;
 }
 
+.btn-primary:hover {
+  background-color: #0056b3;
+}
 .btn:hover {
   background: #0056b3;
 }
 
 .btn-secondary {
-  background: #6c757d;
+ background-color: #6c757d;
+  color: white;
+  border: none;
 }
 
 .btn-secondary:hover {
@@ -93,15 +124,15 @@ header {
 }
 
 .table-section h3 {
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   font-size: 1.1rem;
 }
 
 .table-item {
   background: #f9f9f9;
   border: 1px solid #ddd;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -147,7 +178,9 @@ header {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
+.category-section {
+  margin-bottom: 15px;
+}
 .modal-content {
   display: flex;
   flex-direction: row; /* horizontal */
@@ -155,6 +188,8 @@ header {
   background: #fff;
   border-radius: 10px;
   width: 90%;
+    padding: 20px;
+  gap: 25px;
   max-width: 900px;
   max-height: 90vh;
   overflow: hidden;
@@ -171,7 +206,7 @@ header {
 /* ====== Colunas internas ====== */
 .modal-left, .modal-right {
   overflow-y: auto;
-  padding: 15px;
+ padding: 20px;
 }
 
 .modal-left {
@@ -185,12 +220,13 @@ header {
 }
 
 /* ====== Títulos ====== */
-.modal-content h3 {
-  font-size: 1.4rem;
+.modal-content h3,
+.modal-left h3,
+.modal-right h3 {
+  font-size: 1.4rem; /* ou ajuste como quiser */
   color: #333;
-  margin-bottom: 15px;
+  margin-bottom: 1rem; /* unifica a distância inferior */
 }
-
 .modal-left h4, .modal-right h4 {
   font-size: 1rem;
   color: #555;
@@ -225,7 +261,7 @@ header {
 .modal-right textarea {
   width: 100%;
   padding: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   font-size: 0.95rem;
   border-radius: 6px;
   border: 1px solid #ccc;
@@ -257,30 +293,26 @@ header {
 }
 
 .modal-actions .btn {
-  min-width: 80px;
+  min-width: 90px; /* ligeiramente maior */
+  padding: 10px 16px; /* uniforme */
 }
 /* ====== Botões de Artigos ====== */
 /* Lista de artigos como botões */
 .article-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   max-height: 150px;
   overflow-y: auto;
-  margin-bottom: 10px;
 }
 
 .article-btn {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
+  padding: 8px 12px;
   border-radius: 6px;
+  border: 1px solid #ccc;
   background: #f9f9f9;
   cursor: pointer;
-  transition: 0.2s all;
-}
-
-.article-btn:hover {
-  background: #e0e0e0;
+   transition: background 0.2s, color 0.2s, border 0.2s;
 }
 
 .article-btn.selected {
@@ -288,10 +320,31 @@ header {
   color: white;
   border-color: #0056b3;
 }
+
+.article-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* ====== Table Sections ====== */
+.table-section {
+  padding: 20px;
+}
+
+.table-item {
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+}
+
 /* ====== Scroll interno elegante ====== */
 .modal-left::-webkit-scrollbar,
 .modal-right::-webkit-scrollbar {
   width: 6px;
+}
+.modal-right label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
 }
 
 .modal-left::-webkit-scrollbar-thumb,
@@ -306,10 +359,10 @@ header {
     flex-direction: column;
     max-width: 95%;
   }
-  
+
   .modal-left {
     border-right: none;
     max-width: 100%;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
   }
 }
