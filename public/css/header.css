@@ -1,0 +1,36 @@
+header {
+  background: #fff;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e3e3e3;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.logo-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.logo {
+  height: 40px;
+}
+
+.links-container {
+  display: flex;
+  gap: 1rem;
+}
+
+.links-container a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.links-container a:hover {
+  color: #0056b3;
+}
