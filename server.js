@@ -1,7 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
-import Moloni from "@moloni/moloni"; // ou require('@moloni/moloni')
 
 import PDFMerger from "pdf-merger-js";
 import bodyParser from "body-parser";
