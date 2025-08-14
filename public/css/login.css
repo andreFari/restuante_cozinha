@@ -20,7 +20,11 @@ h1, h3, h4 {
   margin-left: 3%;
   margin-top: 1%;
 }
-
+.disabled-link {
+  pointer-events: none; /* não permite clique */
+  color: red;           /* mantém vermelho */
+  opacity: 0.5;         /* visual de desativado */
+}
 h3 {
   font-size: 1.25rem;
 }

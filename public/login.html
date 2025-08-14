@@ -15,6 +15,7 @@
 
       <div class="links-container">
         <a
+          id="moloniLoginLink"
           href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=249928302_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
           >⏻ Login com Moloni
         </a>
@@ -498,6 +499,14 @@
             el.style.display = "inline-block"; // links e botões
           });
           if (typeof renderTables === "function") renderTables();
+        }
+
+        const loginLink = document.getElementById("moloniLoginLink");
+
+        if (valid) {
+          loginLink.classList.add("disabled-link"); // desativa link
+        } else {
+          loginLink.classList.remove("disabled-link"); // ativa link
         }
         if (code) {
           try {
