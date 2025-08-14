@@ -469,6 +469,7 @@ app.get("/api/moloni-units", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
     const company_id = process.env.MOLONI_COMPANY_ID;
+    console.log(company_id);
 
     if (!company_id) {
       return res.status(400).json({ error: "company_id em falta" });
