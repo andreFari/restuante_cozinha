@@ -5,11 +5,15 @@
     <title>Gerir Categorias - Moloni</title>
     <link rel="stylesheet" href="css/header.css" />
     <style>
-      body {
-        font-family: "Segoe UI", Tahoma, sans-serif;
+      * {
         margin: 0;
-        background-color: #f4f6f8;
-        padding: 20px;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background-color: #f7f8fa;
         color: #333;
       }
       h1 {
@@ -151,7 +155,6 @@
       <div id="tokenDisplay"></div>
     </header>
     <h1>📂 Gestão de Categorias</h1>
-    <p><a href="/">← Voltar ao Painel</a></p>
 
     <div class="message success" id="msgSuccess"></div>
     <div class="message error" id="msgError"></div>
@@ -272,7 +275,14 @@
         .getElementById("categoryForm")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
+
+          const descriptionSelect = document.getElementById("description");
+          if (!descriptionSelect.value) {
+            alert("Por favor, selecione uma descrição válida.");
+            return; // interrompe o envio
+          }
           const id = document.getElementById("category_id").value;
+
           const body = {
             name: document.getElementById("name").value,
             parent_id: 0,
@@ -297,11 +307,7 @@
             showMessage("error", "Erro ao guardar categoria.");
           }
         });
-      const descriptionSelect = document.getElementById("description");
-      if (!descriptionSelect.value) {
-        alert("Por favor, selecione uma descrição válida.");
-        return; // interrompe o envio
-      }
+
       const modal = document.getElementById("categoryModal");
       document.getElementById("closeModal").onclick = () =>
         (modal.style.display = "none");
