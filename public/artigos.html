@@ -345,13 +345,22 @@
         }
       }
       async function fetchUnits() {
-        const res = await fetch("/api/moloni-units"); // Endpoint que retorna unidades
-        const units = await res.json();
-        return units; // Ex: [{id: 1, name: "Unidade"}, {id: 2, name: "Kg"}, ...]
+        const res = await fetch("/api/moloni-units");
+        console.log("Units API status:", res.status);
+        const text = await res.text();
+        console.log("Units API raw response:", text);
+        return JSON.parse(text);
       }
       // Função para popular o select
       async function populateUnitSelect() {
         const units = await fetchUnits();
+
+        if (!Array.isArray(units)) {
+          console.error("Unexpected units format:", units);
+          showMessage("error", "Erro ao carregar unidades.");
+          return;
+        }
+
         const select = document.getElementById("unit_id");
         select.innerHTML = "";
         units.forEach((unit) => {
@@ -361,10 +370,9 @@
           select.appendChild(option);
         });
 
-        // Define a unidade padrão como "Unidade"
         const defaultUnit =
-          units.find((u) => u.name === "Unidade")?.id || units[0].id;
-        select.value = defaultUnit;
+          units.find((u) => u.name === "Unidade")?.id || units[0]?.id;
+        if (defaultUnit) select.value = defaultUnit;
       }
 
       document
