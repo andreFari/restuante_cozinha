@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
+import Moloni from "@moloni/moloni"; // ou require('@moloni/moloni')
 
 import PDFMerger from "pdf-merger-js";
 import bodyParser from "body-parser";
@@ -31,6 +32,13 @@ const MOLONI_DOCUMENT_SET_ID = Number(process.env.DOCUMENT_SET_ID || 0);
 const MOLONI_CUSTOMER_ID = Number(process.env.MOLONI_CUSTOMER_ID || 0);
 const MOLONI_TAX_ID = Number(process.env.MOLONI_TAX_ID || 0);
 
+const moloni = new Moloni({
+  client_id: CLIENT_ID,
+  client_secret: CLIENT_SECRET,
+  username: "tomas.jose.ferreira.tavares@gmail.com",
+  password: "TomasMolo12",
+  grant_type: "password",
+});
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
