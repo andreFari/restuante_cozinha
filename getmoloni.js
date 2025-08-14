@@ -396,7 +396,7 @@ router.get("/importar/guias", async (req, res) => {
           );
 
           const guia = detalheResponse.data;
-          console.log("Guia detalhada:", guia);
+          // console.log("Guia detalhada:", guia);
           return {
             id: guia.document_id,
             numero: guia.document_number || guia.number || "-",
@@ -407,7 +407,7 @@ router.get("/importar/guias", async (req, res) => {
             codigoAT: guia.transport_code || "-",
           };
         } catch (detalheErro) {
-          console.error("Erro ao obter guia detalhada:", detalheErro.message);
+          // console.error("Erro ao obter guia detalhada:", detalheErro.message);
           return {
             id: g.document_id,
             numero: g.number || "-",
