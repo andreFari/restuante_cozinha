@@ -468,7 +468,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
 app.get("/api/moloni-units", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-    const company_id = process.env.MOLONI_COMPANY_ID;
+    const company_id = MOLONI_COMPANY_ID;
     console.log("Id da empresa no moloni-units api", company_id);
 
     if (!company_id) {
