@@ -28,7 +28,8 @@
     </header>
     <div id="mainContent" style="display: none">
       <h1>Painel de Admin / Recessão</h1>
-      <button class="btn protected" onclick="openCreateTableModal()">
+      <button class="btn protected">
+        <!-- <button class="btn protected" onclick="openCreateTableModal()">-->
         Abrir Nova Mesa
       </button>
 
@@ -528,7 +529,7 @@
           tokenDisplayDiv.textContent = valid
             ? "✔️ Sistema pronto a usar"
             : "⚠️ Sistema não autenticado";
-
+          updateUI(valid);
           if (valid) {
             document.getElementById("mainContent").style.display = "block";
             document.querySelectorAll(".protected").forEach((el) => {
@@ -552,7 +553,26 @@
           tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
         }
       }); // fecha o DOMContentLoaded corretamente aqui
+      function updateUI(isValid) {
+        const tokenDisplayDiv = document.getElementById("tokenDisplay");
+        const mainContent = document.getElementById("mainContent");
 
+        if (isValid) {
+          tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+          mainContent.style.display = "block";
+          document.querySelectorAll(".protected").forEach((el) => {
+            el.style.display = "inline-block";
+          });
+        } else {
+          tokenDisplayDiv.textContent = "⚠️ Sistema não autenticado";
+          mainContent.style.display = "none";
+          document.querySelectorAll(".protected").forEach((el) => {
+            el.style.display = "none";
+          });
+          const modal = document.getElementById("createTableModal");
+          if (modal) modal.style.display = "none";
+        }
+      }
       function convertOrderToMoloniProducts(order) {
         const sections = [
           "plates",
@@ -730,6 +750,11 @@
           document.querySelectorAll(`#${containerId} .article-btn.selected`)
         ).map((btn) => JSON.parse(btn.value));
       }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const btn = document.querySelector(".btn");
+        if (btn) btn.addEventListener("click", openCreateTableModal);
+      });
     </script>
   </body>
 </html>
