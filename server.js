@@ -329,22 +329,35 @@ const moloniProductMap = {
   },
   // outros produtos
 };
+async function enviarFaturaEmail(document_id, email) {
+  try {
+    const access_token = await getValidAccessToken(); // seu token válido
+    const response = await axios.post(
+      "https://api.moloni.pt/v1/faturas/sendEmail/",
+      { document_id, email },
+      {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error(
+      "[Moloni] Erro ao enviar fatura:",
+      err.response?.data || err.message
+    );
+    throw new Error("Erro ao enviar fatura via Moloni");
+  }
+} // Uso no Express
 app.post("/api/enviar-fatura", async (req, res) => {
   const { document_id, email } = req.body;
-  if (!document_id || !email) {
+  if (!document_id || !email)
     return res.status(400).send("document_id e email são obrigatórios");
-  }
-  try {
-    // Chamada API Moloni: enviar fatura
-    const result = await moloni.faturas.sendEmail({
-      document_id,
-      email,
-    });
 
+  try {
+    const result = await enviarFaturaEmail(document_id, email);
     res.json({ success: true, result });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Erro ao enviar fatura via Moloni");
+    res.status(500).send(err.message);
   }
 });
 app.post("/api/emitir-fatura", async (req, res) => {
