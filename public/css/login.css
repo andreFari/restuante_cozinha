@@ -259,7 +259,26 @@ header {
 .modal-actions .btn {
   min-width: 80px;
 }
+/* ====== Botões de Artigos ====== */
+.article-btn {
+  padding: 8px 12px;
+  margin: 4px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
+.article-btn:hover {
+  background: #e0e0e0;
+}
+
+.article-btn.selected {
+  background-color: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
 /* ====== Scroll interno elegante ====== */
 .modal-left::-webkit-scrollbar,
 .modal-right::-webkit-scrollbar {

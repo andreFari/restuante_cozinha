@@ -78,57 +78,57 @@
             placeholder="Ex: Mesa 3"
           />
 
-          <div class="category-section" id="principalArticles">
+          <div class="category-section">
             <h4>Pratos Principais</h4>
-            <select
+            <div
               id="principalArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
 
-          <div class="category-section" id="secondaryArticles">
+          <div class="category-section">
             <h4>Pratos Secundários</h4>
-            <select
+            <div
               id="secondaryArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
 
-          <div class="category-section" id="sideArticles">
+          <div class="category-section">
             <h4>Acompanhamentos</h4>
-            <select
+            <div
               id="sideArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
 
-          <div class="category-section" id="dessertArticles">
+          <div class="category-section">
             <h4>Sobremesas</h4>
-            <select
+            <div
               id="dessertArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
-          <div class="category-section" id="drinkArticles">
+          <div class="category-section">
             <h4>Bebidas</h4>
-            <select
+            <div
               id="drinkArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
 
-          <div class="category-section" id="extraArticles">
+          <div class="category-section">
             <h4>Extras</h4>
-            <select
+            <div
               id="extraArticles"
               multiple
               style="width: 100%; height: 100px"
-            ></select>
+            ></div>
           </div>
 
           <div style="text-align: right; margin-top: 10px">
@@ -601,15 +601,16 @@
       let moloniProducts = []; // global, para todas as funções
 
       async function openCreateTableModal() {
-        // Limpar selects
-        [
+        // Limpa os containers de botões
+        const containerIds = [
           "principalArticles",
           "secondaryArticles",
           "sideArticles",
           "dessertArticles",
           "drinkArticles",
           "extraArticles",
-        ].forEach((id) => {
+        ];
+        containerIds.forEach((id) => {
           document.getElementById(id).innerHTML = "";
         });
 
@@ -621,35 +622,43 @@
           moloniProducts = artigos; // guarda globalmente
 
           artigos.forEach((artigo) => {
-            const option = document.createElement("option");
-            option.textContent = artigo.name || artigo.summary || "Sem nome";
-
             const categoria = (artigo.summary || "")
               .trim()
               .toLowerCase()
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "");
 
-            if (categoria === "prato principal") {
-              document.getElementById("principalArticles").appendChild(option);
-            } else if (categoria === "prato secundario") {
-              document.getElementById("secondaryArticles").appendChild(option);
-            } else if (categoria === "acompanhamento") {
-              document.getElementById("sideArticles").appendChild(option);
-            } else if (categoria === "sobremesa") {
-              document.getElementById("dessertArticles").appendChild(option);
-            } else if (categoria === "bebida") {
-              document.getElementById("drinkArticles").appendChild(option);
-            } else if (categoria === "extra") {
-              document.getElementById("extraArticles").appendChild(option);
-            }
+            let containerId;
+            if (categoria === "prato principal")
+              containerId = "principalArticles";
+            else if (categoria === "prato secundario")
+              containerId = "secondaryArticles";
+            else if (categoria === "acompanhamento")
+              containerId = "sideArticles";
+            else if (categoria === "sobremesa") containerId = "dessertArticles";
+            else if (categoria === "bebida") containerId = "drinkArticles";
+            else if (categoria === "extra") containerId = "extraArticles";
+            else return; // ignora categorias desconhecidas
 
-            option.value = JSON.stringify({
+            const container = document.getElementById(containerId);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = artigo.name;
+            btn.className = "article-btn";
+            btn.dataset.selected = "false";
+            btn.onclick = () => {
+              btn.dataset.selected =
+                btn.dataset.selected === "true" ? "false" : "true";
+              btn.classList.toggle("selected");
+            };
+            btn.value = JSON.stringify({
               product_id: artigo.product_id,
               name: artigo.name,
               price: artigo.price,
               tax_id: artigo.tax_id || 3630173,
             });
+
+            container.appendChild(btn);
           });
 
           document.getElementById("newTableName").value = "";
@@ -657,12 +666,6 @@
         } catch (err) {
           alert("Não foi possível carregar os artigos: " + err.message);
         }
-      }
-      function getSelectedProducts(selectId) {
-        const select = document.getElementById(selectId);
-        return Array.from(select.selectedOptions).map((opt) =>
-          JSON.parse(opt.value)
-        );
       }
 
       function createNewTable() {
@@ -684,8 +687,8 @@
               getSelectedProductsFromButtons("secondaryArticles"),
             sides: getSelectedProductsFromButtons("sideArticles"),
             desserts: getSelectedProductsFromButtons("dessertArticles"),
-            drinks: getSelectedProducts("drinkArticles"), // adicionado
-            extras: getSelectedProducts("extraArticles"), // adicionado
+            drinks: getSelectedProductsFromButtons("drinkArticles"), // adicionado
+            extras: getSelectedProductsFromButtons("extraArticles"), // adicionado
             coffee: [],
           },
           prepared: {
