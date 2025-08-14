@@ -45,9 +45,9 @@ if (!fs.existsSync(uploadsDir)) {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(morgan("dev"));
 
-app.get("/", (req, res) => res.redirect("login.html"));
+app.get("/", (req, res) => res.redirect("/login.html"));
 app.get("/login.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "login.html"));
+  res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
