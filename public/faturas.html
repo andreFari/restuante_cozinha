@@ -20,6 +20,7 @@
         text-align: center;
         color: #2c3e50;
         margin-bottom: 1.5rem;
+        margin-top: 1.5rem;
       }
 
       form label {
@@ -124,34 +125,42 @@
           font-size: 0.9rem;
         }
       }
+      #autoPdf {
+        text-align: center;
+      }
+      #faturaPdf {
+        text-align: center;
+      }
     </style>
   </head>
 
   <body>
     <div id="header-placeholder"></div>
-    <h1>📄 Faturas Emitidas</h1>
-    <form id="formAutoPdf">
-      <label for="autoPdf">Seleciona o PDF do Auto para juntar:</label>
-      <input
-        type="file"
-        id="autoPdf"
-        name="autoPdf"
-        accept="application/pdf"
-        required
-      />
-      <label for="faturaPdf">Seleciona o PDF da Fatura:</label>
-      <input
-        type="file"
-        id="faturaPdf"
-        name="faturaPdf"
-        accept="application/pdf"
-        required
-      />
-      <button type="submit">Exportar PDF combinado</button>
-    </form>
 
-    <div id="faturaContainer">A carregar...</div>
+    <div>
+      <h1>📄 Faturas Emitidas</h1>
+      <form id="formAutoPdf">
+        <label for="autoPdf">Seleciona o PDF do Auto para juntar:</label>
+        <input
+          type="file"
+          id="autoPdf"
+          name="autoPdf"
+          accept="application/pdf"
+          required
+        />
+        <label for="faturaPdf">Seleciona o PDF da Fatura:</label>
+        <input
+          type="file"
+          id="faturaPdf"
+          name="faturaPdf"
+          accept="application/pdf"
+          required
+        />
+        <button type="submit">Exportar PDF combinado</button>
+      </form>
 
+      <div id="faturaContainer">A carregar...</div>
+    </div>
     <script>
       const form = document.getElementById("formAutoPdf");
 

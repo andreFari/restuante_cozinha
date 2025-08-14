@@ -20,6 +20,7 @@
         text-align: center;
         color: #34495e;
         margin-bottom: 2rem;
+        margin-top: 2rem;
       }
 
       form {
@@ -27,7 +28,7 @@
         flex-direction: column;
         gap: 2rem;
       }
-      top-bar {
+      .top-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -99,7 +100,20 @@
         cursor: pointer;
         transition: background 0.3s;
       }
-
+      #submit {
+        background: #2980b9;
+        color: white;
+        padding: 0.8rem;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-bottom: 5%;
+      }
+      #submit:hover {
+        background: #1f5e85;
+      }
       button:hover {
         background: #1f5e85;
       }
@@ -189,6 +203,9 @@
       .artigo-item:hover {
         background: #eef6fc;
       }
+      #verGuias {
+        margin-bottom: 2%;
+      }
       .search-input {
         padding: 0.5rem;
         border: 1px solid #ccc;
@@ -200,93 +217,95 @@
   </head>
   <body>
     <div id="header-placeholder"></div>
-    <div class="top-bar">
-      <h1>🚚 Criar Guia de Transporte</h1>
-      <button
-        type="button"
-        id="verGuias"
-        onclick="window.location.href='listar-guias.html'"
-      >
-        📋 Ver Guias
-      </button>
-    </div>
-    <form id="guiaForm">
-      <div class="section grid-2">
-        <label for="cliente">Cliente:</label>
-        <select id="cliente" required></select>
-
-        <label>Artigos:</label>
-        <div class="actions full-width">
-          <button type="button" id="openArtigosModal">
-            ➕ Selecionar Artigos
-          </button>
-          <span id="artigosResumo">Nenhum artigo selecionado</span>
-        </div>
-
-        <label for="deliveryMethod">Método de Entrega:</label>
-        <select id="deliveryMethod" required></select>
-
-        <label for="viatura">Viaturas:</label>
-        <select id="viatura" required></select>
-
-        <label for="emissao">Data de emissão:</label>
-        <input type="datetime-local" id="emissao" required />
-
-        <label for="inicio">Início do transporte:</label>
-        <input type="datetime-local" id="inicio" required />
-      </div>
-
-      <div class="section">
-        <h3>Local de Carga (Empresa)</h3>
-        <label>Morada:</label>
-        <input type="text" id="moradaCarga" required />
-        <label>Código Postal:</label>
-        <input type="text" id="cpCarga" required />
-        <label>Localidade:</label>
-        <input type="text" id="localCarga" required />
-        <label>País:</label>
-        <input type="text" id="paisCarga" value="Portugal" required />
-      </div>
-
-      <div class="section">
-        <h3>Local de Descarga (Cliente)</h3>
-        <label>Morada:</label>
-        <input type="text" id="moradaDescarga" required />
-        <label>Código Postal:</label>
-        <input type="text" id="cpDescarga" required />
-        <label>Localidade:</label>
-        <input type="text" id="localDescarga" required />
-        <label>País:</label>
-        <input type="text" id="paisDescarga" value="Portugal" required />
-      </div>
-
-      <div class="section">
-        <label for="obs">Observações:</label>
-        <textarea id="obs" class="full-width" rows="4"></textarea>
-      </div>
-
-      <button type="submit">Criar Guia</button>
-    </form>
-
-    <!-- Modal -->
-    <div id="artigosModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Selecionar Artigos</h2>
-          <button id="closeArtigosModal">✖</button>
-        </div>
-        <input
-          type="text"
-          id="searchArtigos"
-          class="search-input"
-          placeholder="Pesquisar artigos..."
-        />
-        <div class="modal-body" id="artigosLista"></div>
-        <div
-          class="actions"
-          style="margin-top: 1rem; justify-content: flex-end"
+    <div>
+      <div class="top-bar">
+        <h1>🚚 Criar Guia de Transporte</h1>
+        <button
+          type="button"
+          id="verGuias"
+          onclick="window.location.href='listar-guias.html'"
         >
-          <button type="button" id="confirmArtigos">Confirmar Seleção</button>
+          📋 Ver Guias
+        </button>
+      </div>
+      <form id="guiaForm">
+        <div class="section grid-2">
+          <label for="cliente">Cliente:</label>
+          <select id="cliente" required></select>
+
+          <label>Artigos:</label>
+          <div class="actions full-width">
+            <button type="button" id="openArtigosModal">
+              ➕ Selecionar Artigos
+            </button>
+            <span id="artigosResumo">Nenhum artigo selecionado</span>
+          </div>
+
+          <label for="deliveryMethod">Método de Entrega:</label>
+          <select id="deliveryMethod" required></select>
+
+          <label for="viatura">Viaturas:</label>
+          <select id="viatura" required></select>
+
+          <label for="emissao">Data de emissão:</label>
+          <input type="datetime-local" id="emissao" required />
+
+          <label for="inicio">Início do transporte:</label>
+          <input type="datetime-local" id="inicio" required />
+        </div>
+
+        <div class="section">
+          <h3>Local de Carga (Empresa)</h3>
+          <label>Morada:</label>
+          <input type="text" id="moradaCarga" required />
+          <label>Código Postal:</label>
+          <input type="text" id="cpCarga" required />
+          <label>Localidade:</label>
+          <input type="text" id="localCarga" required />
+          <label>País:</label>
+          <input type="text" id="paisCarga" value="Portugal" required />
+        </div>
+
+        <div class="section">
+          <h3>Local de Descarga (Cliente)</h3>
+          <label>Morada:</label>
+          <input type="text" id="moradaDescarga" required />
+          <label>Código Postal:</label>
+          <input type="text" id="cpDescarga" required />
+          <label>Localidade:</label>
+          <input type="text" id="localDescarga" required />
+          <label>País:</label>
+          <input type="text" id="paisDescarga" value="Portugal" required />
+        </div>
+
+        <div class="section">
+          <label for="obs">Observações:</label>
+          <textarea id="obs" class="full-width" rows="4"></textarea>
+        </div>
+
+        <button type="submit" id="submit">Criar Guia</button>
+      </form>
+
+      <!-- Modal -->
+      <div id="artigosModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Selecionar Artigos</h2>
+            <button id="closeArtigosModal">✖</button>
+          </div>
+          <input
+            type="text"
+            id="searchArtigos"
+            class="search-input"
+            placeholder="Pesquisar artigos..."
+          />
+          <div class="modal-body" id="artigosLista"></div>
+          <div
+            class="actions"
+            style="margin-top: 1rem; justify-content: flex-end"
+          >
+            <button type="button" id="confirmArtigos">Confirmar Seleção</button>
+          </div>
         </div>
       </div>
     </div>
