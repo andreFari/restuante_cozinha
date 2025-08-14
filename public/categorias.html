@@ -180,13 +180,11 @@
           <input type="text" id="name" required />
 
           <label for="description">Descrição</label>
-          <select id="description" required>
-            <option value="" disabled selected>Selecione uma categoria</option>
-            <option value="prato principal">Prato Principal</option>
-            <option value="prato secundário">Prato Secundário</option>
-            <option value="acompanhamento">Acompanhamento</option>
-            <option value="sobremesa">Sobremesa</option>
-          </select>
+          <input
+            type="text"
+            id="description"
+            placeholder="Insira a descrição"
+          />
 
           <button type="submit">Guardar</button>
         </form>
@@ -269,17 +267,13 @@
         .addEventListener("submit", async (e) => {
           e.preventDefault();
 
-          const descriptionSelect = document.getElementById("description");
-          if (!descriptionSelect.value) {
-            alert("Por favor, selecione uma descrição válida.");
-            return; // interrompe o envio
-          }
+          const descriptionValue = document.getElementById("description").value;
           const id = document.getElementById("category_id").value;
 
           const body = {
             name: document.getElementById("name").value,
             parent_id: 0,
-            description: document.getElementById("description").value,
+            description: descriptionValue,
           };
           try {
             const url = id ? `/artigo/categorias/${id}` : "/artigo/categorias";
