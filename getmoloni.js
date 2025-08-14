@@ -256,7 +256,7 @@ router.post("/api/guias", async (req, res) => {
     const todosArtigos = artigosResponse.data;
 
     // 4. Verificar se todos os artigos existem
-    const linhas = artigos.map((artigoId) => {
+    const linhas = artigos.map((artigoId, quantidade) => {
       const p = todosArtigos.find((a) => a.product_id == artigoId);
       if (!p) throw new Error(`Artigo com ID ${artigoId} não encontrado`);
 
@@ -271,7 +271,7 @@ router.post("/api/guias", async (req, res) => {
       return {
         product_id: p.product_id,
         name: p.name,
-        qty: 1,
+        qty: parseFloat(quantidade) || 1,
         price: parseFloat(p.price) || 0,
         ...(exemptionReason && { exemption_reason: exemptionReason }),
         taxes: hasValidTaxes

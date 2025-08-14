@@ -141,17 +141,30 @@
           select.appendChild(opt);
         });
       }
-
+      const artigosSelecionados = Array.from(
+        document.querySelectorAll("#artigosContainer .artigo-item")
+      )
+        .filter((div) => div.querySelector("input[type=checkbox]").checked)
+        .map((div) => ({
+          artigoId: div.querySelector("input[type=checkbox]").value,
+          quantidade: parseFloat(div.querySelector(".quantidade").value) || 1,
+        }));
       async function preencherArtigos() {
         const res = await fetch("/molo/api/artigos");
         const artigos = await res.json();
+        const container = document.getElementById("artigosContainer");
+        container.innerHTML = ""; // Limpar
 
-        const select = document.getElementById("artigos");
         artigos.forEach((a) => {
-          const opt = document.createElement("option");
-          opt.value = a.id;
-          opt.textContent = `${a.nome} - ${a.preco}€`;
-          select.appendChild(opt);
+          const div = document.createElement("div");
+          div.classList.add("artigo-item");
+
+          div.innerHTML = `
+      <input type="checkbox" id="artigo-${a.id}" value="${a.id}" />
+      <label for="artigo-${a.id}">${a.nome} - ${a.preco}€</label>
+      <input type="number" min="1" value="1" class="quantidade" style="width: 60px;" />
+    `;
+          container.appendChild(div);
         });
       }
 
@@ -189,9 +202,7 @@
           const inicio = inicioISO.split("T")[0]; // "2025-08-08"
           const dados = {
             clienteId: document.getElementById("cliente").value,
-            artigos: Array.from(
-              document.getElementById("artigos").selectedOptions
-            ).map((opt) => opt.value),
+            artigos: artigosSelecionados,
             viaturaId: document.getElementById("viatura").value,
             emissao, // já só data YYYY-MM-DD
             inicio,
