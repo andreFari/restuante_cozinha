@@ -260,14 +260,23 @@ header {
   min-width: 80px;
 }
 /* ====== Botões de Artigos ====== */
+/* Lista de artigos como botões */
+.article-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
 .article-btn {
-  padding: 8px 12px;
-  margin: 4px;
+  padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 6px;
   background: #f9f9f9;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: 0.2s all;
 }
 
 .article-btn:hover {
@@ -275,9 +284,9 @@ header {
 }
 
 .article-btn.selected {
-  background-color: #4caf50;
+  background-color: #007bff;
   color: white;
-  border-color: #4caf50;
+  border-color: #0056b3;
 }
 /* ====== Scroll interno elegante ====== */
 .modal-left::-webkit-scrollbar,
