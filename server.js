@@ -325,11 +325,8 @@ async function enviarFaturaEmail(document_id, email) {
   try {
     const access_token = await getValidAccessToken(); // seu token válido
     const response = await axios.post(
-      "https://api.moloni.pt/v1/faturas/sendEmail/",
-      { document_id, email },
-      {
-        headers: { Authorization: `Bearer ${access_token}` },
-      }
+      `https://api.moloni.pt/v1/faturas/sendEmail/?access_token=${access_token}&json=true`,
+      { document_id, email }
     );
     return response.data;
   } catch (err) {
