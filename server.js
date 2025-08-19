@@ -354,16 +354,28 @@ app.post("/api/enviar-fatura", async (req, res) => {
     res.status(500).send(err.message);
   }
 });
-
+// ───────────────────────────────────────────────────────────────
+// Função para procurar ou criar cliente por NIF
+// ───────────────────────────────────────────────────────────────
 async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
-  const cleanNif = String(nif).replace(/\D/g, ""); // remove tudo que não seja número
+  if (!nif || !/^\d{9}$/.test(String(nif))) {
+    throw new Error("NIF inválido ou ausente");
+  }
 
-  // 1. Procurar cliente existente
+  const cleanNif = String(nif).replace(/\D/g, "");
+
+  // 1️⃣ Procurar cliente existente
   const searchResp = await axios.post(
     `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
     { company_id, vat: cleanNif }
   );
 
+  const found = (searchResp.data || []).find(
+    (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
+  );
+  if (found) return found.customer_id;
+
+  // 2️⃣ Criar cliente novo com dados padrão
   const defaultCustomerData = {
     address: "Endereço não fornecido",
     zip_code: "1000-001",
@@ -374,11 +386,9 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
     copies: 1,
     payment_method_id: 1,
     delivery_method_id: 1,
+    language_id: 1,
+    country_id: 1, // Portugal
   };
-  const found = (searchResp.data || []).find(
-    (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
-  );
-  if (found) return found.customer_id;
 
   const insertResp = await axios.post(
     `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
@@ -386,14 +396,13 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
       company_id,
       name: name || `Cliente ${cleanNif}`,
       vat: cleanNif,
-      language_id: 1,
-      country_id: 1, // 1 = Portugal
-      ...defaultCustomerData, // adiciona todos os campos obrigatórios com valores padrão
+      ...defaultCustomerData,
     }
   );
-  console.log("DATA getOrCreateCustomerByNif", insertResp.data);
+
   return insertResp.data.customer_id;
 }
+
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
