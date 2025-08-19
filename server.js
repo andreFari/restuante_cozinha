@@ -386,7 +386,7 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
       ...defaultCustomerData, // adiciona todos os campos obrigatórios com valores padrão
     }
   );
-
+  console.log(insertResp.data.customer_id);
   return insertResp.data.customer_id;
 }
 app.post("/api/emitir-fatura", async (req, res) => {
@@ -406,7 +406,8 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
     }
 
-    if (/^\d{9}$/.test(nif)) {
+    const cleanNif = String(nif).replace(/\D/g, ""); // remove tudo que não seja número
+    if (/^\d{9}$/.test(cleanNif)) {
       try {
         const maybeCustomerId = await getOrCreateCustomerByNif(
           nif,
