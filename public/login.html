@@ -221,19 +221,74 @@
         document.getElementById("invoiceModal").style.display = "none";
       }
 
+      const nifInput = document.getElementById("modalInvoiceNif");
+      const invoiceTypeSelect = document.getElementById("modalInvoiceType");
+
+      let userSelectedType = false;
+      invoiceTypeSelect.addEventListener("change", () => {
+        userSelectedType = true; // marca que o utilizador escolheu manualmente
+      });
+      nifInput.addEventListener("input", () => {
+        const nif = nifInput.value.trim();
+        const autoType = determineInvoiceType(0, nif);
+
+        // só atualiza se o utilizador **não** escolheu manualmente
+        if (!userSelectedType) {
+          invoiceTypeSelect.value = autoType;
+        }
+      });
+
       async function confirmEmitirFatura() {
         const notes = document.getElementById("modalInvoiceNotes").value.trim();
-        const docType = document.getElementById("modalInvoiceType").value;
+        let docType = document.getElementById("modalInvoiceType").value; // valor selecionado pelo usuário
         const nif = document.getElementById("modalInvoiceNif").value.trim();
+
         if (nif && !validarNif(nif)) {
           alert("NIF inválido. Deve ter 9 dígitos numéricos.");
           return;
         }
+
         closeModal();
+
+        // Se o utilizador não escolheu manualmente, decide automaticamente
+        if (!docType) {
+          const table = tables[selectedTableIndex];
+          let totalValue = 0;
+
+          // Somar preço * quantidade de todos os produtos da mesa
+          const orderSections = [
+            "plates",
+            "secondaryPlates",
+            "sides",
+            "extras",
+            "desserts",
+            "drinks",
+            "coffee",
+          ];
+          orderSections.forEach((section) => {
+            if (table.order[section]) {
+              table.order[section].forEach((item) => {
+                totalValue +=
+                  (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 1);
+              });
+            }
+          });
+
+          docType = determineInvoiceType(totalValue, nif); // chama a função aqui
+        }
 
         await emitirFatura(selectedTableIndex, notes, docType, nif);
       }
 
+      function determineInvoiceType(totalValue, nif) {
+        // Se NIF não existe ou é inválido, usar FS
+        if (!nif || !/^\d{9}$/.test(nif)) {
+          return "FS";
+        }
+
+        // Se existe NIF e valor é maior que 0, usar FT
+        return "FT";
+      }
       async function emitirFatura(index, notes = "", docType = "FR", nif = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {
