@@ -354,16 +354,41 @@ app.post("/api/enviar-fatura", async (req, res) => {
     res.status(500).send(err.message);
   }
 });
+
+async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
+  // 1. Procurar cliente existente
+  const searchResp = await axios.post(
+    `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
+    { company_id, vat: nif }
+  );
+
+  const found = (searchResp.data || []).find((c) => c.vat === nif);
+  if (found) return found.customer_id;
+
+  // 2. Se não existe, criar
+  const insertResp = await axios.post(
+    `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
+    {
+      company_id,
+      name: name || `Cliente ${nif}`,
+      vat: nif,
+      language_id: 1,
+      country_id: 1, // 1 = Portugal
+    }
+  );
+
+  return insertResp.data.customer_id;
+}
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
-    const { notes, tableName, products } = req.body || {};
+    const { notes, tableName, products, document_type, nif } = req.body || {};
 
     // 🔹 IDs da empresa
     const company_id = MOLONI_COMPANY_ID;
     const document_set_id = MOLONI_DOCUMENT_SET_ID;
-    const customer_id = MOLONI_CUSTOMER_ID;
-
+    // 🔹 Definir o cliente
+    let customer_id = MOLONI_CUSTOMER_ID; // cliente genérico
     if (!company_id || !document_set_id || !customer_id) {
       return res.status(400).json({
         error: "ids_em_falta",
@@ -371,6 +396,18 @@ app.post("/api/emitir-fatura", async (req, res) => {
       });
     }
 
+    if (/^\d{9}$/.test(nif)) {
+      try {
+        customer_id = await getOrCreateCustomerByNif(
+          nif,
+          `Cliente ${nif}`,
+          company_id,
+          access_token
+        );
+      } catch (err) {
+        console.warn("Erro ao criar/procurar cliente, a usar genérico:", err);
+      }
+    }
     if (!products || !products.length) {
       return res.status(400).json({ error: "sem_produtos_validos" });
     }
@@ -439,7 +476,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       document_set_id,
       date: today,
       expiration_date: today,
-      document_type: "FT",
+      document_type: document_type || "FR",
       value: totalValue,
       serie_id: 1,
       status: 1,

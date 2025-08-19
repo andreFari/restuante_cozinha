@@ -109,41 +109,40 @@
           </div>
         </div>
       </div>
+      <div id="invoiceModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-right">
+            <h3>Emitir Documento</h3>
 
-      <div
-        id="invoiceModal"
-        style="
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          justify-content: center;
-          align-items: center;
-        "
-      >
-        <div
-          style="
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            width: 300px;
-            box-sizing: border-box;
-          "
-        >
-          <h3>Notas para a Fatura</h3>
-          <textarea
-            id="modalInvoiceNotes"
-            rows="6"
-            style="width: 100%"
-          ></textarea>
-          <div style="margin-top: 15px; text-align: right">
-            <button onclick="closeModal()" style="margin-right: 10px">
-              Cancelar
-            </button>
-            <button onclick="confirmEmitirFatura()">Confirmar</button>
+            <label for="modalInvoiceType">Tipo:</label>
+            <select
+              id="modalInvoiceType"
+              style="width: 100%; margin-bottom: 10px"
+            >
+              <option value="FR">Fatura/Recibo</option>
+              <option value="FS">Fatura Simplificada</option>
+              <option value="FT">Fatura</option>
+            </select>
+
+            <label for="modalInvoiceNif">NIF (opcional):</label>
+            <input
+              type="text"
+              id="modalInvoiceNif"
+              placeholder="999999990"
+              style="width: 100%; margin-bottom: 10px"
+            />
+
+            <label for="modalInvoiceNotes">Notas:</label>
+            <textarea
+              id="modalInvoiceNotes"
+              rows="4"
+              style="width: 100%"
+            ></textarea>
+
+            <div class="modal-actions">
+              <button onclick="closeModal()">Cancelar</button>
+              <button onclick="confirmEmitirFatura()">Confirmar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -216,20 +215,27 @@
         document.getElementById("modalInvoiceNotes").value = ""; // limpa
         document.getElementById("invoiceModal").style.display = "flex";
       }
-
+      function validarNif(nif) {
+        return /^\d{9}$/.test(nif);
+      }
       function closeModal() {
         document.getElementById("invoiceModal").style.display = "none";
       }
 
       async function confirmEmitirFatura() {
         const notes = document.getElementById("modalInvoiceNotes").value.trim();
-
+        const docType = document.getElementById("modalInvoiceType").value;
+        const nif = document.getElementById("modalInvoiceNif").value.trim();
+        if (nif && !validarNif(nif)) {
+          alert("NIF inválido. Deve ter 9 dígitos numéricos.");
+          return;
+        }
         closeModal();
 
-        // Chama a função que emite a fatura passando as notas
-        await emitirFatura(selectedTableIndex, notes);
+        await emitirFatura(selectedTableIndex, notes, docType, nif);
       }
-      async function emitirFatura(index, notes = "") {
+
+      async function emitirFatura(index, notes = "", docType = "FR", nif = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {
           alert("Por favor, faça login no Moloni primeiro!");
@@ -242,7 +248,6 @@
           return;
         }
 
-        // Converte o pedido para o formato Moloni
         const products = convertOrderToMoloniProducts(table.order);
         if (!products || products.length === 0) {
           alert("Não há produtos selecionados para emitir a fatura.");
@@ -262,14 +267,16 @@
               : [{ tax_id: 3630173, value: parseFloat(taxInfo?.valor ?? 23) }],
         }));
 
-        // Payload enviado para o backend
         const payload = {
-          notes, // nota do modal
+          notes,
           tableName: table.name,
           products: productsForMoloni,
+          document_type: docType,
+          nif: nif || null,
         };
+
         console.log(
-          "Payload final enviado à Moloni:",
+          "Payload enviado ao backend:",
           JSON.stringify(payload, null, 2)
         );
 
@@ -279,6 +286,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+
           if (!response.ok) {
             const text = await response.text();
             console.error("Erro do backend:", text);
