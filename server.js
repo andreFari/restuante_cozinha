@@ -360,114 +360,103 @@ app.post("/api/enviar-fatura", async (req, res) => {
 // ───────────────────────────────────────────────────────────────
 // Função para procurar ou criar cliente por NIF
 // ───────────────────────────────────────────────────────────────
-async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
-  console.log("➡ Recebido NIF:", nif);
-
-  if (!nif || !/^\d{9}$/.test(String(nif))) {
-    console.error("❌ NIF inválido ou ausente");
-    throw new Error("NIF inválido ou ausente");
-  }
-
-  const cleanNif = String(nif).replace(/\D/g, "");
-  console.log("➡ NIF limpo:", cleanNif);
-
-  // 1️⃣ Procurar cliente existente
-  let searchResp;
+async function getOrCreateCustomerByNif(nif, access_token) {
   try {
-    searchResp = await axios.post(
-      `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
-      { company_id, vat: cleanNif }
+    const cleanNif = nif.replace(/\D/g, ""); // só números
+    console.log("➡ Recebido NIF:", nif);
+    console.log("➡ NIF limpo:", cleanNif);
+
+    // 🔍 1. Procurar cliente pelo NIF
+    const customersResp = await axios.post(
+      "https://api.moloni.pt/v1/customers/getAll/",
+      { company_id: MOLONI_COMPANY_ID },
+      { params: { access_token, json: true } }
     );
-    console.log("🔎 Resultado da busca de clientes:", searchResp.data);
+
+    const customers = customersResp.data || [];
+    const existing = customers.find((c) => c.vat === cleanNif);
+
+    console.log("🔎 Resultado da busca de clientes:", customers);
+
+    if (existing) {
+      console.log("✅ Cliente encontrado:", existing.customer_id);
+      return existing.customer_id;
+    }
+
+    console.log("ℹ Cliente não encontrado. Tentando criar novo cliente...");
+
+    // 🔍 2. Obter defaults obrigatórios da config
+    const [
+      maturityDatesResp,
+      paymentMethodsResp,
+      deliveryMethodsResp,
+      documentSetsResp,
+    ] = await Promise.all([
+      axios.post(
+        "https://api.moloni.pt/v1/maturityDates/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/paymentMethods/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/deliveryMethods/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/documentSets/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+    ]);
+
+    const maturityDate = maturityDatesResp.data?.[0];
+    const paymentMethod = paymentMethodsResp.data?.[0];
+    const deliveryMethod = deliveryMethodsResp.data?.[0];
+    const documentSet = documentSetsResp.data?.[0];
+
+    if (!maturityDate || !paymentMethod || !deliveryMethod || !documentSet) {
+      throw new Error("Configuração Moloni incompleta para criar cliente.");
+    }
+
+    // 🔍 3. Construir payload válido
+    const newCustomerPayload = {
+      company_id: MOLONI_COMPANY_ID,
+      name: `Cliente ${cleanNif}`,
+      vat: cleanNif,
+      address: "Desconhecido",
+      city: "Desconhecido",
+      zip_code: "0000-000",
+      country_id: 1, // Portugal
+      maturity_date_id: maturityDate.maturity_date_id,
+      payment_method_id: paymentMethod.payment_method_id,
+      delivery_method_id: deliveryMethod.delivery_method_id,
+      document_set_id: documentSet.document_set_id,
+      language_id: 1,
+    };
+
+    console.log("📤 Payload para criar cliente:", newCustomerPayload);
+
+    // 🔍 4. Criar cliente
+    const insertResp = await axios.post(
+      "https://api.moloni.pt/v1/customers/insert/",
+      newCustomerPayload,
+      { params: { access_token, json: true } }
+    );
+
+    if (!insertResp.data?.customer_id) {
+      console.error("⚠️ Resposta inesperada do insert:", insertResp.data);
+      throw new Error("Resposta inesperada da API Moloni ao criar cliente");
+    }
+
+    console.log("✅ Cliente criado com sucesso:", insertResp.data.customer_id);
+    return insertResp.data.customer_id;
   } catch (err) {
-    console.error(
-      "❌ Erro ao buscar clientes:",
-      err.response?.data || err.message
-    );
-    throw err;
-  }
-
-  const found = (searchResp.data || []).find(
-    (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
-  );
-
-  if (found) {
-    console.log(
-      "✅ Cliente existente encontrado:",
-      found.customer_id,
-      found.name,
-      found.vat
-    );
-    return found.customer_id;
-  }
-
-  console.log("ℹ Cliente não encontrado. Tentando criar novo cliente...");
-
-  // 2️⃣ Criar cliente novo com dados padrão
-  const defaultCustomerData = {
-    address: "Endereço não fornecido",
-    zip_code: "1000-001",
-    city: "Lisboa",
-    number: "1",
-    maturity_date_id: 1,
-    document_type_id: 1,
-    copies: 1,
-    payment_method_id: 1,
-    delivery_method_id: 1,
-    language_id: 1,
-    country_id: 1, // Portugal
-  };
-
-  let insertResp;
-  try {
-    insertResp = await axios.post(
-      `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
-      {
-        company_id,
-        name: name || `Cliente ${cleanNif}`,
-        vat: cleanNif,
-        ...defaultCustomerData,
-      }
-    );
-    console.log("📥 Resposta bruta do insert:", insertResp.data);
-
-    const data = insertResp.data;
-
-    // Caso 1: Moloni devolve só o ID (número)
-    if (typeof data === "number") {
-      console.log("✅ Cliente criado com ID:", data);
-      return data;
-    }
-
-    // Caso 2: Moloni devolve objeto com customer_id
-    if (data?.customer_id) {
-      console.log("✅ Cliente criado com objeto:", data);
-      return data.customer_id;
-    }
-
-    // Caso 3: Moloni devolve array estranho (ex.: ['2 salesman_id ...'])
-    if (Array.isArray(data)) {
-      console.warn("⚠️ Resposta inesperada (array). A tentar fallback...");
-      // depois de inserir, vamos confirmar com uma nova pesquisa pelo NIF
-      const confirmResp = await axios.post(
-        `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
-        { company_id, vat: cleanNif }
-      );
-      const again = (confirmResp.data || []).find(
-        (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
-      );
-      if (again) {
-        console.log("✅ Cliente confirmado após fallback:", again.customer_id);
-        return again.customer_id;
-      }
-    }
-
-    throw new Error("Resposta inesperada da API Moloni ao criar cliente");
-  } catch (err) {
-    console.error(
-      "❌ Erro ao criar cliente:",
-      err.response?.data || err.message
-    );
+    console.error("❌ Erro em getOrCreateCustomerByNif:", err);
     throw err;
   }
 }
