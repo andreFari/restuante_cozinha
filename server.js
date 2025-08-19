@@ -473,9 +473,9 @@ app.post("/api/emitir-fatura", async (req, res) => {
         qty: parseFloat(p.qty) > 0 ? parseFloat(p.qty) : 1,
         summary: moloniProduct?.summary || String(p.name || "Produto"),
         price: parseFloat(p.price) || 0,
-        unit_id: moloniProduct?.unit_id || 1,
-        unit_name: moloniProduct?.unit_name || "Unidade",
-        unit_short_name: moloniProduct?.unit_short_name || "Un",
+        unit_id: moloniProduct?.measurement_unit?.unit_id || 1,
+        unit_name: moloniProduct?.measurement_unit?.name || "Unidade",
+        unit_short_name: moloniProduct?.measurement_unit?.short_name || "Un",
         taxes, // usa o taxes formatado
       };
     });
