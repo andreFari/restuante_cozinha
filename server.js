@@ -431,6 +431,11 @@ async function getOrCreateCustomerByNif(nif, access_token) {
       company_id: MOLONI_COMPANY_ID,
       name: `Cliente ${cleanNif}`,
       vat: cleanNif,
+      number: `C-${cleanNif}`, // ⚡ número interno único
+      salesman_id: 0, // sem vendedor
+      payment_day: 0, // sem dia fixo
+      discount: 0, // sem desconto
+      credit_limit: 0, // sem limite
       address: "Desconhecido",
       city: "Desconhecido",
       zip_code: "0000-000",
