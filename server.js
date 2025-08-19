@@ -859,29 +859,29 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       deliveryMethodsResp,
       documentTypesResp,
     ] = await Promise.all([
-      axios.get("https://api.moloni.pt/v1/companies/getAll/", {
+      /* axios.get("https://api.moloni.pt/v1/companies/getAll/", {
         params: { access_token, json: true },
-      }),
+      }),*/
       axios.post(
         "https://api.moloni.pt/v1/documentSets/getAll/",
         { company_id: MOLONI_COMPANY_ID },
         { params: { access_token, json: true } }
       ),
-      axios.post(
+      /*axios.post(
         "https://api.moloni.pt/v1/customers/getAll/",
         { company_id: MOLONI_COMPANY_ID },
         { params: { access_token, json: true } }
-      ),
+      ),*/
       axios.post(
         "https://api.moloni.pt/v1/taxes/getAll/",
         { company_id: MOLONI_COMPANY_ID },
         { params: { access_token, json: true } }
       ),
-      axios.post(
+      /*  axios.post(
         "https://api.moloni.pt/v1/products/getAll/",
         { company_id: MOLONI_COMPANY_ID, qty: 50, offset: 0 },
         { params: { access_token, json: true } }
-      ),
+      ),*/
       axios.post(
         "https://api.moloni.pt/v1/maturityDates/getAll/",
         { company_id: MOLONI_COMPANY_ID },
