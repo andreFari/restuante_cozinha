@@ -357,6 +357,9 @@ app.post("/api/enviar-fatura", async (req, res) => {
 // ───────────────────────────────────────────────────────────────
 // Função para procurar ou criar cliente por NIF
 // ───────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────
+// Função para procurar ou criar cliente por NIF
+// ───────────────────────────────────────────────────────────────
 async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
   console.log("➡ Recebido NIF:", nif);
 
@@ -426,7 +429,40 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
         ...defaultCustomerData,
       }
     );
-    console.log("✅ Novo cliente criado:", insertResp.data);
+    console.log("📥 Resposta bruta do insert:", insertResp.data);
+
+    const data = insertResp.data;
+
+    // Caso 1: Moloni devolve só o ID (número)
+    if (typeof data === "number") {
+      console.log("✅ Cliente criado com ID:", data);
+      return data;
+    }
+
+    // Caso 2: Moloni devolve objeto com customer_id
+    if (data?.customer_id) {
+      console.log("✅ Cliente criado com objeto:", data);
+      return data.customer_id;
+    }
+
+    // Caso 3: Moloni devolve array estranho (ex.: ['2 salesman_id ...'])
+    if (Array.isArray(data)) {
+      console.warn("⚠️ Resposta inesperada (array). A tentar fallback...");
+      // depois de inserir, vamos confirmar com uma nova pesquisa pelo NIF
+      const confirmResp = await axios.post(
+        `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
+        { company_id, vat: cleanNif }
+      );
+      const again = (confirmResp.data || []).find(
+        (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
+      );
+      if (again) {
+        console.log("✅ Cliente confirmado após fallback:", again.customer_id);
+        return again.customer_id;
+      }
+    }
+
+    throw new Error("Resposta inesperada da API Moloni ao criar cliente");
   } catch (err) {
     console.error(
       "❌ Erro ao criar cliente:",
@@ -434,9 +470,6 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
     );
     throw err;
   }
-
-  console.log(resp.data, "info do get or create");
-  return insertResp.data.customer_id;
 }
 
 app.post("/api/emitir-fatura", async (req, res) => {
