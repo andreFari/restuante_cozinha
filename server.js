@@ -410,7 +410,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
     if (/^\d{9}$/.test(cleanNif)) {
       try {
         const maybeCustomerId = await getOrCreateCustomerByNif(
-          nif,
+          cleanNif,
           `Cliente ${nif}`,
           company_id,
           access_token
