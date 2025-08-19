@@ -425,7 +425,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       try {
         const maybeCustomerId = await getOrCreateCustomerByNif(
           cleanNif,
-          `Cliente ${nif}`,
+          `Cliente ${cleanNif}`,
           company_id,
           access_token
         );
