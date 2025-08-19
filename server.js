@@ -408,14 +408,19 @@ app.post("/api/emitir-fatura", async (req, res) => {
 
     if (/^\d{9}$/.test(nif)) {
       try {
-        customer_id = await getOrCreateCustomerByNif(
+        const maybeCustomerId = await getOrCreateCustomerByNif(
           nif,
           `Cliente ${nif}`,
           company_id,
           access_token
         );
+        customer_id =
+          maybeCustomerId && maybeCustomerId > 0
+            ? maybeCustomerId
+            : MOLONI_CUSTOMER_ID;
       } catch (err) {
         console.warn("Erro ao criar/procurar cliente, a usar genérico:", err);
+        customer_id = MOLONI_CUSTOMER_ID;
       }
     }
     if (!products || !products.length) {
