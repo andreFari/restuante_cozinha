@@ -849,11 +849,8 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
 
     // 🔹 1. Obter dados essenciais + produtos + campos de cliente
     const [
-      companiesResp,
       documentSetsResp,
-      customersResp,
       taxesResp,
-      productsResp,
       maturityDatesResp,
       paymentMethodsResp,
       deliveryMethodsResp,
@@ -904,27 +901,27 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       ),
     ]);
 
-    // 🔹 2. Filtrar info útil
+    /*🔹 2. Filtrar info útil
     const company = companiesResp.data.find(
       (c) => c.company_id == MOLONI_COMPANY_ID
-    );
+    );*/
 
     const documentSet = documentSetsResp.data.find(
       (d) => d.document_set_id == MOLONI_DOCUMENT_SET_ID
     );
 
-    const customer = customersResp.data.find(
+    /*const customer = customersResp.data.find(
       (c) => c.customer_id == MOLONI_CUSTOMER_ID
-    );
+    );*/
 
     const tax = taxesResp.data.find((t) => t.tax_id == MOLONI_TAX_ID);
 
     return res.status(200).json({
-      company: company ? { id: company.company_id, name: company.name } : null,
+      // company: company ? { id: company.company_id, name: company.name } : null,
       document_set: documentSet || null,
-      customer: customer || null,
+      // customer: customer || null,
       tax: tax || null,
-      products: productsResp.data || [],
+      // products: productsResp.data || [],
       maturity_dates: maturityDatesResp.data || [],
       payment_methods: paymentMethodsResp.data || [],
       delivery_methods: deliveryMethodsResp.data || [],
