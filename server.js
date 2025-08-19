@@ -361,11 +361,20 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
     `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
     { company_id, vat: nif }
   );
-
+  const defaultCustomerData = {
+    address: "Endereço não fornecido",
+    zip_code: "1000-001",
+    city: "Lisboa",
+    number: "1",
+    maturity_date_id: 1,
+    document_type_id: 1,
+    copies: 1,
+    payment_method_id: 1,
+    delivery_method_id: 1,
+  };
   const found = (searchResp.data || []).find((c) => c.vat === nif);
   if (found) return found.customer_id;
 
-  // 2. Se não existe, criar
   const insertResp = await axios.post(
     `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
     {
@@ -374,6 +383,7 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
       vat: nif,
       language_id: 1,
       country_id: 1, // 1 = Portugal
+      ...defaultCustomerData, // adiciona todos os campos obrigatórios com valores padrão
     }
   );
 
