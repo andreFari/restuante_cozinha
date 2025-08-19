@@ -358,22 +358,47 @@ app.post("/api/enviar-fatura", async (req, res) => {
 // Função para procurar ou criar cliente por NIF
 // ───────────────────────────────────────────────────────────────
 async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
+  console.log("➡ Recebido NIF:", nif);
+
   if (!nif || !/^\d{9}$/.test(String(nif))) {
+    console.error("❌ NIF inválido ou ausente");
     throw new Error("NIF inválido ou ausente");
   }
 
   const cleanNif = String(nif).replace(/\D/g, "");
+  console.log("➡ NIF limpo:", cleanNif);
 
   // 1️⃣ Procurar cliente existente
-  const searchResp = await axios.post(
-    `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
-    { company_id, vat: cleanNif }
-  );
+  let searchResp;
+  try {
+    searchResp = await axios.post(
+      `https://api.moloni.pt/v1/customers/getAll/?access_token=${access_token}&json=true`,
+      { company_id, vat: cleanNif }
+    );
+    console.log("🔎 Resultado da busca de clientes:", searchResp.data);
+  } catch (err) {
+    console.error(
+      "❌ Erro ao buscar clientes:",
+      err.response?.data || err.message
+    );
+    throw err;
+  }
 
   const found = (searchResp.data || []).find(
     (c) => (c.vat || "").replace(/\D/g, "") === cleanNif
   );
-  if (found) return found.customer_id;
+
+  if (found) {
+    console.log(
+      "✅ Cliente existente encontrado:",
+      found.customer_id,
+      found.name,
+      found.vat
+    );
+    return found.customer_id;
+  }
+
+  console.log("ℹ Cliente não encontrado. Tentando criar novo cliente...");
 
   // 2️⃣ Criar cliente novo com dados padrão
   const defaultCustomerData = {
@@ -390,16 +415,27 @@ async function getOrCreateCustomerByNif(nif, name, company_id, access_token) {
     country_id: 1, // Portugal
   };
 
-  const insertResp = await axios.post(
-    `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
-    {
-      company_id,
-      name: name || `Cliente ${cleanNif}`,
-      vat: cleanNif,
-      ...defaultCustomerData,
-    }
-  );
+  let insertResp;
+  try {
+    insertResp = await axios.post(
+      `https://api.moloni.pt/v1/customers/insert/?access_token=${access_token}&json=true`,
+      {
+        company_id,
+        name: name || `Cliente ${cleanNif}`,
+        vat: cleanNif,
+        ...defaultCustomerData,
+      }
+    );
+    console.log("✅ Novo cliente criado:", insertResp.data);
+  } catch (err) {
+    console.error(
+      "❌ Erro ao criar cliente:",
+      err.response?.data || err.message
+    );
+    throw err;
+  }
 
+  console.log(resp.data, "info do get or create");
   return insertResp.data.customer_id;
 }
 
