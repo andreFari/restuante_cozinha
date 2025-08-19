@@ -836,7 +836,6 @@ app.post(
     }
   }
 );
-
 app.get("/api/moloni/config-resumo", async (req, res) => {
   try {
     const access_token = await getValidAccessToken();
@@ -848,13 +847,17 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       });
     }
 
-    // 🔍 1. Obter dados essenciais e produtos
+    // 🔹 1. Obter dados essenciais + produtos + campos de cliente
     const [
       companiesResp,
       documentSetsResp,
       customersResp,
       taxesResp,
       productsResp,
+      maturityDatesResp,
+      paymentMethodsResp,
+      deliveryMethodsResp,
+      documentTypesResp,
     ] = await Promise.all([
       axios.get("https://api.moloni.pt/v1/companies/getAll/", {
         params: { access_token, json: true },
@@ -876,12 +879,32 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
       ),
       axios.post(
         "https://api.moloni.pt/v1/products/getAll/",
-        { company_id: MOLONI_COMPANY_ID, qty: 50, offset: 0 }, // Ajuste qty e offset conforme necessário
+        { company_id: MOLONI_COMPANY_ID, qty: 50, offset: 0 },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/maturityDates/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/paymentMethods/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/deliveryMethods/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
+        { params: { access_token, json: true } }
+      ),
+      axios.post(
+        "https://api.moloni.pt/v1/documentTypes/getAll/",
+        { company_id: MOLONI_COMPANY_ID },
         { params: { access_token, json: true } }
       ),
     ]);
 
-    // 🔍 2. Filtrar info útil
+    // 🔹 2. Filtrar info útil
     const company = companiesResp.data.find(
       (c) => c.company_id == MOLONI_COMPANY_ID
     );
@@ -896,31 +919,16 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
 
     const tax = taxesResp.data.find((t) => t.tax_id == MOLONI_TAX_ID);
 
-    // produtos
-    const products = productsResp.data || [];
-
     return res.status(200).json({
-      company: company
-        ? { id: company.company_id, name: company.name }
-        : { error: "Empresa não encontrada", id: MOLONI_COMPANY_ID },
-
-      document_set: documentSet
-        ? {
-            id: documentSet.document_set_id,
-            name: documentSet.name,
-            type: documentSet.type,
-          }
-        : { error: "Document set não encontrado", id: MOLONI_DOCUMENT_SET_ID },
-
-      customer: customer
-        ? { id: customer.customer_id, name: customer.name, vat: customer.vat }
-        : { error: "Cliente não encontrado", id: MOLONI_CUSTOMER_ID },
-
-      tax: tax
-        ? { id: tax.tax_id, name: tax.name, value: tax.value }
-        : { error: "Taxa não encontrada", id: MOLONI_TAX_ID },
-
-      products, // inclui a lista completa de produtos
+      company: company ? { id: company.company_id, name: company.name } : null,
+      document_set: documentSet || null,
+      customer: customer || null,
+      tax: tax || null,
+      products: productsResp.data || [],
+      maturity_dates: maturityDatesResp.data || [],
+      payment_methods: paymentMethodsResp.data || [],
+      delivery_methods: deliveryMethodsResp.data || [],
+      document_types: documentTypesResp.data || [],
     });
   } catch (e) {
     const status = e.response?.status || 500;
@@ -930,7 +938,6 @@ app.get("/api/moloni/config-resumo", async (req, res) => {
     });
   }
 });
-
 // start
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
