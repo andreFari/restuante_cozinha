@@ -205,15 +205,14 @@
         }
       }
       let selectedTableIndex = null;
-
       function openModal(index) {
-        selectedTableIndex = index; // exemplo fixo, muda conforme a tua lógica
+        selectedTableIndex = index;
+        const modal = document.getElementById("invoiceModal");
         const textarea = document.getElementById("modalInvoiceNotes");
-        textarea.value = "";
-        document.getElementById("invoiceModal").style.display = "flex";
+
+        textarea.value = ""; // limpa
+        modal.style.display = "flex";
         textarea.focus();
-        document.getElementById("modalInvoiceNotes").value = ""; // limpa
-        document.getElementById("invoiceModal").style.display = "flex";
       }
       function validarNif(nif) {
         return /^\d{9}$/.test(nif);
