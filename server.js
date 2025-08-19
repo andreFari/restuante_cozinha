@@ -369,7 +369,10 @@ async function getOrCreateCustomerByNif(nif, access_token) {
     // 🔍 1. Procurar cliente pelo NIF
     const customersResp = await axios.post(
       "https://api.moloni.pt/v1/customers/getAll/",
-      { company_id: MOLONI_COMPANY_ID },
+      {
+        company_id: MOLONI_COMPANY_ID,
+        filters: { vat: cleanNif },
+      },
       { params: { access_token, json: true } }
     );
 
@@ -483,9 +486,7 @@ app.post("/api/emitir-fatura", async (req, res) => {
       try {
         const maybeCustomerId = await getOrCreateCustomerByNif(
           cleanNif,
-          `Cliente ${cleanNif}`,
-          company_id,
-          access_token
+          access_token // aqui sim, o token OAuth real
         );
         customer_id =
           maybeCustomerId && maybeCustomerId > 0
