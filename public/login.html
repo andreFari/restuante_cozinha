@@ -427,7 +427,7 @@
         const order = table.order;
         const prepared = table.prepared;
 
-        function renderSection(title, items, prepState, key) {
+        /* function renderSection(title, items, prepState, key) {
           if (!items || items.length === 0) return "";
           return `
                   <div class="section">
@@ -445,8 +445,42 @@
                       .join("")}
                   </div>
                 `;
+        }*/
+        // Função para renderizar cada seção como tabela
+        function renderSection(title, items, prepState, key) {
+          if (!items || items.length === 0) return "";
+          return `
+    <div class="section" style="margin-bottom:15px;">
+      <h4 style="margin-bottom:5px;">${title}</h4>
+      <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
+        <thead>
+          <tr style="background-color:#f2f2f2;">
+            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
+            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
+            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items
+            .map(
+              (item, i) => `
+            <tr>
+              <td style="border:1px solid #ccc; padding:5px;">${item.name}</td>
+              <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+                item.quantity
+              }</td>
+              <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+                prepState[i] ? "✅" : "❌"
+              }</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
         }
-
         // Mapeia títulos bonitinhos para as categorias
         const categoryTitles = {
           plates: "Pratos",
@@ -499,17 +533,13 @@
   </div>
 
   <!-- Abrir/Fechar Mesa e Fatura -->
-  <div class="section buttons" style="margin-bottom:20px;">
+  <div class="section buttons" style="margin-bottom:20px;background-color:orange;">
     <div class="buttons-left">
       <button class="btn btn-secondary" onclick="toggleOpenClose(${index})">
         ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
       </button>
-      <button class="btn btn-primary" onclick="saveKitchenNote(${index})">
-        Guardar Nota
-      </button>
-      <button class="btn btn-secondary" onclick="togglePaid(${index})">
-        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-      </button>
+   
+     
     </div>
     <div class="buttons-right">
       <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
