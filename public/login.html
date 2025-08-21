@@ -482,6 +482,9 @@
           return `
           <div class="section" style="margin-bottom:15px;">
             <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
+            <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
+  Alterar Artigos
+</button>
             <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
               <thead>
                 <tr style="background-color:#f2f2f2;">
@@ -705,6 +708,7 @@
           if (modal) modal.style.display = "none";
         }
       }
+
       function convertOrderToMoloniProducts(order) {
         const sections = [
           "plates",
@@ -916,6 +920,108 @@
         const btn = document.querySelector(".btn");
         if (btn) btn.addEventListener("click", openCreateTableModal);
       });
+
+      function openEditTableModal(tableIndex) {
+        const table = tables[tableIndex];
+
+        // Limpa os containers como no openCreateTableModal
+        const containerIds = [
+          "principalArticles",
+          "secondaryArticles",
+          "sideArticles",
+          "dessertArticles",
+          "drinkArticles",
+          "extraArticles",
+        ];
+        containerIds.forEach((id) => {
+          document.getElementById(id).innerHTML = "";
+        });
+
+        // Renderiza os artigos como no modal de criação
+        moloniProducts.forEach((artigo) => {
+          const categoria = (artigo.summary || "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          let containerId;
+          if (categoria === "prato principal")
+            containerId = "principalArticles";
+          else if (categoria === "prato secundario")
+            containerId = "secondaryArticles";
+          else if (categoria === "acompanhamento") containerId = "sideArticles";
+          else if (categoria === "sobremesa") containerId = "dessertArticles";
+          else if (categoria === "bebida") containerId = "drinkArticles";
+          else if (categoria === "extra") containerId = "extraArticles";
+          else return;
+
+          const container = document.getElementById(containerId);
+          const div = document.createElement("div");
+          div.className = "article-item";
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = artigo.name;
+          btn.className = "article-btn";
+          btn.dataset.selected = "false";
+          btn.dataset.article = JSON.stringify(artigo);
+
+          // Verifica se já está selecionado na mesa
+          const currentItems =
+            table.order[containerId.replace("Articles", "")] || [];
+          const selectedItem = currentItems.find(
+            (item) => item.product_id === artigo.product_id
+          );
+          if (selectedItem) {
+            btn.dataset.selected = "true";
+            btn.classList.add("selected");
+          }
+
+          btn.onclick = () => {
+            btn.dataset.selected =
+              btn.dataset.selected === "true" ? "false" : "true";
+            btn.classList.toggle("selected");
+          };
+
+          const qtyInput = document.createElement("input");
+          qtyInput.type = "number";
+          qtyInput.min = 1;
+          qtyInput.value = selectedItem ? selectedItem.quantity || 1 : 1;
+          qtyInput.style.width = "50px";
+          qtyInput.style.marginLeft = "10px";
+
+          div.appendChild(btn);
+          div.appendChild(qtyInput);
+          container.appendChild(div);
+        });
+
+        // Atualiza o modal
+        document.getElementById("newTableName").value = table.name;
+        const modal = document.getElementById("createTableModal");
+        modal.style.display = "flex";
+
+        // Alterar o botão de salvar
+        const saveBtn = document.getElementById("saveTableBtn");
+        saveBtn.textContent = "Atualizar Mesa";
+        saveBtn.onclick = () => updateTable(tableIndex);
+      }
+      function updateTable(index) {
+        const table = tables[index];
+
+        table.order.plates =
+          getSelectedProductsFromButtons("principalArticles");
+        table.order.secondaryPlates =
+          getSelectedProductsFromButtons("secondaryArticles");
+        table.order.sides = getSelectedProductsFromButtons("sideArticles");
+        table.order.desserts =
+          getSelectedProductsFromButtons("dessertArticles");
+        table.order.drinks = getSelectedProductsFromButtons("drinkArticles");
+        table.order.extras = getSelectedProductsFromButtons("extraArticles");
+        // café se necessário
+
+        renderTables();
+        document.getElementById("createTableModal").style.display = "none";
+      }
     </script>
   </body>
 </html>
