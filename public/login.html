@@ -781,24 +781,42 @@
             else return; // ignora categorias desconhecidas
 
             const container = document.getElementById(containerId);
+
+            // Criar div para agrupar botão + input de quantidade
+            const div = document.createElement("div");
+            div.className = "article-item";
+
+            // Botão do artigo
             const btn = document.createElement("button");
             btn.type = "button";
             btn.textContent = artigo.name;
             btn.className = "article-btn";
             btn.dataset.selected = "false";
-            btn.onclick = () => {
-              btn.dataset.selected =
-                btn.dataset.selected === "true" ? "false" : "true";
-              btn.classList.toggle("selected");
-            };
-            btn.value = JSON.stringify({
+            btn.dataset.article = JSON.stringify({
               product_id: artigo.product_id,
               name: artigo.name,
               price: artigo.price,
               tax_id: artigo.tax_id || 3630173,
             });
 
-            container.appendChild(btn);
+            btn.onclick = () => {
+              btn.dataset.selected =
+                btn.dataset.selected === "true" ? "false" : "true";
+              btn.classList.toggle("selected");
+            };
+
+            // Input de quantidade
+            const qtyInput = document.createElement("input");
+            qtyInput.type = "number";
+            qtyInput.min = 1;
+            qtyInput.value = 1;
+            qtyInput.style.width = "50px";
+            qtyInput.style.marginLeft = "10px";
+
+            // Adiciona botão e input na div
+            div.appendChild(btn);
+            div.appendChild(qtyInput);
+            container.appendChild(div);
           });
 
           document.getElementById("newTableName").value = "";
@@ -807,7 +825,6 @@
           alert("Não foi possível carregar os artigos: " + err.message);
         }
       }
-
       function createNewTable() {
         const tableName = document.getElementById("newTableName").value.trim();
         if (!tableName) {
