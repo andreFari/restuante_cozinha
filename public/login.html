@@ -967,11 +967,16 @@
           btn.dataset.article = JSON.stringify(artigo);
 
           // Verifica se já está selecionado na mesa
-          const currentItems =
-            table.order[containerId.replace("Articles", "")] || [];
-          const selectedItem = currentItems.find(
-            (item) => item.product_id === artigo.product_id
-          );
+          const containerToKey = {
+            principalArticles: "plates",
+            secondaryArticles: "secondaryPlates",
+            sideArticles: "sides",
+            dessertArticles: "desserts",
+            drinkArticles: "drinks",
+            extraArticles: "extras",
+          };
+          const key = containerToKey[containerId];
+          const selectedItem = currentItems.find((i) => i.name === artigo.name);
           if (selectedItem) {
             btn.dataset.selected = "true";
             btn.classList.add("selected");
@@ -1015,7 +1020,7 @@
         table.order.sides = getSelectedProductsFromButtons("sideArticles");
         table.order.desserts =
           getSelectedProductsFromButtons("dessertArticles");
-        table.order.drinks = getSelectedProductsFromButtons("drinkArticles");
+        table.order.coffee = getSelectedProductsFromButtons("coffeeArticles");
         table.order.extras = getSelectedProductsFromButtons("extraArticles");
         // café se necessário
 
