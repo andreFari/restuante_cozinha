@@ -427,7 +427,7 @@
         const order = table.order;
         const prepared = table.prepared;
 
-        /* function renderSection(title, items, prepState, key) {
+        /*  function renderSection(title, items, prepState, key) {
           if (!items || items.length === 0) return "";
           return `
                   <div class="section">
@@ -445,42 +445,58 @@
                       .join("")}
                   </div>
                 `;
-        }*/
-        // Função para renderizar cada seção como tabela
-        function renderSection(title, items, prepState, key) {
-          if (!items || items.length === 0) return "";
+        }
+   */
+
+        // Função para renderizar **uma tabela única** para todos os itens
+        function renderAllItemsTable(order, prepared, index) {
+          let rowsHtml = "";
+
+          for (const key in order) {
+            if (key === "status") continue; // ignorar status
+            const items = order[key];
+            const prepState = prepared[key] || [];
+            const category = categoryTitles[key] || key;
+
+            if (!items || items.length === 0) continue;
+
+            items.forEach((item, i) => {
+              rowsHtml += `
+        <tr>
+          <td style="border:1px solid #ccc; padding:5px;">${category}</td>
+          <td style="border:1px solid #ccc; padding:5px;">${item.name}</td>
+          <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+            item.quantity
+          }</td>
+          <td style="border:1px solid #ccc; padding:5px; text-align:center;">
+            <input type="checkbox" ${prepState[i] ? "checked" : ""} 
+              onchange="togglePrepared(${index}, '${key}', ${i})">
+          </td>
+        </tr>
+      `;
+            });
+          }
+
           return `
     <div class="section" style="margin-bottom:15px;">
-      <h4 style="margin-bottom:5px;">${title}</h4>
+      <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
       <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
         <thead>
           <tr style="background-color:#f2f2f2;">
+            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
             <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
             <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
             <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
           </tr>
         </thead>
         <tbody>
-          ${items
-            .map(
-              (item, i) => `
-            <tr>
-              <td style="border:1px solid #ccc; padding:5px;">${item.name}</td>
-              <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-                item.quantity
-              }</td>
-              <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-                prepState[i] ? "✅" : "❌"
-              }</td>
-            </tr>
-          `
-            )
-            .join("")}
+          ${rowsHtml}
         </tbody>
       </table>
     </div>
   `;
         }
+
         // Mapeia títulos bonitinhos para as categorias
         const categoryTitles = {
           plates: "Pratos",
@@ -492,14 +508,7 @@
           coffee: "Cafés",
         };
 
-        let sectionsHtml = "";
-        for (const key in order) {
-          if (key === "status") continue; // pular status
-          const items = order[key];
-          const prepState = prepared[key] || [];
-          const title = categoryTitles[key] || key;
-          sectionsHtml += renderSection(title, items, prepState, key);
-        }
+        const sectionsHtml = renderAllItemsTable(order, prepared, index);
 
         orderDetails.innerHTML = `
   <h2 style="margin-bottom: 1rem;">
@@ -838,26 +847,47 @@
       function renderArticleButtons(containerId, articles) {
         const container = document.getElementById(containerId);
         container.innerHTML = "";
+
         articles.forEach((article) => {
+          const div = document.createElement("div");
+          div.className = "article-item";
+
           const btn = document.createElement("button");
           btn.type = "button";
           btn.textContent = article.name;
           btn.className = "article-btn";
           btn.dataset.selected = "false";
+
+          const qtyInput = document.createElement("input");
+          qtyInput.type = "number";
+          qtyInput.min = 1;
+          qtyInput.value = 1;
+          qtyInput.style.width = "50px";
+          qtyInput.style.marginLeft = "10px";
+
           btn.onclick = () => {
-            btn.dataset.selected =
-              btn.dataset.selected === "true" ? "false" : "true";
+            const selected = btn.dataset.selected === "true";
+            btn.dataset.selected = selected ? "false" : "true";
             btn.classList.toggle("selected");
           };
-          btn.value = JSON.stringify(article);
-          container.appendChild(btn);
+
+          div.appendChild(btn);
+          div.appendChild(qtyInput);
+          container.appendChild(div);
+
+          // Guardar referência do artigo com quantidade
+          btn.dataset.article = JSON.stringify(article);
         });
       }
 
       function getSelectedProductsFromButtons(containerId) {
         return Array.from(
           document.querySelectorAll(`#${containerId} .article-btn.selected`)
-        ).map((btn) => JSON.parse(btn.value));
+        ).map((btn) => {
+          const article = JSON.parse(btn.dataset.article);
+          const qty = parseInt(btn.nextSibling.value) || 1; // pega o input de quantidade
+          return { ...article, quantity: qty };
+        });
       }
 
       window.addEventListener("DOMContentLoaded", () => {
