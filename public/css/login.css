@@ -224,8 +224,12 @@ p {
 .modal-left h3,
 .modal-right h3 {
  font-size: 1.6rem;   
+   text-align: center; 
+     font-weight: 700;
+       border-bottom: 2px solid #eee;
   color: #333;
-    margin-bottom: 1.2rem; /* unifica a distância inferior */
+    padding-bottom: 10px;
+    margin-bottom: 20px; /* unifica a distância inferior */
 }
 .modal-left h4, .modal-right h4 {
   font-size: 1.2rem; 
