@@ -165,10 +165,10 @@ p {
   width: 90%;
     max-width: 1200px;   /* antes 900px → aumenta a largura */
   max-height: 95vh;    /* ocupa quase toda a tela */
-  padding: 40px;       /* mais espaço interno */
+  padding: 10px;       /* mais espaço interno */
   font-size: 1.1rem;  
    
-  gap: 25px;
+  
  
   overflow: hidden;
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
