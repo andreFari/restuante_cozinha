@@ -499,11 +499,21 @@
   </div>
 
   <!-- Abrir/Fechar Mesa e Fatura -->
-  <div class="section" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
-    <button class="btn btn-secondary" onclick="toggleOpenClose(${index})">
-      ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-    </button>
-    <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
+  <div class="section buttons" style="margin-bottom:20px;">
+    <div class="buttons-left">
+      <button class="btn btn-secondary" onclick="toggleOpenClose(${index})">
+        ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+      </button>
+      <button class="btn btn-primary" onclick="saveKitchenNote(${index})">
+        Guardar Nota
+      </button>
+      <button class="btn btn-secondary" onclick="togglePaid(${index})">
+        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+      </button>
+    </div>
+    <div class="buttons-right">
+      <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
+    </div>
   </div>
 
   <!-- Seções adicionais -->

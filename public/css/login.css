@@ -361,6 +361,40 @@ padding: 14px 20px;
   border-radius: 3px;
 }
 
+/*Secção detalhes mesa*/
+
+.section.buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.section.buttons-left {
+  display: flex;
+  gap: 10px;
+}
+.section .item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 1.2rem; /* maior fonte */
+}
+
+.section .item input[type="checkbox"] {
+  transform: scale(1.5); /* aumenta checkbox */
+  margin-right: 10px;
+}
+
+.section .item label {
+  font-weight: 500;
+}
+.section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
 /* ====== Responsividade ====== */
 @media (max-width: 768px) {
   .modal-content {
