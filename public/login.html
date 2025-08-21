@@ -551,18 +551,22 @@
         <!-- Abrir/Fechar Mesa e Fatura -->
         <div class="section buttons" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; padding:10px;">
        <div class="buttons-left" style="display:flex; gap:10px;">
-            <button class="btn btn-secondary style="background-color:orange;"" onclick="toggleOpenClose(${index})">
+            <button class="btn btn-secondary style="background-color:orange;" onclick="toggleOpenClose(${index})">
               ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
             </button>
 
- <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
-  Alterar Artigos
-</button>
-          </div>
-          <div class="buttons-right">
-            <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
-          </div>
-        </div>
+<div class="section buttons">
+  <div class="buttons-left">
+    <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
+      Alterar Artigos
+    </button>
+  </div>
+  <div class="buttons-right">
+    <button class="btn btn-primary" onclick="openModal(${index})">
+      Emitir Fatura
+    </button>
+  </div>
+</div>
 
         <!-- Seções adicionais -->
         <div class="section">

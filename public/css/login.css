@@ -362,7 +362,26 @@ padding: 14px 20px;
 }
 
 /*Secção detalhes mesa*/
+/* ====== Ajustes Detalhes da Mesa ====== */
+.order-details table {
+  width: 90%;          /* tabela maior */
+  max-width: 1000px;   /* limite máximo */
+  margin: 0 auto 20px auto; /* centraliza tabela */
+  border-collapse: collapse;
+}
 
+.order-details th,
+.order-details td {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+.order-details td input[type="checkbox"] {
+  transform: scale(1.5); /* aumenta checkboxes */
+  margin: 0 auto;
+  display: block;
+}
 .section.buttons {
   display: flex;
   justify-content: space-between;
@@ -370,9 +389,21 @@ padding: 14px 20px;
   gap: 10px;
   flex-wrap: wrap;
 }
+.section .buttons-right button {
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+}
+.section .buttons-right button:hover {
+  background-color: #218838;
+}
 .section.buttons-left {
   display: flex;
   gap: 10px;
+   display: flex;
+  justify-content: center; /* centraliza */
+  gap: 10px;
+  flex: 1;
 }
 .section .item {
   display: flex;
