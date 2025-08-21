@@ -425,7 +425,17 @@ padding: 14px 20px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
+#mainContent {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px); /* ajusta dependendo do header */
+}
 
+.main-layout {
+  display: flex;
+  flex: 1; /* ocupa o espaço restante */
+  gap: 20px;
+}
 /* ====== Responsividade ====== */
 @media (max-width: 768px) {
   .modal-content {
