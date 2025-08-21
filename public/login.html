@@ -545,9 +545,9 @@
         </div>
 
         <!-- Abrir/Fechar Mesa e Fatura -->
-        <div class="section buttons" style="margin-bottom:20px;background-color:orange;">
-          <div class="buttons-left">
-            <button class="btn btn-secondary" onclick="toggleOpenClose(${index})">
+        <div class="section buttons" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; padding:10px;">
+       <div class="buttons-left" style="display:flex; gap:10px;">
+            <button class="btn btn-secondary style="background-color:orange;"" onclick="toggleOpenClose(${index})">
               ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
             </button>
 
@@ -936,7 +936,9 @@
         containerIds.forEach((id) => {
           document.getElementById(id).innerHTML = "";
         });
-
+        const saveBtn = document.getElementById("saveTableBtn");
+        saveBtn.textContent = "Atualizar Mesa";
+        saveBtn.onclick = () => updateTable(tableIndex);
         // Renderiza os artigos como no modal de criação
         moloniProducts.forEach((artigo) => {
           const categoria = (artigo.summary || "")
@@ -1005,11 +1007,6 @@
         document.getElementById("newTableName").value = table.name;
         const modal = document.getElementById("createTableModal");
         modal.style.display = "flex";
-
-        // Alterar o botão de salvar
-        const saveBtn = document.getElementById("saveTableBtn");
-        saveBtn.textContent = "Atualizar Mesa";
-        saveBtn.onclick = () => updateTable(tableIndex);
       }
       function updateTable(index) {
         const table = tables[index];
