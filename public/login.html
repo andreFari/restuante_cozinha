@@ -457,7 +457,7 @@
           let rowsHtml = "";
 
           for (const key in order) {
-            if (key === "status") continue; // ignorar status
+            if (key === "status") continue;
             const items = order[key];
             const prepState = prepared[key] || [];
             const category = categoryTitles[key] || key;
@@ -466,42 +466,38 @@
 
             items.forEach((item, i) => {
               rowsHtml += `
-                    <tr>
-                      <td style="border:1px solid #ccc; padding:5px;">${category}</td>
-                      <td style="border:1px solid #ccc; padding:5px;">${
-                        item.name
-                      }</td>
-                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-                        item.quantity
-                      }</td>
-                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">
-                        <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                          onchange="togglePrepared(${index}, '${key}', ${i})">
-                      </td>
-                    </tr>
-                  `;
+        <tr>
+          <td style="border:1px solid #ccc; padding:5px;">${category}</td>
+          <td style="border:1px solid #ccc; padding:5px;">${item.name}</td>
+          <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+            item.quantity
+          }</td>
+          <td style="border:1px solid #ccc; padding:5px; text-align:center;">
+            <input type="checkbox" ${prepState[i] ? "checked" : ""}
+              onchange="togglePrepared(${index}, '${key}', ${i})">
+          </td>
+        </tr>
+      `;
             });
           }
 
           return `
-                <div class="section" style="margin-bottom:15px;">
-                  <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
-
-                  <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
-                    <thead>
-                      <tr style="background-color:#f2f2f2;">
-                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
-                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
-                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
-                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${rowsHtml}
-                    </tbody>
-                  </table>
-                </div>
-              `;
+    <div class="section" style="display:flex; justify-content:center; margin-top:20px;">
+      <table style="width:100%; max-width:600px; border-collapse: collapse; border:1px solid #ccc;">
+        <thead>
+          <tr style="background-color:#f2f2f2;">
+            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
+            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
+            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
+            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    </div>
+  `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -550,21 +546,20 @@
         </div>
 
         <!-- Botões de ação -->
-        <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
-          <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="toggleOpenClose(${index})">
-            ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-          </button>
-          <button class="btn btn-secondary" style="background-color:#6c757d; color:#fff;" onclick="openEditTableModal(${index})">
-            Alterar Artigos
-          </button>
-          <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
-            Emitir Fatura
-          </button>
-        </div>
+       <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
+  <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="toggleOpenClose(${index})">
+    ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+  </button>
+  <button class="btn btn-secondary" style="background-color:#6c757d; color:#fff;" onclick="openEditTableModal(${index})">
+    Alterar Artigos
+  </button>
+  <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
+    Emitir Fatura
+  </button>
+</div>
 
-        <!-- Tabela de itens -->
-        <div class="section">
-          ${sectionsHtml}
+<!-- Tabela de itens centralizada -->
+${sectionsHtml}
         </div>
       `;
       }
