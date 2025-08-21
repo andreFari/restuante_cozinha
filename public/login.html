@@ -976,6 +976,7 @@
             extraArticles: "extras",
           };
           const key = containerToKey[containerId];
+          const currentItems = table.order[key] || [];
           const selectedItem = currentItems.find((i) => i.name === artigo.name);
           if (selectedItem) {
             btn.dataset.selected = "true";
