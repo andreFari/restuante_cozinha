@@ -482,9 +482,7 @@
           return `
           <div class="section" style="margin-bottom:15px;">
             <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
-            <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
-  Alterar Artigos
-</button>
+           
             <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
               <thead>
                 <tr style="background-color:#f2f2f2;">
@@ -553,7 +551,9 @@
               ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
             </button>
 
-
+ <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
+  Alterar Artigos
+</button>
           </div>
           <div class="buttons-right">
             <button class="btn btn-primary" onclick="openModal(${index})">Emitir Fatura</button>
