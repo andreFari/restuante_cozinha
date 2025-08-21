@@ -186,24 +186,44 @@ p {
   overflow-y: auto;
  padding: 20px;
 }
-
+.modal-left input {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  border: 1px solid #bbb;
+  margin-bottom: 20px;
+  text-align: center;
+}
 .modal-left {
-  flex: 3;
+   flex-direction: column;
+  align-items: center;       /* centraliza horizontal */
+  justify-content: center;   /* centraliza vertical */
+  text-align: center;   
+  display: flex;
   border-right: 1px solid #eee;
-  max-width: 350px; /* antes 250px → mais larga */
+   max-width: 300px;
    overflow-y: auto;
-  padding-right: 20px;
+    padding: 20px;
 }
 
 .modal-right {
-  flex: 2;
+  flex: 3;
+  overflow-y: auto;  /* scroll vertical automático */
+  padding-right: 20px;
+  max-height: 80vh;  /* garante que cabe no modal */
 }
 
 /* ====== Títulos ====== */
+.modal-left label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+}
 .modal-content h3,
 .modal-left h3,
 .modal-right h3 {
- font-size: 1.8rem;   
+ font-size: 1.6rem;   
   color: #333;
     margin-bottom: 1.2rem; /* unifica a distância inferior */
 }
@@ -267,8 +287,9 @@ p {
 /* ====== Ações do Modal ====== */
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+ justify-content: center;
+ gap: 15px;               /* espaço entre botões */
+  width: 100%;
   margin-top: 15px;
 }
 
