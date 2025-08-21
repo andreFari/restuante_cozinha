@@ -15,7 +15,6 @@
         font-family: "Segoe UI", Arial, sans-serif;
         background-color: #f7f8fa;
         color: #333;
-        padding: 20px;
       }
 
       h1 {
@@ -72,11 +71,11 @@
   </head>
   <body>
     <div id="header-placeholder"></div>
+    <div style="padding: 20px">
+      <h1>📄 Guias de Transporte</h1>
 
-    <h1>📄 Guias de Transporte</h1>
-
-    <div id="tabelaGuias"></div>
-
+      <div id="tabelaGuias"></div>
+    </div>
     <script>
       async function carregarGuias() {
         const container = document.getElementById("tabelaGuias");
