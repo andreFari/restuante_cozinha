@@ -397,15 +397,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-                        <strong>${table.name}</strong> - ${
+                              <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-                        ${
-                          table.kitchenNote
-                            ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                            : ""
-                        }
-                      `;
+                              ${
+                                table.kitchenNote
+                                  ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                                  : ""
+                              }
+                            `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -432,25 +432,25 @@
         const prepared = table.prepared;
 
         /*  function renderSection(title, items, prepState, key) {
-                if (!items || items.length === 0) return "";
-                return `
-                        <div class="section">
-                          <h3>${title}</h3>
-                          ${items
-                            .map(
-                              (item, i) => `
-                            <div class="item">
-                              <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                                onchange="togglePrepared(${index}, '${key}', ${i})">
-                              <label>${item.name}</label>
-                            </div>
-                          `
-                            )
-                            .join("")}
-                        </div>
-                      `;
-              }
-         */
+                      if (!items || items.length === 0) return "";
+                      return `
+                              <div class="section">
+                                <h3>${title}</h3>
+                                ${items
+                                  .map(
+                                    (item, i) => `
+                                  <div class="item">
+                                    <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                                      onchange="togglePrepared(${index}, '${key}', ${i})">
+                                    <label>${item.name}</label>
+                                  </div>
+                                `
+                                  )
+                                  .join("")}
+                              </div>
+                            `;
+                    }
+               */
 
         // Função para renderizar **uma tabela única** para todos os itens
         function renderAllItemsTable(order, prepared, index) {
@@ -466,42 +466,42 @@
 
             items.forEach((item, i) => {
               rowsHtml += `
-              <tr>
-                <td style="border:1px solid #ccc; padding:5px;">${category}</td>
-                <td style="border:1px solid #ccc; padding:5px;">${
-                  item.name
-                }</td>
-                <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-                  item.quantity
-                }</td>
-                <td style="border:1px solid #ccc; padding:5px; text-align:center;">
-                  <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                    onchange="togglePrepared(${index}, '${key}', ${i})">
-                </td>
-              </tr>
-            `;
+                    <tr>
+                      <td style="border:1px solid #ccc; padding:5px;">${category}</td>
+                      <td style="border:1px solid #ccc; padding:5px;">${
+                        item.name
+                      }</td>
+                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+                        item.quantity
+                      }</td>
+                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">
+                        <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                          onchange="togglePrepared(${index}, '${key}', ${i})">
+                      </td>
+                    </tr>
+                  `;
             });
           }
 
           return `
-          <div class="section" style="margin-bottom:15px;">
-            <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
-           
-            <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
-              <thead>
-                <tr style="background-color:#f2f2f2;">
-                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
-          </div>
-        `;
+                <div class="section" style="margin-bottom:15px;">
+                  <h4 style="margin-bottom:5px;">Itens do Pedido</h4>
+
+                  <table style="width:100%; border-collapse: collapse; border:1px solid #ccc;">
+                    <thead>
+                      <tr style="background-color:#f2f2f2;">
+                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rowsHtml}
+                    </tbody>
+                  </table>
+                </div>
+              `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -521,26 +521,27 @@
         <h2 style="margin-bottom: 1rem;">
           ${table.name} - <span style="color: ${
           table.open ? "#28a745" : "#dc3545"
-        };">${table.open ? "Aberta" : "Fechada"}</span>
+        };">
+            ${table.open ? "Aberta" : "Fechada"}
+          </span>
         </h2>
 
         <!-- Nota da Cozinha -->
         <div class="section" style="margin-bottom: 20px;">
           <label for="kitchenNote" style="font-weight:600; margin-bottom:5px; display:block;">Nota da Cozinha:</label>
-          <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
-            table.kitchenNote
-          }</textarea>
+          <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
+            ${table.kitchenNote}
+          </textarea>
           <button class="btn btn-primary" onclick="saveKitchenNote(${index})" style="margin-top:10px;">Guardar Nota</button>
         </div>
 
         <!-- Status de Pagamento -->
         <div class="section" style="margin-bottom:20px;">
           <label style="font-weight:600; margin-bottom:5px; display:block;">Status do Pagamento:</label>
-          <div class="status ${
-            order.status === "paid" ? "paid" : "unpaid"
-          }" style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
-          order.status === "paid" ? "#d4edda" : "#f8d7da"
-        }; color:${order.status === "paid" ? "#155724" : "#721c24"};">
+          <div class="status ${order.status === "paid" ? "paid" : "unpaid"}"
+               style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
+                 order.status === "paid" ? "#d4edda" : "#f8d7da"
+               }; color:${order.status === "paid" ? "#155724" : "#721c24"};">
             ${order.status === "paid" ? "Pago" : "Por Pagar"}
           </div>
           <button class="btn btn-secondary" onclick="togglePaid(${index})">
@@ -548,33 +549,25 @@
           </button>
         </div>
 
-        <!-- Abrir/Fechar Mesa e Fatura -->
-        <div class="section buttons" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; padding:10px;">
-       <div class="buttons-left" style="display:flex; gap:10px;">
-            <button class="btn btn-secondary style="background-color:orange;" onclick="toggleOpenClose(${index})">
-              ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-            </button>
+        <!-- Botões de ação -->
+        <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
+          <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="toggleOpenClose(${index})">
+            ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+          </button>
+          <button class="btn btn-secondary" style="background-color:#6c757d; color:#fff;" onclick="openEditTableModal(${index})">
+            Alterar Artigos
+          </button>
+          <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
+            Emitir Fatura
+          </button>
+        </div>
 
-<div class="section buttons">
-  <div class="buttons-left">
-    <button class="btn btn-secondary" onclick="openEditTableModal(${index})">
-      Alterar Artigos
-    </button>
-  </div>
-  <div class="buttons-right">
-    <button class="btn btn-primary" onclick="openModal(${index})">
-      Emitir Fatura
-    </button>
-  </div>
-</div>
-
-        <!-- Seções adicionais -->
+        <!-- Tabela de itens -->
         <div class="section">
           ${sectionsHtml}
         </div>
       `;
       }
-
       window.togglePrepared = function (tableIndex, section, itemIndex) {
         tables[tableIndex].prepared[section][itemIndex] =
           !tables[tableIndex].prepared[section][itemIndex];
