@@ -55,10 +55,28 @@
       </div>
       <div id="createTableModal" class="modal">
         <div class="modal-content">
-          <!-- Left Column: Categories -->
+          <!-- Left Column: Small (Table Info) -->
           <div class="modal-left">
             <h3>Abrir Nova Mesa</h3>
 
+            <label for="newTableName">Nome da Mesa:</label>
+            <input type="text" id="newTableName" placeholder="Ex: Mesa 3" />
+
+            <div class="modal-actions">
+              <button
+                class="btn btn-secondary"
+                onclick="closeCreateTableModal()"
+              >
+                Cancelar
+              </button>
+              <button class="btn btn-primary" onclick="createNewTable()">
+                Abrir Mesa
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column: Big (Categories + Pratos) -->
+          <div class="modal-right">
             <div class="category-section">
               <h4>Pratos Principais</h4>
               <div id="principalArticles" class="article-list"></div>
@@ -87,24 +105,6 @@
             <div class="category-section">
               <h4>Extras</h4>
               <div id="extraArticles" class="article-list"></div>
-            </div>
-          </div>
-
-          <!-- Right Column: Table Info -->
-          <div class="modal-right">
-            <label for="newTableName">Nome da Mesa:</label>
-            <input type="text" id="newTableName" placeholder="Ex: Mesa 3" />
-
-            <div class="modal-actions">
-              <button
-                class="btn btn-secondary"
-                onclick="closeCreateTableModal()"
-              >
-                Cancelar
-              </button>
-              <button class="btn btn-primary" onclick="createNewTable()">
-                Abrir Mesa
-              </button>
             </div>
           </div>
         </div>
