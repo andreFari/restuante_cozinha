@@ -101,6 +101,7 @@
                 <th>NIF</th>
                 <th>Total Líquido</th>
                 <th>Código AT</th>
+                <th>Estado AT</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -115,6 +116,11 @@
                   <td>${g.nif || "-"}</td>
                   <td>${parseFloat(g.total || 0).toFixed(2)} €</td>
                   <td>${g.codigoAT || "-"}</td>
+                    <td style="font-weight:bold; color:${
+                      g.estadoAT === "Aceite pela AT" ? "green" : "orange"
+                    };">
+          ${g.estadoAT}
+        </td>
                   <td><button  class="alterar" data-id="${
                     g.id
                   }">Alterar Código</button></td>

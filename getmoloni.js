@@ -405,6 +405,7 @@ router.get("/importar/guias", async (req, res) => {
             nif: guia.customer_vat || guia.customer?.vat || "-",
             total: guia.net_value || guia.total_value || "0.00",
             codigoAT: guia.transport_code || "-",
+            estadoAT: guia.transport_code ? "Aceite pela AT" : "Pendente",
           };
         } catch (detalheErro) {
           // console.error("Erro ao obter guia detalhada:", detalheErro.message);
