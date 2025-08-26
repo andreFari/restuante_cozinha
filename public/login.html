@@ -434,15 +434,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-                              <strong>${table.name}</strong> - ${
+                                    <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-                              ${
-                                table.kitchenNote
-                                  ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                                  : ""
-                              }
-                            `;
+                                    ${
+                                      table.kitchenNote
+                                        ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                                        : ""
+                                    }
+                                  `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -469,25 +469,25 @@
         const prepared = table.prepared;
 
         /*  function renderSection(title, items, prepState, key) {
-                      if (!items || items.length === 0) return "";
-                      return `
-                              <div class="section">
-                                <h3>${title}</h3>
-                                ${items
-                                  .map(
-                                    (item, i) => `
-                                  <div class="item">
-                                    <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                                      onchange="togglePrepared(${index}, '${key}', ${i})">
-                                    <label>${item.name}</label>
-                                  </div>
-                                `
-                                  )
-                                  .join("")}
-                              </div>
-                            `;
-                    }
-               */
+                            if (!items || items.length === 0) return "";
+                            return `
+                                    <div class="section">
+                                      <h3>${title}</h3>
+                                      ${items
+                                        .map(
+                                          (item, i) => `
+                                        <div class="item">
+                                          <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                                            onchange="togglePrepared(${index}, '${key}', ${i})">
+                                          <label>${item.name}</label>
+                                        </div>
+                                      `
+                                        )
+                                        .join("")}
+                                    </div>
+                                  `;
+                          }
+                     */
 
         // Função para renderizar **uma tabela única** para todos os itens
         function renderAllItemsTable(order, prepared, index) {
@@ -503,38 +503,40 @@
 
             items.forEach((item, i) => {
               rowsHtml += `
-        <tr>
-          <td style="border:1px solid #ccc; padding:5px;">${category}</td>
-          <td style="border:1px solid #ccc; padding:5px;">${item.name}</td>
-          <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-            item.quantity
-          }</td>
-          <td style="border:1px solid #ccc; padding:5px; text-align:center;">
-            <input type="checkbox" ${prepState[i] ? "checked" : ""}
-              onchange="togglePrepared(${index}, '${key}', ${i})">
-          </td>
-        </tr>
-      `;
+              <tr>
+                <td style="border:1px solid #ccc; padding:5px;">${category}</td>
+                <td style="border:1px solid #ccc; padding:5px;">${
+                  item.name
+                }</td>
+                <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+                  item.quantity
+                }</td>
+                <td style="border:1px solid #ccc; padding:5px; text-align:center;">
+                  <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                    onchange="togglePrepared(${index}, '${key}', ${i})">
+                </td>
+              </tr>
+            `;
             });
           }
 
           return `
-    <div class="section" style="display:flex; justify-content:center; margin-top:10px;">
-      <table style="width:100%; max-width:600px; border-collapse: collapse; border:1px solid #ccc;">
-        <thead>
-          <tr style="background-color:#f2f2f2;">
-            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
-            <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
-            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
-            <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
-    </div>
-  `;
+          <div class="section" style="display:flex; justify-content:center; margin-top:10px;">
+            <table style="width:100%; max-width:600px; border-collapse: collapse; border:1px solid #ccc;">
+              <thead>
+                <tr style="background-color:#f2f2f2;">
+                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
+                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
+                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
+                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -551,54 +553,58 @@
         const sectionsHtml = renderAllItemsTable(order, prepared, index);
 
         orderDetails.innerHTML = `
-        <h2 style="margin-bottom: 1rem;">
-          ${table.name} - <span style="color: ${
+              <h2 style="margin-bottom: 1rem;">
+                ${table.name} - <span style="color: ${
           table.open ? "#28a745" : "#dc3545"
         };">
-            ${table.open ? "Aberta" : "Fechada"}
-          </span>
-        </h2>
+                  ${table.open ? "Aberta" : "Fechada"}
+                </span>
+              </h2>
 
-        <!-- Nota da Cozinha -->
-        <div class="section" style="margin-bottom: 20px;">
-          <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
-          <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
-            ${table.kitchenNote}
-          </textarea>
-          <button class="btn btn-primary" onclick="saveKitchenNote(${index})" >Guardar Nota</button>
-        </div>
+              <!-- Nota da Cozinha -->
+              <div class="section" style="margin-bottom: 20px;">
+                <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
+                <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
+                  ${table.kitchenNote}
+                </textarea>
+                <button class="btn btn-primary" onclick="saveKitchenNote(${index})" >Guardar Nota</button>
+              </div>
 
-        <!-- Status de Pagamento -->
-        <div class="section" style="margin-bottom:20px;">
-          <label style="font-weight:600; display:block;">Status do Pagamento:</label>
-          <div class="status ${order.status === "paid" ? "paid" : "unpaid"}"
-               style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
-                 order.status === "paid" ? "#d4edda" : "#f8d7da"
-               }; color:${order.status === "paid" ? "#155724" : "#721c24"};">
-            ${order.status === "paid" ? "Pago" : "Por Pagar"}
-          </div>
-          <button class="btn btn-secondary" onclick="togglePaid(${index})">
-            Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-          </button>
-        </div>
+              <!-- Status de Pagamento -->
+              <div class="section" style="margin-bottom:20px;">
+                <label style="font-weight:600; display:block;">Status do Pagamento:</label>
+                <div class="status ${
+                  order.status === "paid" ? "paid" : "unpaid"
+                }"
+                     style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
+                       order.status === "paid" ? "#d4edda" : "#f8d7da"
+                     }; color:${
+          order.status === "paid" ? "#155724" : "#721c24"
+        };">
+                  ${order.status === "paid" ? "Pago" : "Por Pagar"}
+                </div>
+                <button class="btn btn-secondary" onclick="togglePaid(${index})">
+                  Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+                </button>
+              </div>
 
-        <!-- Botões de ação -->
-       <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
-  <button class="btn btn-secondary" style="background-color:red; color:#fff;" onclick="toggleOpenClose(${index})">
-    ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-  </button>
-  <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="openEditTableModal(${index})">
-    Alterar Artigos
-  </button>
-  <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
-    Emitir Fatura
-  </button>
-</div>
+              <!-- Botões de ação -->
+             <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
+        <button class="btn btn-secondary" style="background-color:red; color:#fff;" onclick="toggleOpenClose(${index})">
+          ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+        </button>
+        <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="openEditTableModal(${index})">
+          Alterar Artigos
+        </button>
+        <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
+          Emitir Fatura
+        </button>
+      </div>
 
-<!-- Tabela de itens centralizada -->
-${sectionsHtml}
-        </div>
-      `;
+      <!-- Tabela de itens centralizada -->
+      ${sectionsHtml}
+              </div>
+            `;
       }
       window.togglePrepared = function (tableIndex, section, itemIndex) {
         tables[tableIndex].prepared[section][itemIndex] =
@@ -632,95 +638,43 @@ ${sectionsHtml}
         document.getElementById("createTableModal").style.display = "none";
       }
       window.addEventListener("DOMContentLoaded", async () => {
+        const tokenDisplayDiv = document.getElementById("tokenDisplay");
+
+        // 1️⃣ Verifica se há erro ou code na URL (OAuth)
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
         const error = params.get("error");
-        const tokenDisplayDiv = document.getElementById("tokenDisplay");
-        let valid = false;
-        let moloniProducts = [];
-        console.log("Code da URL:", code);
-
-        if (localStorage.getItem("moloni_token")) {
-          valid = true;
-        }
-        // Esconder todos os elementos protegidos por default
-        document.querySelectorAll(".protected").forEach((el) => {
-          el.style.display = "none";
-        });
-
-        // Mostra mainContent se válido
-        if (valid) {
-          document.getElementById("mainContent").style.display = "block";
-          document.querySelectorAll(".protected").forEach((el) => {
-            el.style.display = "inline-block"; // links e botões
-          });
-          if (typeof renderTables === "function") renderTables();
-        }
 
         if (code) {
           try {
-            const res = await fetch("/api/moloni-exchange-code", {
+            await fetch("/api/moloni-exchange-code", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ code }),
             });
-            const { access_token, refresh_token } = await res.json();
-            console.log("Tokens recebidos:", access_token, refresh_token);
-
-            alert("Tokens armazenados com sucesso!");
-            history.replaceState({}, "", "/login.html");
-            valid = true;
-            tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
-            document.getElementById("mainContent").style.display = "block";
-            document.querySelectorAll(".protected").forEach((el) => {
-              el.style.display = "inline-block";
-            });
-            if (typeof renderTables === "function") renderTables();
+            history.replaceState({}, "", "/login.html"); // limpa URL
           } catch (err) {
             console.error("Erro a obter tokens:", err);
             alert("Erro no login com Moloni.");
-            tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
           }
         }
 
+        if (error) {
+          alert(
+            "Erro durante o login com Moloni: " + decodeURIComponent(error)
+          );
+        }
+
+        // 2️⃣ Verifica o status do token na sessão
         try {
           const res = await fetch("/api/moloni-token-status");
           const { valid } = await res.json();
-          tokenDisplayDiv.textContent = valid
-            ? "✔️ Sistema pronto a usar"
-            : "⚠️ Sistema não autenticado";
           updateUI(valid);
-
-          /*  const loginLink = document.getElementById("moloniLoginLink");
-
-          if (valid) {
-            loginLink.classList.add("disabled-link"); // desativa link
-          } else {
-            loginLink.classList.remove("disabled-link"); // ativa link
-          }
-          if (valid) {
-            document.getElementById("mainContent").style.display = "block";
-            document.querySelectorAll(".protected").forEach((el) => {
-              el.style.display = "inline-block";
-            });
-            if (typeof renderTables === "function") renderTables();
-          }
-*/
-          if (error) {
-            alert(
-              "Erro durante o login com Moloni: " + decodeURIComponent(error)
-            );
-            tokenDisplayDiv.textContent = "⚠️ Erro no login com Moloni.";
-          }
-
-          if (typeof renderTables === "function") {
-            renderTables();
-          }
         } catch (err) {
           console.error("Erro ao verificar status do token:", err);
           tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
         }
-      }); // fecha o DOMContentLoaded corretamente aqui
+      });
       function updateUI(isValid) {
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
         const mainContent = document.getElementById("mainContent");
@@ -1063,12 +1017,10 @@ ${sectionsHtml}
       const form = document.getElementById("loginForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-
+        const tokenDisplayDiv = document.getElementById("tokenDisplay");
         const formData = new FormData(form);
         const username = formData.get("username");
         const password = formData.get("password");
-
-        console.log("[Login Front-end] Enviando:", { username, password });
 
         try {
           const resp = await fetch("/api/login-moloni", {
@@ -1076,19 +1028,22 @@ ${sectionsHtml}
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, password }),
           });
-
           const result = await resp.json();
-          console.log("[Login Front-end] JSON recebido:", result);
 
           if (resp.ok) {
-            alert("✅ Login efetuado com sucesso!");
+            const statusResp = await fetch("/api/moloni-token-status");
+            const { valid } = await statusResp.json();
+            updateUI(valid);
+            tokenDisplayDiv.textContent = valid
+              ? "✔️ Sistema pronto a usar"
+              : "⚠️ Sistema não autenticado";
           } else {
             alert(
               "❌ Erro: " + (result.detail?.error_description || result.error)
             );
           }
         } catch (err) {
-          console.error("[Login Front-end] Erro de conexão:", err);
+          console.error("Erro de conexão:", err);
           alert("Erro ao conectar com o servidor.");
         }
       });

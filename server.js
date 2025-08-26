@@ -49,6 +49,16 @@ app.get("/", (req, res) => res.redirect("/login.html"));
 app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
+
+app.use(
+  session({
+    secret: "chave-super-secreta",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true }, // JS do browser não consegue ler
+  })
+);
+
 app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
 app.post("/api/login-moloni", async (req, res) => {
@@ -60,7 +70,6 @@ app.post("/api/login-moloni", async (req, res) => {
   }
 
   try {
-    // Monta a URL com query params (em vez de mandar no body)
     const url = `https://api.moloni.pt/v1/grant/?grant_type=password&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&username=${encodeURIComponent(
       username
     )}&password=${encodeURIComponent(password)}`;
@@ -76,15 +85,14 @@ app.post("/api/login-moloni", async (req, res) => {
         .json({ error: "invalid_credentials", detail: data });
     }
 
-    // Guarda tokens em memória
-    moloniTokens.access_token = data.access_token;
-    moloniTokens.refresh_token = data.refresh_token;
-    moloniTokens.expires_at = Date.now() + Number(data.expires_in) * 1000;
-
-    res.json({
-      message: "Login bem-sucedido",
+    // Guarda os tokens na sessão do usuário (não no frontend)
+    req.session.moloni = {
       access_token: data.access_token,
-    });
+      refresh_token: data.refresh_token,
+      expires_at: Date.now() + Number(data.expires_in) * 1000,
+    };
+
+    res.json({ message: "Login bem-sucedido" });
   } catch (error) {
     console.error("[Moloni] Falha no login:", error.response?.data || error);
     res.status(401).json({
@@ -94,16 +102,15 @@ app.post("/api/login-moloni", async (req, res) => {
   }
 });
 // Exemplo em Express
+// Verifica se o token na sessão ainda é válido
 app.get("/api/moloni-token-status", (req, res) => {
-  if (
-    moloniTokens.access_token &&
-    moloniTokens.expires_at &&
-    moloniTokens.expires_at > Date.now() + 60000
-  ) {
-    return res.json({ valid: true });
-  }
+  const sessionToken = req.session.moloni;
+  const valid =
+    sessionToken &&
+    sessionToken.access_token &&
+    sessionToken.expires_at > Date.now() + 60000; // pelo menos 1 min de validade
 
-  return res.json({ valid: false });
+  res.json({ valid });
 });
 /**
  * Devolve um access_token válido; renova automaticamente via refresh_token quando necessário.
