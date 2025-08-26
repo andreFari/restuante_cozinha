@@ -254,30 +254,40 @@
 
       const tableList = document.getElementById("tableList");
       const orderDetails = document.getElementById("orderDetails");
-
       function renderTables() {
         tableList.innerHTML = "";
 
-        tables.forEach((table, index) => {
-          if (!table.open) return;
+        const openTables = tables.filter((t) => t.open);
+        const closedTables = tables.filter((t) => !t.open);
 
-          const order = table.order;
-          const prep = table.prepared;
+        if (openTables.length) {
+          const openHeader = document.createElement("h3");
+          openHeader.textContent = "Mesas Abertas";
+          tableList.appendChild(openHeader);
 
-          const hasUnprepared = Object.keys(prep).some((section) =>
-            prep[section].some((prepared) => !prepared)
-          );
-
-          if (order.status !== "paid" || hasUnprepared) {
+          openTables.forEach((table, index) => {
             const div = document.createElement("div");
-            div.className = `table-item open`;
-            div.textContent = `${table.name} ${
-              table.kitchenNote ? `- (${table.kitchenNote})` : ""
-            }`;
+            div.className = "table-item open";
+            div.textContent = table.name;
             div.onclick = () => renderOrderDetails(index);
             tableList.appendChild(div);
-          }
-        });
+          });
+        }
+
+        if (closedTables.length) {
+          const closedHeader = document.createElement("h3");
+          closedHeader.textContent = "Mesas Fechadas";
+          tableList.appendChild(closedHeader);
+
+          closedTables.forEach((table, index) => {
+            const div = document.createElement("div");
+            div.className = "table-item closed";
+            div.style.opacity = "0.6"; // indicar que está fechada
+            div.textContent = table.name;
+            div.onclick = () => renderOrderDetails(index);
+            tableList.appendChild(div);
+          });
+        }
       }
 
       function renderOrderDetails(index) {
@@ -294,9 +304,9 @@
           .map(
             (item, i) => `
           <div class="item">
-            <input type="checkbox" ${
-              prepState[i] ? "checked" : ""
-            } onchange="togglePrepared(${index}, '${key}', ${i})">
+         <input type="checkbox" ${
+           table.open ? (prepState[i] ? "checked" : "") : "disabled"
+         } onchange="togglePrepared(${index}, '${key}', ${i})">
             <label>${item}</label>
           </div>`
           )
@@ -304,21 +314,46 @@
       </div>
     `;
         }
-
         orderDetails.innerHTML = `
-  <div class="order-header">
-    <div class="order-title">${table.name} - ${
+    <div class="order-header">
+      <div class="order-title">${table.name} - ${
           table.open ? "Aberta" : "Fechada"
         }</div>
-    <div class="admin-note-short" title="${
-      table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
-    }">
-      ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
+      <div class="admin-note-short" title="${
+        table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
+      }">
+        ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
+      </div>
     </div>
-  </div>
-  <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">${
-          order.status === "paid" ? "Pago" : "Por Pagar"
-        }</div>
+
+    <!-- Nota da Cozinha -->
+    <div class="section">
+      <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
+      <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
+        table.kitchenNote
+      }</textarea>
+      <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
+    </div>
+
+    <!-- Status de Pagamento -->
+    <div class="section">
+      <label style="font-weight:600; display:block;">Status do Pagamento:</label>
+      <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
+        ${order.status === "paid" ? "Pago" : "Por Pagar"}
+      </div>
+      <button class="btn btn-secondary" onclick="togglePaid(${index})">
+        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
+      </button>
+    </div>
+
+    <!-- Botão Abrir/Fechar Mesa -->
+    <div class="section">
+      <button class="btn btn-secondary" style="background-color:${
+        table.open ? "red" : "#28a745"
+      }; color:white;" onclick="toggleOpenClose(${index})">
+        ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+      </button>
+    </div>
 
 ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
 ${renderSection("Extras", order.extras, prepared.extras, "extras")}
@@ -352,7 +387,26 @@ ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
         renderTables();
         renderOrderDetails(tableIndex);
       };
+      // Salvar nota da cozinha
+      window.saveKitchenNote = function (index) {
+        const note = document.getElementById("kitchenNote").value;
+        tables[index].kitchenNote = note;
+        renderTables();
+        renderOrderDetails(index);
+      };
 
+      // Alternar status Pago / Por Pagar
+      window.togglePaid = function (index) {
+        tables[index].order.status =
+          tables[index].order.status === "paid" ? "unpaid" : "paid";
+        renderOrderDetails(index);
+      };
+      // Abrir ou fechar mesa
+      window.toggleOpenClose = function (index) {
+        tables[index].open = !tables[index].open;
+        renderTables();
+        renderOrderDetails(index);
+      };
       renderTables();
     </script>
   </body>
