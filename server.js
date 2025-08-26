@@ -51,40 +51,45 @@ app.get("/login.html", (req, res) => {
 });
 app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
+
 app.post("/api/login-moloni", async (req, res) => {
   const { username, password } = req.body;
   console.log("[Login] Recebido:", { username, password });
 
   if (!username || !password) {
-    console.warn("[Login] Faltam credenciais");
     return res.status(400).json({ error: "missing_credentials" });
   }
-  const params = new URLSearchParams({
-    grant_type: "password",
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    username,
-    password,
-  });
-  console.log("[Moloni] Dados que vão para a API:", {
-    grant_type: "password",
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    username,
-    password,
-  });
+
   try {
+    const params = new URLSearchParams({
+      grant_type: "password",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      username,
+      password,
+    }).toString();
+
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params.toString, // sem .toString()
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      params,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
     );
 
-    console.log("[Moloni] Login bem-sucedido:", data);
+    if (data.error) {
+      console.error("[Moloni] Erro na resposta:", data);
+      return res
+        .status(401)
+        .json({ error: "invalid_credentials", detail: data });
+    }
 
+    // Guarda os tokens em memória
     moloniTokens.access_token = data.access_token;
     moloniTokens.refresh_token = data.refresh_token;
-    moloniTokens.expires_at = Date.now() + Number(data.expires_in) * 1000;
+    moloniTokens.expires_at = Date.now() + data.expires_in * 1000;
 
     res.json({
       message: "Login bem-sucedido",
@@ -94,11 +99,10 @@ app.post("/api/login-moloni", async (req, res) => {
     console.error("[Moloni] Falha no login:", error.response?.data || error);
     res.status(401).json({
       error: "invalid_credentials",
-      detail: error.response?.data,
+      detail: error.response?.data || error.message,
     });
   }
 });
-
 // Exemplo em Express
 app.get("/api/moloni-token-status", (req, res) => {
   if (

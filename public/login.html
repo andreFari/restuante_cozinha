@@ -1070,25 +1070,22 @@ ${sectionsHtml}
 
         console.log("[Login Front-end] Enviando:", { username, password });
 
-        const data = { username, password };
-
         try {
           const resp = await fetch("/api/login-moloni", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
+            body: JSON.stringify({ username, password }),
           });
-
-          console.log("[Login Front-end] Resposta raw:", resp);
 
           const result = await resp.json();
           console.log("[Login Front-end] JSON recebido:", result);
 
           if (resp.ok) {
-            alert("Login efetuado com sucesso!");
-            // mostrar painel
+            alert("✅ Login efetuado com sucesso!");
           } else {
-            alert("Erro: " + result.error);
+            alert(
+              "❌ Erro: " + (result.detail?.error_description || result.error)
+            );
           }
         } catch (err) {
           console.error("[Login Front-end] Erro de conexão:", err);
