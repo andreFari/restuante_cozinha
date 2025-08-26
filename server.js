@@ -53,7 +53,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
 app.post("/api/login-moloni", async (req, res) => {
   const { username, password } = req.body;
-
+  console.log(username, password);
   if (!username || !password) {
     return res.status(400).json({ error: "missing_credentials" });
   }
