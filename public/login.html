@@ -1063,26 +1063,35 @@ ${sectionsHtml}
       const form = document.getElementById("loginForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+
         const formData = new FormData(form);
-        const data = {
-          username: formData.get("username"),
-          password: formData.get("password"),
-        };
+        const username = formData.get("username");
+        const password = formData.get("password");
+
+        console.log("[Login Front-end] Enviando:", { username, password });
+
+        const data = { username, password };
+
         try {
           const resp = await fetch("/api/login-moloni", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
           });
+
+          console.log("[Login Front-end] Resposta raw:", resp);
+
           const result = await resp.json();
+          console.log("[Login Front-end] JSON recebido:", result);
+
           if (resp.ok) {
             alert("Login efetuado com sucesso!");
-            // você pode esconder formulário e mostrar painel
+            // mostrar painel
           } else {
             alert("Erro: " + result.error);
           }
         } catch (err) {
-          console.error(err);
+          console.error("[Login Front-end] Erro de conexão:", err);
           alert("Erro ao conectar com o servidor.");
         }
       });

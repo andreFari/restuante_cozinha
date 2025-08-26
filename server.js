@@ -53,8 +53,10 @@ app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
 app.post("/api/login-moloni", async (req, res) => {
   const { username, password } = req.body;
-  console.log(username, password);
+  console.log("[Login] Recebido:", { username, password });
+
   if (!username || !password) {
+    console.warn("[Login] Faltam credenciais");
     return res.status(400).json({ error: "missing_credentials" });
   }
 
@@ -75,7 +77,8 @@ app.post("/api/login-moloni", async (req, res) => {
       }
     );
 
-    // Atualiza tokens globais
+    console.log("[Moloni] Login bem-sucedido:", data);
+
     moloniTokens.access_token = data.access_token;
     moloniTokens.refresh_token = data.refresh_token;
     moloniTokens.expires_at = Date.now() + Number(data.expires_in) * 1000;
@@ -92,6 +95,7 @@ app.post("/api/login-moloni", async (req, res) => {
     });
   }
 });
+
 // Exemplo em Express
 app.get("/api/moloni-token-status", (req, res) => {
   if (
