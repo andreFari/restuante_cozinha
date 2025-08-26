@@ -51,7 +51,47 @@ app.get("/login.html", (req, res) => {
 });
 app.use(express.static(path.join(__dirname, "public")));
 // ----- Gestão de Tokens (em memória) -----
+app.post("/api/login-moloni", async (req, res) => {
+  const { username, password } = req.body;
 
+  if (!username || !password) {
+    return res.status(400).json({ error: "missing_credentials" });
+  }
+
+  try {
+    const { data } = await axios.post(
+      "https://api.moloni.pt/v1/grant/",
+      new URLSearchParams({
+        grant_type: "password",
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        username,
+        password,
+      }).toString(),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    // Atualiza tokens globais
+    moloniTokens.access_token = data.access_token;
+    moloniTokens.refresh_token = data.refresh_token;
+    moloniTokens.expires_at = Date.now() + Number(data.expires_in) * 1000;
+
+    res.json({
+      message: "Login bem-sucedido",
+      access_token: data.access_token,
+    });
+  } catch (error) {
+    console.error("[Moloni] Falha no login:", error.response?.data || error);
+    res.status(401).json({
+      error: "invalid_credentials",
+      detail: error.response?.data,
+    });
+  }
+});
 // Exemplo em Express
 app.get("/api/moloni-token-status", (req, res) => {
   if (

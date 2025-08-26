@@ -14,11 +14,21 @@
       </div>
 
       <div class="links-container">
-        <a
-          id="moloniLoginLink"
-          href="https://api.moloni.pt/v1/authorize/?response_type=code&client_id=249928302_testes_api&redirect_uri=https://restuante-cozinha.onrender.com/callback"
-          >⏻ Login com Moloni
-        </a>
+        <form id="loginForm">
+          <input
+            type="text"
+            name="username"
+            placeholder="Usuário Moloni"
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Senha Moloni"
+            required
+          />
+          <button type="submit">Login</button>
+        </form>
         <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
         <a href="./guiasTransporte.html" class="protected"
           >🚚 Guias de Transporte
@@ -1048,6 +1058,34 @@ ${sectionsHtml}
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
       }
+    </script>
+    <script>
+      const form = document.getElementById("loginForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = {
+          username: formData.get("username"),
+          password: formData.get("password"),
+        };
+        try {
+          const resp = await fetch("/api/login-moloni", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          const result = await resp.json();
+          if (resp.ok) {
+            alert("Login efetuado com sucesso!");
+            // você pode esconder formulário e mostrar painel
+          } else {
+            alert("Erro: " + result.error);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao conectar com o servidor.");
+        }
+      });
     </script>
   </body>
 </html>
