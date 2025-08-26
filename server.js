@@ -76,7 +76,7 @@ app.post("/api/login-moloni", async (req, res) => {
   try {
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      params, // sem .toString()
+      params.toString, // sem .toString()
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
