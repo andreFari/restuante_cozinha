@@ -59,22 +59,25 @@ app.post("/api/login-moloni", async (req, res) => {
     console.warn("[Login] Faltam credenciais");
     return res.status(400).json({ error: "missing_credentials" });
   }
-
+  const params = new URLSearchParams({
+    grant_type: "password",
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    username,
+    password,
+  });
+  console.log("[Moloni] Dados que vão para a API:", {
+    grant_type: "password",
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    username,
+    password,
+  });
   try {
     const { data } = await axios.post(
       "https://api.moloni.pt/v1/grant/",
-      new URLSearchParams({
-        grant_type: "password",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        username,
-        password,
-      }).toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
+      params, // sem .toString()
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
     console.log("[Moloni] Login bem-sucedido:", data);
