@@ -60,28 +60,14 @@ app.post("/api/login-moloni", async (req, res) => {
   }
 
   try {
-    const params = new URLSearchParams({
-      grant_type: "password",
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      username,
-      password,
-    });
+    // Monta a URL com query params (em vez de mandar no body)
+    const url = `https://api.moloni.pt/v1/grant/?grant_type=password&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&username=${encodeURIComponent(
+      username
+    )}&password=${encodeURIComponent(password)}`;
 
-    console.log(
-      "[Moloni] Dados que vão para a API:",
-      Object.fromEntries(params)
-    );
+    console.log("[Moloni] URL final:", url);
 
-    const { data } = await axios.post(
-      "https://api.moloni.pt/v1/grant/",
-      params,
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
+    const { data } = await axios.post(url);
 
     if (data.error) {
       console.error("[Moloni] Erro na resposta:", data);
@@ -107,7 +93,6 @@ app.post("/api/login-moloni", async (req, res) => {
     });
   }
 });
-
 // Exemplo em Express
 app.get("/api/moloni-token-status", (req, res) => {
   if (
