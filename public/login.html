@@ -691,7 +691,7 @@ ${sectionsHtml}
             : "⚠️ Sistema não autenticado";
           updateUI(valid);
 
-          const loginLink = document.getElementById("moloniLoginLink");
+          /*  const loginLink = document.getElementById("moloniLoginLink");
 
           if (valid) {
             loginLink.classList.add("disabled-link"); // desativa link
@@ -705,7 +705,7 @@ ${sectionsHtml}
             });
             if (typeof renderTables === "function") renderTables();
           }
-
+*/
           if (error) {
             alert(
               "Erro durante o login com Moloni: " + decodeURIComponent(error)
