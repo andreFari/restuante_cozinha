@@ -331,7 +331,48 @@ padding: 14px 20px;
 .article-btn:hover {
   background-color: #e0e0e0;
 }
+/* ====== Login centrado e espaçado ====== */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px; /* espaço entre inputs e botão */
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  max-width: 350px;
+  margin: 20px auto; /* centraliza horizontalmente */
+}
 
+.login-form input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #bbb;
+  transition: all 0.2s ease;
+}
+
+.login-form input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.login-form button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+#tokenDisplay {
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 500;
+}
 /* ====== Table Sections ====== */
 .table-section {
   padding: 20px;
@@ -448,4 +489,26 @@ padding: 14px 20px;
     max-width: 100%;
     margin-bottom: 20px;
   }
+}
+#navLinks a {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-weight: 500;
+  color: #007bff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+#navLinks a:hover {
+  background-color: #e6f2ff;
+  color: #0056b3;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  vertical-align: middle;
 }
