@@ -699,9 +699,9 @@
         } else {
           tokenDisplayDiv.textContent = "⚠️ Sistema não autenticado";
           tokenDisplayDiv.className = "token-status error";
-
-          loginForm.style.display = "flex"; // 🔥 mostra login
           document.querySelector("header").classList.add("login-active");
+          loginForm.style.display = "flex"; // 🔥 mostra login
+
           navLinks.style.display = "none"; // 🔥 esconde navegação
           mainContent.style.display = "none";
           document.querySelectorAll(".protected").forEach((el) => {
