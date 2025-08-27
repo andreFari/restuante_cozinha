@@ -77,6 +77,8 @@ app.post("/api/login-moloni", async (req, res) => {
         .json({ error: "invalid_credentials", detail: data });
     }
 
+    console.log("infomação acess que vêm após login", data.access_token);
+    console.log("infomação da refresh que vêm após login", data.refresh_token);
     // Atualiza o objeto global
     moloniTokens.access_token = data.access_token;
     moloniTokens.refresh_token = data.refresh_token;
