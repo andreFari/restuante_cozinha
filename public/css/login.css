@@ -332,6 +332,22 @@ padding: 14px 20px;
   background-color: #e0e0e0;
 }
 /* ====== Login centrado e espaçado ====== */
+header {
+  display: flex;
+  flex-direction: column; /* organiza logo, login e token verticalmente */
+  align-items: center;    /* centraliza horizontalmente */
+  justify-content: center; /* centraliza verticalmente */
+  min-height: 100vh;       /* faz o header ocupar toda a altura da tela */
+  padding: 20px;
+  background-color: #f7f8fa; /* opcional, apenas para visualizar */
+}
+
+.links-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centraliza o login e a nav */
+  gap: 15px;           /* espaço entre login e navegação */
+}
 .login-form {
   display: flex;
   flex-direction: column;
@@ -489,6 +505,12 @@ padding: 14px 20px;
     max-width: 100%;
     margin-bottom: 20px;
   }
+}
+#navLinks {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 #navLinks a {
   display: inline-flex;
