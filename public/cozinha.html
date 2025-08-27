@@ -71,7 +71,7 @@
       }
 
       .section-grid .section {
-        grid-column: span 1; /* cada secção ocupa só 1 coluna */
+        margin-bottom: 0; /* já temos o gap do grid */
       }
       .section-column {
         display: flex;
@@ -360,14 +360,14 @@
   
 
   
-
+<div class="section-grid">
 ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
 
 ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
 ${renderSection("Extras", order.extras, prepared.extras, "extras")}
 ${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
 ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
-
+</div>
 <div class="section section-grid">
   <h3>Informar Admin</h3>
   <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
