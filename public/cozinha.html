@@ -64,7 +64,17 @@
         height: fit-content;
         max-width: 100%;
       }
+      .section-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
 
+      .section-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
       .section {
         background-color: #fdfdfd;
         border: 1px solid #dee2e6;
@@ -309,21 +319,21 @@
         function renderSection(title, items, prepState, key) {
           if (items.length === 0) return "";
           return `
-      <div class="section">
-        <h3>${title}</h3>
-        ${items
-          .map(
-            (item, i) => `
-         <div class="item" onclick="togglePrepared(${index}, '${key}', ${i})">
-  <input type="checkbox" ${
-    table.open ? (prepState[i] ? "checked" : "") : "disabled"
-  }>
-  <label>${item}</label>
-</div>`
-          )
-          .join("")}
-      </div>
-    `;
+    <div class="section section-column">
+      <h3>${title}</h3>
+      ${items
+        .map(
+          (item, i) => `
+        <div class="item" onclick="togglePrepared(${index}, '${key}', ${i})">
+          <input type="checkbox" ${
+            table.open ? (prepState[i] ? "checked" : "") : "disabled"
+          }>
+          <label>${item}</label>
+        </div>`
+        )
+        .join("")}
+    </div>
+  `;
         }
         orderDetails.innerHTML = `
     <div class="order-header">
@@ -338,7 +348,7 @@
     </div>
 
     <!-- Nota da Cozinha -->
-    <div class="section">
+   <div class="section section-grid">
       <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
       <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
         table.kitchenNote
@@ -356,7 +366,7 @@ ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
 ${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
 ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
 
-<div class="section">
+<div class="section section-grid">
   <h3>Informar Admin</h3>
   <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
     Pratos feitos, falta sobremesas e/ou cafés 
