@@ -197,210 +197,212 @@
       </div>
     </div>
     <script>
-            const tables = [
-              {
-                id: 1,
-                name: "Mesa 1",
-                open: true,
-                kitchenNote: "Tens que fazer mais uma de frango",
-                order: {
-                  status: "unpaid",
-                  plates: ["Frango Assado", "Sopa"],
-                  extras: ["Batatas Fritas"],
-                  drinks: ["Água", "Vinho"],
-                  desserts: ["Bolo"],
-                  coffee: ["Expresso"],
-                },
-                prepared: {
-                  plates: [false, false],
-                  extras: [false],
-                  drinks: [false, false],
-                  desserts: [false],
-                  coffee: [false],
-                },
-              },
-              {
-                id: 2,
-                name: "Mesa 2",
-                open: false,
-                kitchenNote: "",
-                order: {
-                  status: "paid",
-                  plates: ["Peixe Grelhado"],
-                  extras: [],
-                  drinks: ["Cerveja"],
-                  desserts: [],
-                  coffee: [],
-                },
-                prepared: {
-                  plates: [true],
-                  extras: [],
-                  drinks: [true],
-                  desserts: [],
-                  coffee: [],
-                },
-              },
-              {
-                id: 3,
-                name: "Mesa 3",
-                open: true,
-                kitchenNote: "",
-                order: {
-                  status: "paid",
-                  plates: ["Bife"],
-                  extras: ["Arroz"],
-                  drinks: ["Sumo"],
-                  desserts: [],
-                  coffee: [],
-                },
-                prepared: {
-                  plates: [true],
-                  extras: [true],
-                  drinks: [true],
-                  desserts: [],
-                  coffee: [],
-                },
-              },
-            ];
+      const tables = [
+        {
+          id: 1,
+          name: "Mesa 1",
+          open: true,
+          kitchenNote: "Tens que fazer mais uma de frango",
+          order: {
+            status: "unpaid",
+            plates: ["Frango Assado", "Sopa"],
+            extras: ["Batatas Fritas"],
+            drinks: ["Água", "Vinho"],
+            desserts: ["Bolo"],
+            coffee: ["Expresso"],
+          },
+          prepared: {
+            plates: [false, false],
+            extras: [false],
+            drinks: [false, false],
+            desserts: [false],
+            coffee: [false],
+          },
+        },
+        {
+          id: 2,
+          name: "Mesa 2",
+          open: false,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Peixe Grelhado"],
+            extras: [],
+            drinks: ["Cerveja"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [],
+            drinks: [true],
+            desserts: [],
+            coffee: [],
+          },
+        },
+        {
+          id: 3,
+          name: "Mesa 3",
+          open: true,
+          kitchenNote: "",
+          order: {
+            status: "paid",
+            plates: ["Bife"],
+            extras: ["Arroz"],
+            drinks: ["Sumo"],
+            desserts: [],
+            coffee: [],
+          },
+          prepared: {
+            plates: [true],
+            extras: [true],
+            drinks: [true],
+            desserts: [],
+            coffee: [],
+          },
+        },
+      ];
 
-            const tableList = document.getElementById("tableList");
-            const orderDetails = document.getElementById("orderDetails");
-            function renderTables() {
-              tableList.innerHTML = "";
+      const tableList = document.getElementById("tableList");
+      const orderDetails = document.getElementById("orderDetails");
+      function renderTables() {
+        tableList.innerHTML = "";
 
-              const openTables = tables.filter((t) => t.open);
-              const closedTables = tables.filter((t) => !t.open);
+        const openTables = tables.filter((t) => t.open);
+        const closedTables = tables.filter((t) => !t.open);
 
-              if (openTables.length) {
-                const openHeader = document.createElement("h3");
-                openHeader.textContent = "Mesas Abertas";
-                tableList.appendChild(openHeader);
+        if (openTables.length) {
+          const openHeader = document.createElement("h3");
+          openHeader.textContent = "Mesas Abertas";
+          tableList.appendChild(openHeader);
 
-                openTables.forEach((table, index) => {
-                  const div = document.createElement("div");
-                  div.className = "table-item open";
-                  div.textContent = table.name;
-                  div.onclick = () => renderOrderDetails(index);
-                  tableList.appendChild(div);
-                });
-              }
+          openTables.forEach((table, index) => {
+            const div = document.createElement("div");
+            div.className = "table-item open";
+            div.textContent = table.name;
+            div.onclick = () => renderOrderDetails(index);
+            tableList.appendChild(div);
+          });
+        }
 
-              if (closedTables.length) {
-                const closedHeader = document.createElement("h3");
-                closedHeader.textContent = "Mesas Fechadas";
-                tableList.appendChild(closedHeader);
+        if (closedTables.length) {
+          const closedHeader = document.createElement("h3");
+          closedHeader.textContent = "Mesas Fechadas";
+          tableList.appendChild(closedHeader);
 
-                closedTables.forEach((table, index) => {
-                  const div = document.createElement("div");
-                  div.className = "table-item closed";
-                  div.style.opacity = "0.6"; // indicar que está fechada
-                  div.textContent = table.name;
-                  div.onclick = () => renderOrderDetails(index);
-                  tableList.appendChild(div);
-                });
-              }
-            }
+          closedTables.forEach((table, index) => {
+            const div = document.createElement("div");
+            div.className = "table-item closed";
+            div.style.opacity = "0.6"; // indicar que está fechada
+            div.textContent = table.name;
+            div.onclick = () => renderOrderDetails(index);
+            tableList.appendChild(div);
+          });
+        }
+      }
 
-            function renderOrderDetails(index) {
-              const table = tables[index];
-              const order = table.order;
-              const prepared = table.prepared;
+      function renderOrderDetails(index) {
+        const table = tables[index];
+        const order = table.order;
+        const prepared = table.prepared;
 
-              function renderSection(title, items, prepState, key) {
-                if (items.length === 0) return "";
-                return `
-            <div class="section">
-              <h3>${title}</h3>
-              ${items
-                .map(
-                  (item, i) => `
-               <div class="item" onclick="togglePrepared(${index}, '${key}', ${i})">
-        <input type="checkbox" ${table.open ? (prepState[i] ? "checked" : "") : "disabled"}>
-        <label>${item}</label>
-      </div>
-                )
-                .join("")}
-            </div>
-          `;
-              }
-              orderDetails.innerHTML = `
-          <div class="order-header">
-            <div class="order-title">${table.name} - ${
-                table.open ? "Aberta" : "Fechada"
-              }</div>
-            <div class="admin-note-short" title="${
-              table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
-            }">
-              ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
-            </div>
-          </div>
-
-          <!-- Nota da Cozinha -->
-          <div class="section">
-            <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
-            <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
-              table.kitchenNote
-            }</textarea>
-            <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
-          </div>
-
-
-
-
-
-      ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
-      ${renderSection("Extras", order.extras, prepared.extras, "extras")}
-      ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
-      ${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
-      ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
-
+        function renderSection(title, items, prepState, key) {
+          if (items.length === 0) return "";
+          return `
       <div class="section">
-        <h3>Informar Admin</h3>
-        <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
-          Pratos feitos, falta sobremesas e/ou cafés
-        </button>
-        <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
-          Este pedido não tem sobremesas ou cafés
-        </button>
-        <button onclick="setKitchenNote(${index}, '' )" style="background-color: #6c757d;">
-          Limpar Nota
-        </button>
+        <h3>${title}</h3>
+        ${items
+          .map(
+            (item, i) => `
+         <div class="item" onclick="togglePrepared(${index}, '${key}', ${i})">
+  <input type="checkbox" ${
+    table.open ? (prepState[i] ? "checked" : "") : "disabled"
+  }>
+  <label>${item}</label>
+</div>`
+          )
+          .join("")}
       </div>
-      `;
-            }
+    `;
+        }
+        orderDetails.innerHTML = `
+    <div class="order-header">
+      <div class="order-title">${table.name} - ${
+          table.open ? "Aberta" : "Fechada"
+        }</div>
+      <div class="admin-note-short" title="${
+        table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
+      }">
+        ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
+      </div>
+    </div>
 
-            window.togglePrepared = function (tableIndex, section, itemIndex) {
-              tables[tableIndex].prepared[section][itemIndex] =
-                !tables[tableIndex].prepared[section][itemIndex];
-              renderOrderDetails(tableIndex);
-            };
+    <!-- Nota da Cozinha -->
+    <div class="section">
+      <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
+      <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
+        table.kitchenNote
+      }</textarea>
+      <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
+    </div>
 
-            window.setKitchenNote = function (tableIndex, note) {
-              tables[tableIndex].kitchenNote = note;
-              renderTables();
-              renderOrderDetails(tableIndex);
-            };
-            // Salvar nota da cozinha
-            window.saveKitchenNote = function (index) {
-              const note = document.getElementById("kitchenNote").value;
-              tables[index].kitchenNote = note;
-              renderTables();
-              renderOrderDetails(index);
-            };
+  
 
-            // Alternar status Pago / Por Pagar
-            window.togglePaid = function (index) {
-              tables[index].order.status =
-                tables[index].order.status === "paid" ? "unpaid" : "paid";
-              renderOrderDetails(index);
-            };
-            // Abrir ou fechar mesa
-            window.toggleOpenClose = function (index) {
-              tables[index].open = !tables[index].open;
-              renderTables();
-              renderOrderDetails(index);
-            };
-            renderTables();
+  
+
+${renderSection("Pratos", order.plates, prepared.plates, "plates")}
+${renderSection("Extras", order.extras, prepared.extras, "extras")}
+${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
+${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
+${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
+
+<div class="section">
+  <h3>Informar Admin</h3>
+  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
+    Pratos feitos, falta sobremesas e/ou cafés 
+  </button>
+  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
+    Este pedido não tem sobremesas ou cafés 
+  </button>
+  <button onclick="setKitchenNote(${index}, '' )" style="background-color: #6c757d;">
+    Limpar Nota
+  </button>
+</div>
+`;
+      }
+
+      window.togglePrepared = function (tableIndex, section, itemIndex) {
+        tables[tableIndex].prepared[section][itemIndex] =
+          !tables[tableIndex].prepared[section][itemIndex];
+        renderOrderDetails(tableIndex);
+      };
+
+      window.setKitchenNote = function (tableIndex, note) {
+        tables[tableIndex].kitchenNote = note;
+        renderTables();
+        renderOrderDetails(tableIndex);
+      };
+      // Salvar nota da cozinha
+      window.saveKitchenNote = function (index) {
+        const note = document.getElementById("kitchenNote").value;
+        tables[index].kitchenNote = note;
+        renderTables();
+        renderOrderDetails(index);
+      };
+
+      // Alternar status Pago / Por Pagar
+      window.togglePaid = function (index) {
+        tables[index].order.status =
+          tables[index].order.status === "paid" ? "unpaid" : "paid";
+        renderOrderDetails(index);
+      };
+      // Abrir ou fechar mesa
+      window.toggleOpenClose = function (index) {
+        tables[index].open = !tables[index].open;
+        renderTables();
+        renderOrderDetails(index);
+      };
+      renderTables();
     </script>
     <script src="./js/header.js"></script>
   </body>
