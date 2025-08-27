@@ -173,18 +173,16 @@
   </head>
 
   <body>
-    <header>
+    <div id="header-placeholder"></div>
+    <div style="padding: 20px">
       <h1>Painel Cozinha</h1>
-      <a href="./login.html">🍽️ LOGIN</a>
-    </header>
-
-    <div class="container">
-      <div class="table-list" id="tableList"></div>
-      <div class="order-details" id="orderDetails">
-        <p>Selecione uma mesa para ver os detalhes do pedido.</p>
+      <div class="container">
+        <div class="table-list" id="tableList"></div>
+        <div class="order-details" id="orderDetails">
+          <p>Selecione uma mesa para ver os detalhes do pedido.</p>
+        </div>
       </div>
     </div>
-
     <script>
       const tables = [
         {
@@ -409,5 +407,6 @@ ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
       };
       renderTables();
     </script>
+    <script src="./js/header.js"></script>
   </body>
 </html>
