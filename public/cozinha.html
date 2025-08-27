@@ -86,16 +86,21 @@
       }
 
       .item {
-        display: inline-flex; /* muda para inline-flex em vez de flex */
+        display: inline-flex;
         align-items: center;
-        margin: 8px 12px; /* espaçamento entre itens */
-        font-size: 1rem;
+        padding: 10px 15px;
+        background: #f1f1f1;
+        border-radius: 6px;
+        cursor: pointer;
+        user-select: none;
       }
 
       .item input {
+        transform: scale(1.6);
         margin-right: 8px;
-        transform: scale(1.8); /* checkboxes maiores */
-        cursor: pointer;
+      }
+      .item:hover {
+        background: #e2e6ea;
       }
       .status {
         display: inline-block;
