@@ -30,10 +30,7 @@
           <button type="submit" class="btn btn-primary">Login</button>
         </form>
         <nav id="navLinks">
-          <a href="./cozinha.html" class="protected">
-            <img src="chef-hat-icon.svg" alt="Cozinha" class="nav-icon" />
-            Cozinha
-          </a>
+          <a href="./cozinha.html" class="protected"> Cozinha </a>
           <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
           <a href="./guiasTransporte.html" class="protected"
             >🚚 Guias de Transporte
@@ -831,7 +828,7 @@
           document.getElementById("newTableName").value = "";
           document.getElementById("createTableModal").style.display = "flex";
         } catch (err) {
-          alert("Não foi possível carregar os artigos: " + err.message);
+          // alert("Não foi possível carregar os artigos: " + err.message);
         }
       }
       function createNewTable() {
