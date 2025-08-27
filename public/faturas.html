@@ -158,10 +158,10 @@
         />
         <button type="submit">Exportar PDF combinado</button>
         <label for="periodStart">Data de início:</label>
-        <input type="date" id="periodStart" name="periodStart" />
+        <input type="date" id="periodStart" name="periodStart" required />
 
         <label for="periodEnd">Data de fim:</label>
-        <input type="date" id="periodEnd" name="periodEnd" />
+        <input type="date" id="periodEnd" name="periodEnd" required />
         <button id="gerarSaftBtn">📁 Gerar SAF-T</button>
         <div
           id="statusSaft"
@@ -330,8 +330,14 @@
           // Chamada ao endpoint que gera o SAF-T na Moloni
           const response = await fetch("/api/gerar-saft", {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              period_start: periodStart || null,
+              period_end: periodEnd || null,
+            }),
           });
-
           if (!response.ok) {
             const text = await response.text();
             throw new Error(`Erro ao gerar SAF-T: ${text}`);
