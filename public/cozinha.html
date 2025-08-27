@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Painel Cozinha</title>
+    <link rel="stylesheet" href="css/header.css" />
     <style>
       * {
         box-sizing: border-box;
@@ -71,6 +72,9 @@
         border-radius: 5px;
         margin-bottom: 20px;
         padding: 15px;
+        display: flex;
+        flex-wrap: wrap; /* permite organizar horizontalmente e quebrar linha */
+        gap: 10px;
       }
 
       .section h3 {
@@ -78,20 +82,21 @@
         margin-bottom: 10px;
         font-size: 1.1rem;
         color: #495057;
+        flex-basis: 100%; /* título ocupa a largura toda */
       }
 
       .item {
-        display: flex;
+        display: inline-flex; /* muda para inline-flex em vez de flex */
         align-items: center;
-        margin-bottom: 8px;
+        margin: 8px 12px; /* espaçamento entre itens */
         font-size: 1rem;
       }
 
       .item input {
-        margin-right: 10px;
-        transform: scale(1.2);
+        margin-right: 8px;
+        transform: scale(1.8); /* checkboxes maiores */
+        cursor: pointer;
       }
-
       .status {
         display: inline-block;
         font-size: 0.9em;
@@ -333,25 +338,9 @@
       <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
     </div>
 
-    <!-- Status de Pagamento -->
-    <div class="section">
-      <label style="font-weight:600; display:block;">Status do Pagamento:</label>
-      <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">
-        ${order.status === "paid" ? "Pago" : "Por Pagar"}
-      </div>
-      <button class="btn btn-secondary" onclick="togglePaid(${index})">
-        Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-      </button>
-    </div>
+  
 
-    <!-- Botão Abrir/Fechar Mesa -->
-    <div class="section">
-      <button class="btn btn-secondary" style="background-color:${
-        table.open ? "red" : "#28a745"
-      }; color:white;" onclick="toggleOpenClose(${index})">
-        ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
-      </button>
-    </div>
+  
 
 ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
 ${renderSection("Extras", order.extras, prepared.extras, "extras")}
