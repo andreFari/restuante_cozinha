@@ -750,6 +750,8 @@
           if (!response.ok) throw new Error("Erro ao buscar artigos");
 
           const artigos = await response.json();
+          console.log("Artigos carregados:", artigos); // 👈 aqui sim já são os dados
+
           moloniProducts = artigos; // guarda globalmente
 
           artigos.forEach((artigo) => {
