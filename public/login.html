@@ -12,9 +12,9 @@
       <div class="logo-title">
         <img src="" alt="Logo" class="logo" />
       </div>
-      <a href="./cozinha.html" class="protected">Cozinha</a>
+
       <div class="links-container">
-        <form id="loginForm">
+        <form id="loginForm" class="login-form">
           <input
             type="text"
             name="username"
@@ -27,17 +27,22 @@
             placeholder="Senha Moloni"
             required
           />
-          <button type="submit">Login</button>
+          <button type="submit" class="btn btn-primary">Login</button>
         </form>
-        <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
-        <a href="./guiasTransporte.html" class="protected"
-          >🚚 Guias de Transporte
-        </a>
+        <nav id="navLinks">
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
+          <a href="./guiasTransporte.html" class="protected"
+            >🚚 Guias de Transporte
+          </a>
 
-        <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
+          <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
+        </nav>
       </div>
 
-      <div id="tokenDisplay">⚠️ Sistema não autenticado</div>
+      <div id="tokenDisplay" class="token-status">
+        ⚠️ Sistema não autenticado
+      </div>
     </header>
     <div id="mainContent" style="display: none">
       <h1>Painel de Admin / Recessão</h1>
@@ -681,12 +686,20 @@
 
         if (isValid) {
           tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+
+          tokenDisplayDiv.className = "token-status ok";
+          loginForm.style.display = "none"; // 🔥 esconde login
+          navLinks.style.display = "flex"; // 🔥 mostra navegação
           mainContent.style.display = "block";
           document.querySelectorAll(".protected").forEach((el) => {
             el.style.display = "inline-block";
           });
         } else {
           tokenDisplayDiv.textContent = "⚠️ Sistema não autenticado";
+          tokenDisplayDiv.className = "token-status error";
+
+          loginForm.style.display = "flex"; // 🔥 mostra login
+          navLinks.style.display = "none"; // 🔥 esconde navegação
           mainContent.style.display = "none";
           document.querySelectorAll(".protected").forEach((el) => {
             el.style.display = "none";
