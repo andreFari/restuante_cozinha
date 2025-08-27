@@ -157,6 +157,16 @@
           required
         />
         <button type="submit">Exportar PDF combinado</button>
+        <label for="periodStart">Data de início:</label>
+        <input type="date" id="periodStart" name="periodStart" />
+
+        <label for="periodEnd">Data de fim:</label>
+        <input type="date" id="periodEnd" name="periodEnd" />
+        <button id="gerarSaftBtn">📁 Gerar SAF-T</button>
+        <div
+          id="statusSaft"
+          style="text-align: center; margin-top: 10px; color: #27ae60"
+        ></div>
       </form>
 
       <div id="faturaContainer">A carregar...</div>
@@ -306,6 +316,47 @@
           alert(err.message);
         }
       }
+    </script>
+    <script>
+      const gerarSaftBtn = document.getElementById("gerarSaftBtn");
+      const statusSaft = document.getElementById("statusSaft");
+
+      gerarSaftBtn.addEventListener("click", async () => {
+        gerarSaftBtn.disabled = true;
+        statusSaft.innerText = "A gerar SAF-T, aguarde...";
+        const periodStart = document.getElementById("periodStart").value;
+        const periodEnd = document.getElementById("periodEnd").value;
+        try {
+          // Chamada ao endpoint que gera o SAF-T na Moloni
+          const response = await fetch("/api/gerar-saft", {
+            method: "POST",
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Erro ao gerar SAF-T: ${text}`);
+          }
+
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+
+          // Criar link de download do SAF-T
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `SAFT_${new Date().toISOString().slice(0, 10)}.xml`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          statusSaft.innerText = "✅ SAF-T gerado com sucesso!";
+        } catch (err) {
+          console.error(err);
+          statusSaft.innerText = `❌ ${err.message}`;
+        } finally {
+          gerarSaftBtn.disabled = false;
+        }
+      });
     </script>
     <script src="./js/header.js"></script>
   </body>

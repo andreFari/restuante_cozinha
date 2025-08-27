@@ -60,6 +60,60 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, "public")));
+
+// ----- Gerar SAF-T -----
+app.post("/api/gerar-saft", async (req, res) => {
+  try {
+    // Verificar se temos token válido
+    if (!moloniTokens.access_token) {
+      return res
+        .status(401)
+        .json({ error: "Token Moloni não disponível. Faça login." });
+    }
+
+    const company_id = MOLONI_COMPANY_ID;
+
+    // Permite passar datas opcionais no body
+    const { period_start, period_end } = req.body;
+
+    const body = {
+      company_id,
+      period_start: period_start || `${new Date().getFullYear()}-01-01`,
+      period_end: period_end || `${new Date().getFullYear()}-12-31`,
+      version: "1.04_01",
+    };
+
+    const url = `https://api.moloni.pt/v1/saft/create?access_token=${moloniTokens.access_token}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return res.status(response.status).json(errorData);
+    }
+
+    const data = await response.json();
+
+    if (!data.saft_xml) {
+      return res.status(500).json({ error: "SAF-T não foi gerado." });
+    }
+
+    // Envia XML para download
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=SAFT_${new Date().toISOString().slice(0, 10)}.xml`
+    );
+    res.setHeader("Content-Type", "application/xml");
+    res.send(data.saft_xml);
+  } catch (error) {
+    console.error("Erro ao gerar SAF-T:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // ----- Gestão de Tokens (em memória) -----
 app.post("/api/login-moloni", async (req, res) => {
   const { username, password } = req.body;
