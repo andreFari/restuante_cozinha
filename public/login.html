@@ -689,6 +689,8 @@
 
           tokenDisplayDiv.className = "token-status ok";
           loginForm.style.display = "none"; // 🔥 esconde login
+          document.querySelector("header").classList.remove("login-active");
+
           navLinks.style.display = "flex"; // 🔥 mostra navegação
           mainContent.style.display = "block";
           document.querySelectorAll(".protected").forEach((el) => {
@@ -699,6 +701,7 @@
           tokenDisplayDiv.className = "token-status error";
 
           loginForm.style.display = "flex"; // 🔥 mostra login
+          document.querySelector("header").classList.add("login-active");
           navLinks.style.display = "none"; // 🔥 esconde navegação
           mainContent.style.display = "none";
           document.querySelectorAll(".protected").forEach((el) => {

@@ -332,6 +332,19 @@ padding: 14px 20px;
   background-color: #e0e0e0;
 }
 /* ====== Login centrado e espaçado ====== */
+header.login-active {
+  position: relative;
+  min-height: 100vh; /* ocupa toda a tela verticalmente */
+}
+
+header.login-active .login-form {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0; /* remove margin automática */
+  z-index: 10; /* sobre outros elementos */
+}
 #loginForm{
   align-self: center;
   text-align: center;
