@@ -70,6 +70,9 @@
         gap: 12px;
       }
 
+      .section-grid .section {
+        grid-column: span 1; /* cada secção ocupa só 1 coluna */
+      }
       .section-column {
         display: flex;
         flex-direction: column;
@@ -359,8 +362,9 @@
   
 
 ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
-${renderSection("Extras", order.extras, prepared.extras, "extras")}
+
 ${renderSection("Bebidas", order.drinks, prepared.drinks, "drinks")}
+${renderSection("Extras", order.extras, prepared.extras, "extras")}
 ${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
 ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
 
