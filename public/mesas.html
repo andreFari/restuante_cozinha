@@ -3,709 +3,694 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gestão de Mesas</title>
+    <title>Gestão de Mesas - Relatórios</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
       body {
         font-family: "Segoe UI", Tahoma, sans-serif;
-        margin: 0;
         background-color: #f4f6f8;
         color: #333;
+        line-height: 1.6;
       }
       h1 {
-        margin-bottom: 10px;
         text-align: center;
+        padding: 20px 0;
+        background-color: #2c3e50;
+        color: white;
+        margin-top: 0;
       }
-      a {
-        color: #007bff;
-        text-decoration: none;
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
       }
-      a:hover {
-        text-decoration: none;
-      }
-
       .top-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .search-input {
-        padding: 8px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        width: 200px;
-      }
-      button {
-        padding: 8px 12px;
-        border: none;
-        background-color: #007bff;
-        color: #fff;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        gap: 4px;
-      }
-      .top-bar div {
-        display: flex;
-        gap: 10px;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-      }
-      th,
-      td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #eee;
-        text-align: center;
-      }
-      td button {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        padding: 6px 10px;
-        font-weight: bold;
-      }
-      th {
-        background: #f1f3f5;
-      }
-      tr:hover {
-        background-color: #f9fafb;
-      }
-      .delete-btn {
-        background: none;
-        border: none;
-        color: #d9534f;
-        cursor: pointer;
-      }
-
-      /* Mensagens */
-      .message {
         padding: 10px;
-        margin-bottom: 10px;
         border-radius: 5px;
-        display: none;
-      }
-      .success {
-        background: #d4edda;
-        color: #155724;
-      }
-      .error {
-        background: #f8d7da;
-        color: #721c24;
-      }
-
-      /* Modal */
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-        justify-content: center;
-        align-items: center;
-      }
-      .modal-content {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        width: 500px;
-        position: relative;
-        box-sizing: border-box;
-        max-height: 90vh;
-        overflow-y: auto;
-      }
-      .close {
-        position: absolute;
-        right: 10px;
-        top: 10px;
-        font-size: 18px;
-        cursor: pointer;
-      }
-      form label {
-        margin-top: 10px;
-        display: block;
-      }
-      form input,
-      form select,
-      form textarea {
-        width: 100%;
-        padding: 8px;
-        margin-top: 5px;
         border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
+        width: 250px;
+        font-size: 16px;
       }
-
-      /* Estilos específicos para gestão de mesas */
-      .container {
+      .btn {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background-color: #3498db;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #2980b9;
+      }
+      .btn-success {
+        background-color: #2ecc71;
+        color: white;
+      }
+      .btn-success:hover {
+        background-color: #27ae60;
+      }
+      .main-layout {
         display: flex;
         gap: 20px;
         margin-top: 20px;
       }
-      .table-list {
+      .table-lists {
         flex: 1;
         background: white;
         border-radius: 8px;
         padding: 15px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        max-height: 600px;
+        overflow-y: auto;
+      }
+      .table-section h3 {
+        margin-top: 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eee;
+        color: #2c3e50;
+      }
+      .table-item {
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-left: 4px solid #3498db;
+        background-color: #f9f9f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .table-item:hover {
+        background-color: #e8f4fd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      .table-item.active {
+        border-left: 4px solid #2ecc71;
+        background-color: #e8f6ef;
+      }
+      .table-info {
+        flex: 1;
+      }
+      .table-name {
+        font-weight: bold;
+        font-size: 18px;
+        margin-bottom: 5px;
+      }
+      .table-meta {
+        display: flex;
+        gap: 15px;
+        font-size: 14px;
+        color: #7f8c8d;
+      }
+      .table-status {
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .status-closed {
+        background-color: #e74c3c;
+        color: white;
+      }
+      .invoice-paid {
+        background-color: #2ecc71;
+        color: white;
       }
       .order-details {
         flex: 2;
         background: white;
         border-radius: 8px;
-        padding: 15px;
+        padding: 20px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-      }
-      .table-item {
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      }
-      .table-item.open {
-        background-color: #e8f5e9;
-        border-left: 4px solid #4caf50;
-      }
-      .table-item.closed {
-        background-color: #ffebee;
-        border-left: 4px solid #f44336;
-      }
-      .table-item:hover {
-        background-color: #e3f2fd;
+        max-height: 600px;
+        overflow-y: auto;
       }
       .order-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
         border-bottom: 1px solid #eee;
       }
       .order-title {
-        font-size: 18px;
+        font-size: 24px;
         font-weight: bold;
+        color: #2c3e50;
+      }
+      .invoice-link {
+        background-color: #3498db;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: bold;
+      }
+      .invoice-link:hover {
+        background-color: #2980b9;
       }
       .section {
+        margin-bottom: 25px;
+      }
+      .section h4 {
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        color: #2c3e50;
+        font-size: 18px;
+      }
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .items-table th,
+      .items-table td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+      }
+      .items-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+      .items-table tr:hover {
+        background-color: #f5f5f5;
+      }
+      .note-box {
+        background-color: #fff4e6;
+        border-left: 4px solid #ffa94d;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+      }
+      .note-box h5 {
+        margin: 0 0 10px 0;
+        color: #d35400;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+      }
+      .empty-state i {
+        font-size: 48px;
         margin-bottom: 15px;
+        display: block;
+        color: #bdc3c7;
+      }
+
+      /* Modal de relatórios */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background: #fff;
+        padding: 25px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow-y: auto;
+        position: relative;
+      }
+      .close {
+        position: absolute;
+        right: 15px;
+        top: 15px;
+        font-size: 24px;
+        cursor: pointer;
+        color: #7f8c8d;
+      }
+      .close:hover {
+        color: #34495e;
+      }
+      .date-filters {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .date-input {
         padding: 10px;
         border-radius: 5px;
-        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        font-size: 16px;
       }
-      .section-column {
-        display: flex;
-        flex-direction: column;
-      }
-      .section-grid {
+      .charts-container {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 20px;
       }
-      .item {
+      .chart-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .chart-title {
+        text-align: center;
+        margin-bottom: 15px;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+      .report-summary {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #3498db;
+      }
+      .summary-item {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 5px;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
       }
-      .btn {
-        padding: 8px 12px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
+      .summary-item:last-child {
+        border-bottom: none;
+      }
+      .summary-value {
         font-weight: bold;
+        color: #2c3e50;
       }
-      .btn-primary {
-        background-color: #007bff;
-        color: white;
+      @media (max-width: 1100px) {
+        .charts-container {
+          grid-template-columns: 1fr;
+        }
       }
-      .btn-danger {
-        background-color: #dc3545;
-        color: white;
-      }
-      .btn-success {
-        background-color: #28a745;
-        color: white;
-      }
-      .btn-secondary {
-        background-color: #6c757d;
-        color: white;
-      }
-      .admin-note-short {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        cursor: help;
-      }
-      .order-status {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-      }
-      .status-paid {
-        background-color: #d4edda;
-        color: #155724;
-      }
-      .status-unpaid {
-        background-color: #f8d7da;
-        color: #721c24;
+      @media (max-width: 768px) {
+        .main-layout {
+          flex-direction: column;
+        }
+        .date-filters {
+          flex-direction: column;
+        }
       }
     </style>
   </head>
   <body>
-    <div id="header-placeholder"></div>
-    <h1>🍽️ Gestão de Mesas</h1>
-
-    <div class="message success" id="msgSuccess"></div>
-    <div class="message error" id="msgError"></div>
-
-    <div class="top-bar">
-      <input
-        type="text"
-        id="search"
-        class="search-input"
-        placeholder="Pesquisar mesas..."
-      />
-      <div>
-        <button id="openModalBtn">➕ Nova Mesa</button>
-        <button id="refreshBtn">🔄 Atualizar</button>
-      </div>
-    </div>
+    <h1>Gestão de Mesas</h1>
 
     <div class="container">
-      <div class="table-list" id="tableList">
-        <h3>Mesas Abertas</h3>
-        <div id="openTables"></div>
-        <h3>Mesas Fechadas</h3>
-        <div id="closedTables"></div>
+      <div class="top-bar">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Pesquisar mesas..."
+          id="searchInput"
+        />
+        <button class="btn btn-success" id="reportBtn">
+          <i class="fas fa-chart-bar"></i> Gerar Relatório
+        </button>
       </div>
 
-      <div class="order-details" id="orderDetails">
-        <p>Selecione uma mesa para ver os detalhes.</p>
+      <div class="main-layout">
+        <!-- Coluna esquerda: lista de mesas -->
+        <div class="table-lists">
+          <div class="table-section">
+            <h3>Mesas</h3>
+            <div id="tablesList">
+              <!-- As mesas serão carregadas aqui via JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna direita: detalhes da mesa selecionada -->
+        <div class="order-details" id="orderDetails">
+          <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <p>Selecione uma mesa para ver os detalhes</p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Modal para criar/editar mesa -->
-    <div id="tableModal" class="modal">
+    <!-- Modal de relatórios -->
+    <div id="reportModal" class="modal">
       <div class="modal-content">
         <span class="close" id="closeModal">&times;</span>
-        <h2 id="modalTitle">➕ Nova Mesa</h2>
-        <form id="tableForm">
-          <input type="hidden" id="table_id" />
-          <label>Nome *</label>
-          <input type="text" id="table_name" required />
-          <label>Número *</label>
-          <input type="number" id="table_number" required />
-          <label>Capacidade (pessoas) *</label>
-          <input type="number" id="table_capacity" required />
-          <label>Localização</label>
-          <input type="text" id="table_location" />
-          <label>Estado *</label>
-          <select id="table_status" required>
-            <option value="open">Aberta</option>
-            <option value="closed">Fechada</option>
-          </select>
-          <label>Notas</label>
-          <textarea id="table_notes" rows="3"></textarea>
-          <button type="submit" id="submitTableBtn">Guardar</button>
-        </form>
-      </div>
-    </div>
+        <h2><i class="fas fa-chart-pie"></i> Relatório de Vendas</h2>
 
-    <!-- Modal para adicionar prato à mesa -->
-    <div id="addItemModal" class="modal">
-      <div class="modal-content">
-        <span class="close" id="closeAddItemModal">&times;</span>
-        <h2>➕ Adicionar Item à Mesa</h2>
-        <form id="addItemForm">
-          <input type="hidden" id="target_table_id" />
-          <label>Tipo de Item *</label>
-          <select id="item_type" required>
-            <option value="">-- Selecionar Tipo --</option>
-            <option value="plate">Prato</option>
-            <option value="drink">Bebida</option>
-            <option value="extra">Extra</option>
-            <option value="dessert">Sobremesa</option>
-            <option value="coffee">Café</option>
-          </select>
-          <label>Item *</label>
-          <select id="item_id" required>
-            <option value="">-- Selecionar Item --</option>
-          </select>
-          <label>Quantidade *</label>
-          <input type="number" id="item_quantity" value="1" min="1" required />
-          <label>Observações</label>
-          <textarea id="item_notes" rows="2"></textarea>
-          <button type="submit">Adicionar</button>
-        </form>
+        <div class="date-filters">
+          <div>
+            <label for="startDate">Data Inicial:</label>
+            <input type="date" id="startDate" class="date-input" />
+          </div>
+          <div>
+            <label for="endDate">Data Final:</label>
+            <input type="date" id="endDate" class="date-input" />
+          </div>
+          <button class="btn btn-primary" id="generateReport">
+            <i class="fas fa-sync-alt"></i> Gerar
+          </button>
+        </div>
+
+        <div class="report-summary">
+          <h3>Resumo do Período</h3>
+          <div class="summary-item">
+            <span>Total Faturado:</span>
+            <span class="summary-value" id="totalRevenue">0,00 €</span>
+          </div>
+          <div class="summary-item">
+            <span>Número de Mesas:</span>
+            <span class="summary-value" id="totalTables">0</span>
+          </div>
+          <div class="summary-item">
+            <span>Período:</span>
+            <span class="summary-value" id="period">-</span>
+          </div>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-box">
+            <div class="chart-title">Pratos Mais Vendidos</div>
+            <canvas id="dishesChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-title">Bebidas Mais Pedidas</div>
+            <canvas id="drinksChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-title">Sobremesas Mais Pedidas</div>
+            <canvas id="dessertsChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-title">Distribuição de Vendas</div>
+            <canvas id="salesDistributionChart"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
     <script>
-      // Dados iniciais (seriam substituídos por chamadas à API)
-      let mesas = JSON.parse(localStorage.getItem("mesas")) || [
+      // Dados das mesas (fechadas e com faturas pagas)
+      const tables = [
         {
           id: 1,
           name: "Mesa 1",
-          number: 1,
-          capacity: 4,
-          location: "Interior",
-          status: "open",
-          notes: "",
+          status: "closed",
+          date: "2023-05-15",
+          invoice: {
+            number: "F2023-001",
+            status: "paid",
+            pdfUrl: "#",
+            total: 48.5,
+          },
+          note: "Cliente preferiu não sobremesa",
           order: {
             plates: [
-              {
-                id: 1,
-                name: "Frango Assado",
-                price: 8.5,
-                quantity: 1,
-                notes: "",
-              },
-              { id: 2, name: "Sopa", price: 2.5, quantity: 1, notes: "" },
+              { name: "Frango Assado", quantity: 2, price: 8.5 },
+              { name: "Sopa", quantity: 1, price: 2.5 },
             ],
+            extras: [{ name: "Batatas Fritas", quantity: 1, price: 3.0 }],
             drinks: [
-              { id: 1, name: "Água", price: 1.0, quantity: 2, notes: "" },
-              { id: 2, name: "Vinho", price: 12.0, quantity: 1, notes: "" },
+              { name: "Água", quantity: 2, price: 1.0 },
+              { name: "Vinho", quantity: 1, price: 12.0 },
             ],
-            extras: [
-              {
-                id: 1,
-                name: "Batatas Fritas",
-                price: 3.0,
-                quantity: 1,
-                notes: "",
-              },
-            ],
-            desserts: [
-              { id: 1, name: "Bolo", price: 4.0, quantity: 1, notes: "" },
-            ],
-            coffee: [
-              { id: 1, name: "Expresso", price: 1.5, quantity: 2, notes: "" },
-            ],
-          },
-          invoice: null,
-          kitchenNote: "Tens que fazer mais uma de frango",
-          prepared: {
-            plates: [false, false],
-            drinks: [false, false],
-            extras: [false],
-            desserts: [false],
-            coffee: [false, false],
+            desserts: [{ name: "Bolo", quantity: 1, price: 4.0 }],
+            coffee: [{ name: "Expresso", quantity: 2, price: 1.5 }],
           },
         },
         {
           id: 2,
           name: "Mesa 2",
-          number: 2,
-          capacity: 6,
-          location: "Terraço",
           status: "closed",
-          notes: "",
+          date: "2023-05-15",
+          invoice: {
+            number: "F2023-002",
+            status: "paid",
+            pdfUrl: "#",
+            total: 16.5,
+          },
+          note: "",
           order: {
-            plates: [
-              {
-                id: 3,
-                name: "Peixe Grelhado",
-                price: 10.5,
-                quantity: 1,
-                notes: "",
-              },
-            ],
-            drinks: [
-              { id: 3, name: "Cerveja", price: 2.0, quantity: 3, notes: "" },
-            ],
+            plates: [{ name: "Peixe Grelhado", quantity: 1, price: 10.5 }],
             extras: [],
+            drinks: [{ name: "Cerveja", quantity: 3, price: 2.0 }],
             desserts: [],
             coffee: [],
           },
+        },
+        {
+          id: 3,
+          name: "Mesa 3",
+          status: "closed",
+          date: "2023-05-16",
           invoice: {
-            id: "F2023002",
-            date: "2023-05-15",
-            total: 16.5,
+            number: "F2023-003",
             status: "paid",
+            pdfUrl: "#",
+            total: 22.0,
           },
-          kitchenNote: "",
-          prepared: {
-            plates: [true],
-            drinks: [true, true, true],
-            extras: [],
+          note: "Pedido para viagem",
+          order: {
+            plates: [{ name: "Bife", quantity: 1, price: 12.0 }],
+            extras: [{ name: "Arroz", quantity: 1, price: 2.0 }],
+            drinks: [{ name: "Sumo", quantity: 2, price: 2.5 }],
             desserts: [],
+            coffee: [],
+          },
+        },
+        {
+          id: 4,
+          name: "Mesa 4",
+          status: "closed",
+          date: "2023-05-16",
+          invoice: {
+            number: "F2023-004",
+            status: "paid",
+            pdfUrl: "#",
+            total: 89.5,
+          },
+          note: "Aniversariante - oferta de sobremesa",
+          order: {
+            plates: [
+              { name: "Feijoada", quantity: 2, price: 9.5 },
+              { name: "Bacalhau", quantity: 1, price: 13.0 },
+            ],
+            extras: [{ name: "Legumes Grelhados", quantity: 1, price: 3.5 }],
+            drinks: [
+              { name: "Vinho Tinto", quantity: 2, price: 12.0 },
+              { name: "Água com Gás", quantity: 1, price: 1.5 },
+            ],
+            desserts: [{ name: "Pudim", quantity: 3, price: 4.0 }],
+            coffee: [
+              { name: "Cappuccino", quantity: 1, price: 2.5 },
+              { name: "Expresso", quantity: 2, price: 1.5 },
+            ],
+          },
+        },
+        {
+          id: 5,
+          name: "Mesa 5",
+          status: "closed",
+          date: "2023-05-17",
+          invoice: {
+            number: "F2023-005",
+            status: "paid",
+            pdfUrl: "#",
+            total: 34.0,
+          },
+          note: "Cliente com restrições alimentares",
+          order: {
+            plates: [{ name: "Salada", quantity: 2, price: 7.0 }],
+            extras: [{ name: "Pão", quantity: 1, price: 2.0 }],
+            drinks: [
+              { name: "Água", quantity: 2, price: 1.0 },
+              { name: "Sumo", quantity: 2, price: 2.5 },
+            ],
+            desserts: [{ name: "Fruta", quantity: 2, price: 3.0 }],
             coffee: [],
           },
         },
       ];
 
-      let produtos = JSON.parse(localStorage.getItem("produtos")) || [
-        { id: 1, name: "Frango Assado", price: 8.5, type: "plate" },
-        { id: 2, name: "Sopa", price: 2.5, type: "plate" },
-        { id: 3, name: "Peixe Grelhado", price: 10.5, type: "plate" },
-        { id: 4, name: "Bife", price: 12.0, type: "plate" },
-        { id: 5, name: "Água", price: 1.0, type: "drink" },
-        { id: 6, name: "Vinho", price: 12.0, type: "drink" },
-        { id: 7, name: "Cerveja", price: 2.0, type: "drink" },
-        { id: 8, name: "Sumo", price: 2.5, type: "drink" },
-        { id: 9, name: "Batatas Fritas", price: 3.0, type: "extra" },
-        { id: 10, name: "Arroz", price: 2.0, type: "extra" },
-        { id: 11, name: "Bolo", price: 4.0, type: "dessert" },
-        { id: 12, name: "Pudim", price: 3.5, type: "dessert" },
-        { id: 13, name: "Expresso", price: 1.5, type: "coffee" },
-        { id: 14, name: "Cappuccino", price: 2.5, type: "coffee" },
-      ];
-
-      // Funções de utilidade
-      function showMessage(type, text) {
-        const msg =
-          type === "success"
-            ? document.getElementById("msgSuccess")
-            : document.getElementById("msgError");
-        msg.textContent = text;
-        msg.style.display = "block";
-        setTimeout(() => (msg.style.display = "none"), 3000);
-      }
-
-      function saveData() {
-        localStorage.setItem("mesas", JSON.stringify(mesas));
-        localStorage.setItem("produtos", JSON.stringify(produtos));
-      }
-
-      // Renderização das mesas
+      // Renderizar a lista de mesas
       function renderTables() {
         const searchTerm = document
-          .getElementById("search")
+          .getElementById("searchInput")
           .value.toLowerCase();
-        const openTablesContainer = document.getElementById("openTables");
-        const closedTablesContainer = document.getElementById("closedTables");
+        const tablesList = document.getElementById("tablesList");
 
-        openTablesContainer.innerHTML = "";
-        closedTablesContainer.innerHTML = "";
-
-        const filteredMesas = mesas.filter(
-          (mesa) =>
-            mesa.name.toLowerCase().includes(searchTerm) ||
-            mesa.number.toString().includes(searchTerm)
+        // Filtrar mesas conforme o termo de pesquisa
+        const filteredTables = tables.filter(
+          (table) =>
+            table.name.toLowerCase().includes(searchTerm) ||
+            table.invoice.number.toLowerCase().includes(searchTerm)
         );
 
-        filteredMesas.forEach((mesa) => {
-          const div = document.createElement("div");
-          div.className = `table-item ${mesa.status}`;
-          div.innerHTML = `
-                    <div><strong>${mesa.name}</strong> (Nr. ${
-            mesa.number
-          })</div>
-                    <div>Capacidade: ${mesa.capacity} pessoas</div>
-                    <div>Local: ${mesa.location}</div>
-                    ${
-                      mesa.invoice
-                        ? `<div>Fatura: ${
-                            mesa.invoice.id
-                          } - <span class="order-status status-${
-                            mesa.invoice.status
-                          }">${
-                            mesa.invoice.status === "paid"
-                              ? "Paga"
-                              : "Por Pagar"
-                          }</span></div>`
-                        : ""
-                    }
-                    ${
-                      mesa.kitchenNote
-                        ? `<div title="${
-                            mesa.kitchenNote
-                          }">Nota: ${mesa.kitchenNote.substring(
-                            0,
-                            20
-                          )}...</div>`
-                        : ""
-                    }
-                `;
-          div.onclick = () => renderOrderDetails(mesa.id);
+        tablesList.innerHTML = "";
 
-          if (mesa.status === "open") {
-            openTablesContainer.appendChild(div);
-          } else {
-            closedTablesContainer.appendChild(div);
-          }
+        if (filteredTables.length === 0) {
+          tablesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>Nenhuma mesa encontrada</p>
+                    </div>
+                `;
+          return;
+        }
+
+        filteredTables.forEach((table) => {
+          const tableElement = document.createElement("div");
+          tableElement.className = "table-item";
+          tableElement.innerHTML = `
+                    <div class="table-info">
+                        <div class="table-name">${table.name}</div>
+                        <div class="table-meta">
+                            <span class="table-status status-closed">Fechada</span>
+                            <span class="table-status invoice-paid">Paga</span>
+                            <span>Fatura: ${table.invoice.number}</span>
+                            <span>${table.date}</span>
+                        </div>
+                    </div>
+                `;
+
+          tableElement.addEventListener("click", () => {
+            // Remover a classe active de todas as mesas
+            document.querySelectorAll(".table-item").forEach((item) => {
+              item.classList.remove("active");
+            });
+
+            // Adicionar a classe active à mesa selecionada
+            tableElement.classList.add("active");
+
+            // Mostrar os detalhes da mesa
+            renderOrderDetails(table);
+          });
+
+          tablesList.appendChild(tableElement);
         });
       }
 
-      // Renderização dos detalhes da mesa
-      function renderOrderDetails(tableId) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
-
+      // Renderizar os detalhes da mesa selecionada
+      function renderOrderDetails(table) {
         const orderDetails = document.getElementById("orderDetails");
 
-        // Calcular totais
-        const calculateTotal = (items) =>
-          items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const platesTotal = calculateTotal(mesa.order.plates);
-        const drinksTotal = calculateTotal(mesa.order.drinks);
-        const extrasTotal = calculateTotal(mesa.order.extras);
-        const dessertsTotal = calculateTotal(mesa.order.desserts);
-        const coffeeTotal = calculateTotal(mesa.order.coffee);
-        const orderTotal =
-          platesTotal + drinksTotal + extrasTotal + dessertsTotal + coffeeTotal;
+        // Função para renderizar uma seção da tabela
+        const renderSection = (title, items) => {
+          if (!items || items.length === 0) return "";
 
-        // Função para renderizar seções de itens
-        const renderItemsSection = (title, items, preparedState, key) => {
-          if (items.length === 0) return "";
+          let rows = "";
+          let total = 0;
+          items.forEach((item) => {
+            const itemTotal = item.quantity * item.price;
+            total += itemTotal;
+            rows += `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.price.toFixed(2)} €</td>
+                            <td>${itemTotal.toFixed(2)} €</td>
+                        </tr>
+                    `;
+          });
 
           return `
                     <div class="section">
-                        <h3>${title} - ${calculateTotal(items).toFixed(2)}€</h3>
-                        ${items
-                          .map(
-                            (item, index) => `
-                            <div class="item" onclick="togglePrepared(${tableId}, '${key}', ${index})">
-                                <input type="checkbox" ${
-                                  preparedState[index] ? "checked" : ""
-                                } ${mesa.status === "closed" ? "disabled" : ""}>
-                                <label>${item.quantity}x ${item.name} - ${(
-                              item.price * item.quantity
-                            ).toFixed(2)}€</label>
-                                ${
-                                  item.notes
-                                    ? `<span title="${item.notes}">📝</span>`
-                                    : ""
-                                }
-                                <button class="delete-btn" onclick="removeItemFromTable(${tableId}, '${key}', ${index})">🗑️</button>
-                            </div>
-                        `
-                          )
-                          .join("")}
+                        <h4>${title} - Total: ${total.toFixed(2)} €</h4>
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantidade</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
                     </div>
                 `;
         };
 
         orderDetails.innerHTML = `
                 <div class="order-header">
-                    <div class="order-title">${mesa.name} (Nr. ${
-          mesa.number
-        }) - ${mesa.status === "open" ? "Aberta" : "Fechada"}</div>
-                    <div>
-                        <button class="btn btn-primary" onclick="openAddItemModal(${tableId})">➕ Adicionar Item</button>
-                        <button class="btn ${
-                          mesa.status === "open" ? "btn-danger" : "btn-success"
-                        }" onclick="toggleTableStatus(${tableId})">
-                            ${
-                              mesa.status === "open"
-                                ? "Fechar Mesa"
-                                : "Reabrir Mesa"
-                            }
-                        </button>
-                        <button class="btn" onclick="openEditTableModal(${tableId})">✏️ Editar</button>
-                        ${
-                          mesa.status === "closed" && mesa.invoice
-                            ? `
-                            <button class="btn ${
-                              mesa.invoice.status === "paid"
-                                ? "btn-secondary"
-                                : "btn-success"
-                            }" onclick="toggleInvoiceStatus(${tableId})">
-                                ${
-                                  mesa.invoice.status === "paid"
-                                    ? "Marcar como Por Pagar"
-                                    : "Marcar como Paga"
-                                }
-                            </button>
-                        `
-                            : ""
-                        }
-                    </div>
+                    <div class="order-title">${table.name}</div>
+                    <a href="${
+                      table.invoice.pdfUrl
+                    }" class="invoice-link" target="_blank">
+                        <i class="fas fa-file-pdf"></i> Ver Fatura
+                    </a>
                 </div>
                 
                 <div class="section">
-                    <label for="kitchenNote"><strong>Nota da Cozinha:</strong></label>
-                    <textarea id="kitchenNote" rows="2" style="width: 100%;" ${
-                      mesa.status === "closed" ? "disabled" : ""
-                    }>${mesa.kitchenNote || ""}</textarea>
-                    ${
-                      mesa.status === "open"
-                        ? `<button class="btn btn-primary" onclick="saveKitchenNote(${tableId})">Guardar Nota</button>`
-                        : ""
-                    }
+                    <h4>Informações da Fatura</h4>
+                    <table class="items-table">
+                        <tr>
+                            <td><strong>Número</strong></td>
+                            <td>${table.invoice.number}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Data</strong></td>
+                            <td>${table.date}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status</strong></td>
+                            <td><span class="table-status invoice-paid">Paga</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td>${table.invoice.total.toFixed(2)} €</td>
+                        </tr>
+                    </table>
                 </div>
                 
-                ${renderItemsSection(
-                  "Pratos",
-                  mesa.order.plates,
-                  mesa.prepared.plates,
-                  "plates"
-                )}
-                ${renderItemsSection(
-                  "Bebidas",
-                  mesa.order.drinks,
-                  mesa.prepared.drinks,
-                  "drinks"
-                )}
-                ${renderItemsSection(
-                  "Extras",
-                  mesa.order.extras,
-                  mesa.prepared.extras,
-                  "extras"
-                )}
-                ${renderItemsSection(
-                  "Sobremesas",
-                  mesa.order.desserts,
-                  mesa.prepared.desserts,
-                  "desserts"
-                )}
-                ${renderItemsSection(
-                  "Cafés",
-                  mesa.order.coffee,
-                  mesa.prepared.coffee,
-                  "coffee"
-                )}
-                
-                <div class="section">
-                    <h3>Total da Mesa: ${orderTotal.toFixed(2)}€</h3>
-                    ${
-                      mesa.invoice
-                        ? `
-                        <div>Fatura: ${mesa.invoice.id} (${new Date(
-                            mesa.invoice.date
-                          ).toLocaleDateString()}) - 
-                            <span class="order-status status-${
-                              mesa.invoice.status
-                            }">${
-                            mesa.invoice.status === "paid"
-                              ? "Paga"
-                              : "Por Pagar"
-                          }</span>
-                        </div>
-                    `
-                        : ""
-                    }
-                </div>
+                ${renderSection("Pratos", table.order.plates)}
+                ${renderSection("Extras", table.order.extras)}
+                ${renderSection("Bebidas", table.order.drinks)}
+                ${renderSection("Sobremesas", table.order.desserts)}
+                ${renderSection("Cafés", table.order.coffee)}
                 
                 ${
-                  mesa.status === "open"
+                  table.note
                     ? `
-                    <div class="section">
-                        <h3>Informar Admin</h3>
-                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, 'PRATOS FEITOS, falta sobremesas e/ou cafés')">
-                            Pratos feitos, falta sobremesas e/ou cafés
-                        </button>
-                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, 'PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
-                            Este pedido não tem sobremesas ou cafés
-                        </button>
-                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, '')">
-                            Limpar Nota
-                        </button>
+                    <div class="note-box">
+                        <h5>Nota:</h5>
+                        <p>${table.note}</p>
                     </div>
                 `
                     : ""
@@ -713,316 +698,290 @@
             `;
       }
 
-      // Funções para manipular mesas
-      function openEditTableModal(tableId) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
+      // Gerar relatório
+      function generateReport() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
 
-        document.getElementById("modalTitle").textContent = "✏️ Editar Mesa";
-        document.getElementById("table_id").value = mesa.id;
-        document.getElementById("table_name").value = mesa.name;
-        document.getElementById("table_number").value = mesa.number;
-        document.getElementById("table_capacity").value = mesa.capacity;
-        document.getElementById("table_location").value = mesa.location;
-        document.getElementById("table_status").value = mesa.status;
-        document.getElementById("table_notes").value = mesa.notes;
-
-        document.getElementById("tableModal").style.display = "flex";
-      }
-
-      function openAddTableModal() {
-        document.getElementById("modalTitle").textContent = "➕ Nova Mesa";
-        document.getElementById("tableForm").reset();
-        document.getElementById("table_id").value = "";
-        document.getElementById("tableModal").style.display = "flex";
-      }
-
-      function toggleTableStatus(tableId) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
-
-        if (mesa.status === "open") {
-          // Fechar mesa - criar fatura
-          mesa.status = "closed";
-          mesa.invoice = {
-            id: "F" + new Date().getTime(),
-            date: new Date().toISOString().split("T")[0],
-            total: calculateTableTotal(mesa),
-            status: "unpaid",
-          };
-          showMessage("success", "Mesa fechada com sucesso. Fatura criada.");
-        } else {
-          // Reabrir mesa
-          mesa.status = "open";
-          mesa.invoice = null;
-          showMessage("success", "Mesa reaberta com sucesso.");
-        }
-
-        saveData();
-        renderTables();
-        renderOrderDetails(tableId);
-      }
-
-      function calculateTableTotal(mesa) {
-        const calculateSectionTotal = (items) =>
-          items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        return (
-          calculateSectionTotal(mesa.order.plates) +
-          calculateSectionTotal(mesa.order.drinks) +
-          calculateSectionTotal(mesa.order.extras) +
-          calculateSectionTotal(mesa.order.desserts) +
-          calculateSectionTotal(mesa.order.coffee)
-        );
-      }
-
-      function toggleInvoiceStatus(tableId) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa || !mesa.invoice) return;
-
-        mesa.invoice.status =
-          mesa.invoice.status === "paid" ? "unpaid" : "paid";
-        showMessage(
-          "success",
-          `Fatura ${
-            mesa.invoice.status === "paid"
-              ? "marcada como paga"
-              : "marcada como por pagar"
-          }.`
-        );
-
-        saveData();
-        renderTables();
-        renderOrderDetails(tableId);
-      }
-
-      // Funções para manipular itens da mesa
-      function openAddItemModal(tableId) {
-        document.getElementById("target_table_id").value = tableId;
-        document.getElementById("addItemForm").reset();
-
-        // Atualizar opções de itens baseado no tipo selecionado
-        document.getElementById("item_type").onchange = function () {
-          const type = this.value;
-          const itemSelect = document.getElementById("item_id");
-          itemSelect.innerHTML =
-            '<option value="">-- Selecionar Item --</option>';
-
-          if (type) {
-            produtos
-              .filter((p) => p.type === type)
-              .forEach((p) => {
-                const option = document.createElement("option");
-                option.value = p.id;
-                option.textContent = `${p.name} - ${p.price.toFixed(2)}€`;
-                itemSelect.appendChild(option);
-              });
-          }
-        };
-
-        document.getElementById("addItemModal").style.display = "flex";
-      }
-
-      function addItemToTable(e) {
-        e.preventDefault();
-
-        const tableId = parseInt(
-          document.getElementById("target_table_id").value
-        );
-        const itemType = document.getElementById("item_type").value;
-        const itemId = parseInt(document.getElementById("item_id").value);
-        const quantity = parseInt(
-          document.getElementById("item_quantity").value
-        );
-        const notes = document.getElementById("item_notes").value;
-
-        const mesa = mesas.find((m) => m.id === tableId);
-        const produto = produtos.find((p) => p.id === itemId);
-
-        if (!mesa || !produto) {
-          showMessage("error", "Erro ao adicionar item.");
+        if (!startDate || !endDate) {
+          alert("Por favor, selecione ambas as datas.");
           return;
         }
 
-        const newItem = {
-          id: produto.id,
-          name: produto.name,
-          price: produto.price,
-          quantity: quantity,
-          notes: notes,
-        };
+        // Filtrar mesas pelo período selecionado
+        const filteredTables = tables.filter((table) => {
+          const tableDate = new Date(table.date);
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59); // Incluir todo o dia final
 
-        // Adicionar à seção correta
-        mesa.order[getOrderSection(itemType)].push(newItem);
-        mesa.prepared[getOrderSection(itemType)].push(false);
+          return tableDate >= start && tableDate <= end;
+        });
 
-        saveData();
-        renderOrderDetails(tableId);
-        document.getElementById("addItemModal").style.display = "none";
-        showMessage("success", "Item adicionado com sucesso.");
-      }
-
-      function getOrderSection(itemType) {
-        const mapping = {
-          plate: "plates",
-          drink: "drinks",
-          extra: "extras",
-          dessert: "desserts",
-          coffee: "coffee",
-        };
-        return mapping[itemType] || "plates";
-      }
-
-      function removeItemFromTable(tableId, section, index) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
-
-        mesa.order[section].splice(index, 1);
-        mesa.prepared[section].splice(index, 1);
-
-        saveData();
-        renderOrderDetails(tableId);
-        showMessage("success", "Item removido com sucesso.");
-      }
-
-      function togglePrepared(tableId, section, index) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa || mesa.status === "closed") return;
-
-        mesa.prepared[section][index] = !mesa.prepared[section][index];
-        saveData();
-        renderOrderDetails(tableId);
-      }
-
-      // Funções para notas da cozinha
-      function saveKitchenNote(tableId) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
-
-        mesa.kitchenNote = document.getElementById("kitchenNote").value;
-        saveData();
-        showMessage("success", "Nota da cozinha guardada com sucesso.");
-      }
-
-      function setKitchenNote(tableId, note) {
-        const mesa = mesas.find((m) => m.id === tableId);
-        if (!mesa) return;
-
-        mesa.kitchenNote = note;
-        saveData();
-        renderOrderDetails(tableId);
-        showMessage("success", "Nota da cozinha atualizada.");
-      }
-
-      // Manipulação do formulário de mesa
-      function handleTableFormSubmit(e) {
-        e.preventDefault();
-
-        const tableId = document.getElementById("table_id").value;
-        const name = document.getElementById("table_name").value;
-        const number = parseInt(document.getElementById("table_number").value);
-        const capacity = parseInt(
-          document.getElementById("table_capacity").value
-        );
-        const location = document.getElementById("table_location").value;
-        const status = document.getElementById("table_status").value;
-        const notes = document.getElementById("table_notes").value;
-
-        if (tableId) {
-          // Editar mesa existente
-          const mesa = mesas.find((m) => m.id === parseInt(tableId));
-          if (mesa) {
-            mesa.name = name;
-            mesa.number = number;
-            mesa.capacity = capacity;
-            mesa.location = location;
-            mesa.status = status;
-            mesa.notes = notes;
-
-            showMessage("success", "Mesa atualizada com sucesso.");
-          }
-        } else {
-          // Criar nova mesa
-          const newId =
-            mesas.length > 0 ? Math.max(...mesas.map((m) => m.id)) + 1 : 1;
-          mesas.push({
-            id: newId,
-            name: name,
-            number: number,
-            capacity: capacity,
-            location: location,
-            status: status,
-            notes: notes,
-            order: {
-              plates: [],
-              drinks: [],
-              extras: [],
-              desserts: [],
-              coffee: [],
-            },
-            invoice: null,
-            kitchenNote: "",
-            prepared: {
-              plates: [],
-              drinks: [],
-              extras: [],
-              desserts: [],
-              coffee: [],
-            },
-          });
-
-          showMessage("success", "Mesa criada com sucesso.");
+        if (filteredTables.length === 0) {
+          alert("Nenhuma mesa encontrada no período selecionado.");
+          return;
         }
 
-        saveData();
-        renderTables();
-        document.getElementById("tableModal").style.display = "none";
+        // Calcular totais
+        const totalRevenue = filteredTables.reduce(
+          (sum, table) => sum + table.invoice.total,
+          0
+        );
+        document.getElementById(
+          "totalRevenue"
+        ).textContent = `${totalRevenue.toFixed(2)} €`;
+        document.getElementById("totalTables").textContent =
+          filteredTables.length;
+        document.getElementById(
+          "period"
+        ).textContent = `${startDate} a ${endDate}`;
+
+        // Calcular pratos mais vendidos
+        const dishes = {};
+        filteredTables.forEach((table) => {
+          table.order.plates.forEach((item) => {
+            if (!dishes[item.name]) {
+              dishes[item.name] = 0;
+            }
+            dishes[item.name] += item.quantity;
+          });
+        });
+
+        // Calcular bebidas mais pedidas
+        const drinks = {};
+        filteredTables.forEach((table) => {
+          table.order.drinks.forEach((item) => {
+            if (!drinks[item.name]) {
+              drinks[item.name] = 0;
+            }
+            drinks[item.name] += item.quantity;
+          });
+        });
+
+        // Calcular sobremesas mais pedidas
+        const desserts = {};
+        filteredTables.forEach((table) => {
+          if (table.order.desserts) {
+            table.order.desserts.forEach((item) => {
+              if (!desserts[item.name]) {
+                desserts[item.name] = 0;
+              }
+              desserts[item.name] += item.quantity;
+            });
+          }
+        });
+
+        // Calcular distribuição por categoria
+        const categories = {
+          Pratos: 0,
+          Bebidas: 0,
+          Sobremesas: 0,
+          Extras: 0,
+          Cafés: 0,
+        };
+
+        filteredTables.forEach((table) => {
+          table.order.plates.forEach((item) => {
+            categories["Pratos"] += item.quantity * item.price;
+          });
+          table.order.drinks.forEach((item) => {
+            categories["Bebidas"] += item.quantity * item.price;
+          });
+          if (table.order.desserts) {
+            table.order.desserts.forEach((item) => {
+              categories["Sobremesas"] += item.quantity * item.price;
+            });
+          }
+          table.order.extras.forEach((item) => {
+            categories["Extras"] += item.quantity * item.price;
+          });
+          if (table.order.coffee) {
+            table.order.coffee.forEach((item) => {
+              categories["Cafés"] += item.quantity * item.price;
+            });
+          }
+        });
+
+        // Renderizar gráficos
+        renderChart(
+          "dishesChart",
+          Object.keys(dishes),
+          Object.values(dishes),
+          "Pratos Mais Vendidos"
+        );
+        renderChart(
+          "drinksChart",
+          Object.keys(drinks),
+          Object.values(drinks),
+          "Bebidas Mais Pedidas"
+        );
+        renderChart(
+          "dessertsChart",
+          Object.keys(desserts),
+          Object.values(desserts),
+          "Sobremesas Mais Pedidas"
+        );
+        renderPieChart(
+          "salesDistributionChart",
+          Object.keys(categories),
+          Object.values(categories),
+          "Distribuição de Vendas"
+        );
       }
 
-      // Inicialização
-      document.addEventListener("DOMContentLoaded", function () {
-        // Event listeners
-        document
-          .getElementById("search")
-          .addEventListener("input", renderTables);
-        document
-          .getElementById("openModalBtn")
-          .addEventListener("click", openAddTableModal);
-        document.getElementById("refreshBtn").addEventListener("click", () => {
-          renderTables();
-          showMessage("success", "Dados atualizados.");
+      // Renderizar gráfico de barras
+      function renderChart(canvasId, labels, data, title) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+
+        // Destruir gráfico anterior se existir
+        if (window[canvasId + "Chart"]) {
+          window[canvasId + "Chart"].destroy();
+        }
+
+        window[canvasId + "Chart"] = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: title,
+                data: data,
+                backgroundColor: [
+                  "rgba(54, 162, 235, 0.7)",
+                  "rgba(75, 192, 192, 0.7)",
+                  "rgba(153, 102, 255, 0.7)",
+                  "rgba(255, 159, 64, 0.7)",
+                  "rgba(255, 99, 132, 0.7)",
+                ],
+                borderColor: [
+                  "rgba(54, 162, 235, 1)",
+                  "rgba(75, 192, 192, 1)",
+                  "rgba(153, 102, 255, 1)",
+                  "rgba(255, 159, 64, 1)",
+                  "rgba(255, 99, 132, 1)",
+                ],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false,
+              },
+              title: {
+                display: true,
+                text: title,
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
         });
+      }
 
-        document.getElementById("closeModal").addEventListener("click", () => {
-          document.getElementById("tableModal").style.display = "none";
+      // Renderizar gráfico de pizza
+      function renderPieChart(canvasId, labels, data, title) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+
+        // Destruir gráfico anterior se existir
+        if (window[canvasId + "Chart"]) {
+          window[canvasId + "Chart"].destroy();
+        }
+
+        window[canvasId + "Chart"] = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: data,
+                backgroundColor: [
+                  "rgba(54, 162, 235, 0.7)",
+                  "rgba(75, 192, 192, 0.7)",
+                  "rgba(153, 102, 255, 0.7)",
+                  "rgba(255, 159, 64, 0.7)",
+                  "rgba(255, 99, 132, 0.7)",
+                ],
+                borderColor: [
+                  "rgba(54, 162, 235, 1)",
+                  "rgba(75, 192, 192, 1)",
+                  "rgba(153, 102, 255, 1)",
+                  "rgba(255, 159, 64, 1)",
+                  "rgba(255, 99, 132, 1)",
+                ],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: "bottom",
+              },
+              title: {
+                display: true,
+                text: title,
+              },
+            },
+          },
         });
+      }
 
-        document
-          .getElementById("closeAddItemModal")
-          .addEventListener("click", () => {
-            document.getElementById("addItemModal").style.display = "none";
-          });
+      // Inicializar a página
+      document.addEventListener("DOMContentLoaded", () => {
+        // Definir datas padrão (últimos 7 dias)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
 
-        document
-          .getElementById("tableForm")
-          .addEventListener("submit", handleTableFormSubmit);
-        document
-          .getElementById("addItemForm")
-          .addEventListener("submit", addItemToTable);
+        document.getElementById("startDate").valueAsDate = startDate;
+        document.getElementById("endDate").valueAsDate = endDate;
 
-        // Fechar modais ao clicar fora
-        window.addEventListener("click", function (e) {
-          if (e.target === document.getElementById("tableModal")) {
-            document.getElementById("tableModal").style.display = "none";
-          }
-          if (e.target === document.getElementById("addItemModal")) {
-            document.getElementById("addItemModal").style.display = "none";
-          }
-        });
-
-        // Renderizar dados iniciais
+        // Renderizar as mesas
         renderTables();
+
+        // Adicionar evento de pesquisa
+        document
+          .getElementById("searchInput")
+          .addEventListener("input", renderTables);
+
+        // Botão de relatório
+        document.getElementById("reportBtn").addEventListener("click", () => {
+          document.getElementById("reportModal").style.display = "flex";
+        });
+
+        // Fechar modal
+        document.getElementById("closeModal").addEventListener("click", () => {
+          document.getElementById("reportModal").style.display = "none";
+        });
+
+        // Gerar relatório
+        document
+          .getElementById("generateReport")
+          .addEventListener("click", generateReport);
+
+        // Selecionar a primeira mesa por padrão
+        if (tables.length > 0) {
+          const firstTable = document.querySelector(".table-item");
+          if (firstTable) {
+            firstTable.click();
+          }
+        }
+
+        // Fechar modal ao clicar fora dele
+        window.addEventListener("click", (event) => {
+          if (event.target === document.getElementById("reportModal")) {
+            document.getElementById("reportModal").style.display = "none";
+          }
+        });
       });
     </script>
-    <script src="./js/header.js"></script>
   </body>
 </html>
