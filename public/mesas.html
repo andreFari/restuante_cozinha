@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão de Mesas</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        margin: 0;
+        background-color: #f4f6f8;
+        color: #333;
+      }
+      h1 {
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      a {
+        color: #007bff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: none;
+      }
+
+      .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .search-input {
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        width: 200px;
+      }
+      button {
+        padding: 8px 12px;
+        border: none;
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        gap: 4px;
+      }
+      .top-bar div {
+        display: flex;
+        gap: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+      }
+      td button {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 6px 10px;
+        font-weight: bold;
+      }
+      th {
+        background: #f1f3f5;
+      }
+      tr:hover {
+        background-color: #f9fafb;
+      }
+      .delete-btn {
+        background: none;
+        border: none;
+        color: #d9534f;
+        cursor: pointer;
+      }
+
+      /* Mensagens */
+      .message {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        display: none;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        width: 500px;
+        position: relative;
+        box-sizing: border-box;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .close {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      form label {
+        margin-top: 10px;
+        display: block;
+      }
+      form input,
+      form select,
+      form textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+
+      /* Estilos específicos para gestão de mesas */
+      .container {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .table-list {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .order-details {
+        flex: 2;
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .table-item {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .table-item.open {
+        background-color: #e8f5e9;
+        border-left: 4px solid #4caf50;
+      }
+      .table-item.closed {
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+      }
+      .table-item:hover {
+        background-color: #e3f2fd;
+      }
+      .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .order-title {
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .section {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .section-column {
+        display: flex;
+        flex-direction: column;
+      }
+      .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px;
+      }
+      .btn {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-danger {
+        background-color: #dc3545;
+        color: white;
+      }
+      .btn-success {
+        background-color: #28a745;
+        color: white;
+      }
+      .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+      }
+      .admin-note-short {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+      }
+      .order-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .status-paid {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .status-unpaid {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header-placeholder"></div>
+    <h1>🍽️ Gestão de Mesas</h1>
+
+    <div class="message success" id="msgSuccess"></div>
+    <div class="message error" id="msgError"></div>
+
+    <div class="top-bar">
+      <input
+        type="text"
+        id="search"
+        class="search-input"
+        placeholder="Pesquisar mesas..."
+      />
+      <div>
+        <button id="openModalBtn">➕ Nova Mesa</button>
+        <button id="refreshBtn">🔄 Atualizar</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="table-list" id="tableList">
+        <h3>Mesas Abertas</h3>
+        <div id="openTables"></div>
+        <h3>Mesas Fechadas</h3>
+        <div id="closedTables"></div>
+      </div>
+
+      <div class="order-details" id="orderDetails">
+        <p>Selecione uma mesa para ver os detalhes.</p>
+      </div>
+    </div>
+
+    <!-- Modal para criar/editar mesa -->
+    <div id="tableModal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="closeModal">&times;</span>
+        <h2 id="modalTitle">➕ Nova Mesa</h2>
+        <form id="tableForm">
+          <input type="hidden" id="table_id" />
+          <label>Nome *</label>
+          <input type="text" id="table_name" required />
+          <label>Número *</label>
+          <input type="number" id="table_number" required />
+          <label>Capacidade (pessoas) *</label>
+          <input type="number" id="table_capacity" required />
+          <label>Localização</label>
+          <input type="text" id="table_location" />
+          <label>Estado *</label>
+          <select id="table_status" required>
+            <option value="open">Aberta</option>
+            <option value="closed">Fechada</option>
+          </select>
+          <label>Notas</label>
+          <textarea id="table_notes" rows="3"></textarea>
+          <button type="submit" id="submitTableBtn">Guardar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal para adicionar prato à mesa -->
+    <div id="addItemModal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="closeAddItemModal">&times;</span>
+        <h2>➕ Adicionar Item à Mesa</h2>
+        <form id="addItemForm">
+          <input type="hidden" id="target_table_id" />
+          <label>Tipo de Item *</label>
+          <select id="item_type" required>
+            <option value="">-- Selecionar Tipo --</option>
+            <option value="plate">Prato</option>
+            <option value="drink">Bebida</option>
+            <option value="extra">Extra</option>
+            <option value="dessert">Sobremesa</option>
+            <option value="coffee">Café</option>
+          </select>
+          <label>Item *</label>
+          <select id="item_id" required>
+            <option value="">-- Selecionar Item --</option>
+          </select>
+          <label>Quantidade *</label>
+          <input type="number" id="item_quantity" value="1" min="1" required />
+          <label>Observações</label>
+          <textarea id="item_notes" rows="2"></textarea>
+          <button type="submit">Adicionar</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Dados iniciais (seriam substituídos por chamadas à API)
+      let mesas = JSON.parse(localStorage.getItem("mesas")) || [
+        {
+          id: 1,
+          name: "Mesa 1",
+          number: 1,
+          capacity: 4,
+          location: "Interior",
+          status: "open",
+          notes: "",
+          order: {
+            plates: [
+              {
+                id: 1,
+                name: "Frango Assado",
+                price: 8.5,
+                quantity: 1,
+                notes: "",
+              },
+              { id: 2, name: "Sopa", price: 2.5, quantity: 1, notes: "" },
+            ],
+            drinks: [
+              { id: 1, name: "Água", price: 1.0, quantity: 2, notes: "" },
+              { id: 2, name: "Vinho", price: 12.0, quantity: 1, notes: "" },
+            ],
+            extras: [
+              {
+                id: 1,
+                name: "Batatas Fritas",
+                price: 3.0,
+                quantity: 1,
+                notes: "",
+              },
+            ],
+            desserts: [
+              { id: 1, name: "Bolo", price: 4.0, quantity: 1, notes: "" },
+            ],
+            coffee: [
+              { id: 1, name: "Expresso", price: 1.5, quantity: 2, notes: "" },
+            ],
+          },
+          invoice: null,
+          kitchenNote: "Tens que fazer mais uma de frango",
+          prepared: {
+            plates: [false, false],
+            drinks: [false, false],
+            extras: [false],
+            desserts: [false],
+            coffee: [false, false],
+          },
+        },
+        {
+          id: 2,
+          name: "Mesa 2",
+          number: 2,
+          capacity: 6,
+          location: "Terraço",
+          status: "closed",
+          notes: "",
+          order: {
+            plates: [
+              {
+                id: 3,
+                name: "Peixe Grelhado",
+                price: 10.5,
+                quantity: 1,
+                notes: "",
+              },
+            ],
+            drinks: [
+              { id: 3, name: "Cerveja", price: 2.0, quantity: 3, notes: "" },
+            ],
+            extras: [],
+            desserts: [],
+            coffee: [],
+          },
+          invoice: {
+            id: "F2023002",
+            date: "2023-05-15",
+            total: 16.5,
+            status: "paid",
+          },
+          kitchenNote: "",
+          prepared: {
+            plates: [true],
+            drinks: [true, true, true],
+            extras: [],
+            desserts: [],
+            coffee: [],
+          },
+        },
+      ];
+
+      let produtos = JSON.parse(localStorage.getItem("produtos")) || [
+        { id: 1, name: "Frango Assado", price: 8.5, type: "plate" },
+        { id: 2, name: "Sopa", price: 2.5, type: "plate" },
+        { id: 3, name: "Peixe Grelhado", price: 10.5, type: "plate" },
+        { id: 4, name: "Bife", price: 12.0, type: "plate" },
+        { id: 5, name: "Água", price: 1.0, type: "drink" },
+        { id: 6, name: "Vinho", price: 12.0, type: "drink" },
+        { id: 7, name: "Cerveja", price: 2.0, type: "drink" },
+        { id: 8, name: "Sumo", price: 2.5, type: "drink" },
+        { id: 9, name: "Batatas Fritas", price: 3.0, type: "extra" },
+        { id: 10, name: "Arroz", price: 2.0, type: "extra" },
+        { id: 11, name: "Bolo", price: 4.0, type: "dessert" },
+        { id: 12, name: "Pudim", price: 3.5, type: "dessert" },
+        { id: 13, name: "Expresso", price: 1.5, type: "coffee" },
+        { id: 14, name: "Cappuccino", price: 2.5, type: "coffee" },
+      ];
+
+      // Funções de utilidade
+      function showMessage(type, text) {
+        const msg =
+          type === "success"
+            ? document.getElementById("msgSuccess")
+            : document.getElementById("msgError");
+        msg.textContent = text;
+        msg.style.display = "block";
+        setTimeout(() => (msg.style.display = "none"), 3000);
+      }
+
+      function saveData() {
+        localStorage.setItem("mesas", JSON.stringify(mesas));
+        localStorage.setItem("produtos", JSON.stringify(produtos));
+      }
+
+      // Renderização das mesas
+      function renderTables() {
+        const searchTerm = document
+          .getElementById("search")
+          .value.toLowerCase();
+        const openTablesContainer = document.getElementById("openTables");
+        const closedTablesContainer = document.getElementById("closedTables");
+
+        openTablesContainer.innerHTML = "";
+        closedTablesContainer.innerHTML = "";
+
+        const filteredMesas = mesas.filter(
+          (mesa) =>
+            mesa.name.toLowerCase().includes(searchTerm) ||
+            mesa.number.toString().includes(searchTerm)
+        );
+
+        filteredMesas.forEach((mesa) => {
+          const div = document.createElement("div");
+          div.className = `table-item ${mesa.status}`;
+          div.innerHTML = `
+                    <div><strong>${mesa.name}</strong> (Nr. ${
+            mesa.number
+          })</div>
+                    <div>Capacidade: ${mesa.capacity} pessoas</div>
+                    <div>Local: ${mesa.location}</div>
+                    ${
+                      mesa.invoice
+                        ? `<div>Fatura: ${
+                            mesa.invoice.id
+                          } - <span class="order-status status-${
+                            mesa.invoice.status
+                          }">${
+                            mesa.invoice.status === "paid"
+                              ? "Paga"
+                              : "Por Pagar"
+                          }</span></div>`
+                        : ""
+                    }
+                    ${
+                      mesa.kitchenNote
+                        ? `<div title="${
+                            mesa.kitchenNote
+                          }">Nota: ${mesa.kitchenNote.substring(
+                            0,
+                            20
+                          )}...</div>`
+                        : ""
+                    }
+                `;
+          div.onclick = () => renderOrderDetails(mesa.id);
+
+          if (mesa.status === "open") {
+            openTablesContainer.appendChild(div);
+          } else {
+            closedTablesContainer.appendChild(div);
+          }
+        });
+      }
+
+      // Renderização dos detalhes da mesa
+      function renderOrderDetails(tableId) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        const orderDetails = document.getElementById("orderDetails");
+
+        // Calcular totais
+        const calculateTotal = (items) =>
+          items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const platesTotal = calculateTotal(mesa.order.plates);
+        const drinksTotal = calculateTotal(mesa.order.drinks);
+        const extrasTotal = calculateTotal(mesa.order.extras);
+        const dessertsTotal = calculateTotal(mesa.order.desserts);
+        const coffeeTotal = calculateTotal(mesa.order.coffee);
+        const orderTotal =
+          platesTotal + drinksTotal + extrasTotal + dessertsTotal + coffeeTotal;
+
+        // Função para renderizar seções de itens
+        const renderItemsSection = (title, items, preparedState, key) => {
+          if (items.length === 0) return "";
+
+          return `
+                    <div class="section">
+                        <h3>${title} - ${calculateTotal(items).toFixed(2)}€</h3>
+                        ${items
+                          .map(
+                            (item, index) => `
+                            <div class="item" onclick="togglePrepared(${tableId}, '${key}', ${index})">
+                                <input type="checkbox" ${
+                                  preparedState[index] ? "checked" : ""
+                                } ${mesa.status === "closed" ? "disabled" : ""}>
+                                <label>${item.quantity}x ${item.name} - ${(
+                              item.price * item.quantity
+                            ).toFixed(2)}€</label>
+                                ${
+                                  item.notes
+                                    ? `<span title="${item.notes}">📝</span>`
+                                    : ""
+                                }
+                                <button class="delete-btn" onclick="removeItemFromTable(${tableId}, '${key}', ${index})">🗑️</button>
+                            </div>
+                        `
+                          )
+                          .join("")}
+                    </div>
+                `;
+        };
+
+        orderDetails.innerHTML = `
+                <div class="order-header">
+                    <div class="order-title">${mesa.name} (Nr. ${
+          mesa.number
+        }) - ${mesa.status === "open" ? "Aberta" : "Fechada"}</div>
+                    <div>
+                        <button class="btn btn-primary" onclick="openAddItemModal(${tableId})">➕ Adicionar Item</button>
+                        <button class="btn ${
+                          mesa.status === "open" ? "btn-danger" : "btn-success"
+                        }" onclick="toggleTableStatus(${tableId})">
+                            ${
+                              mesa.status === "open"
+                                ? "Fechar Mesa"
+                                : "Reabrir Mesa"
+                            }
+                        </button>
+                        <button class="btn" onclick="openEditTableModal(${tableId})">✏️ Editar</button>
+                        ${
+                          mesa.status === "closed" && mesa.invoice
+                            ? `
+                            <button class="btn ${
+                              mesa.invoice.status === "paid"
+                                ? "btn-secondary"
+                                : "btn-success"
+                            }" onclick="toggleInvoiceStatus(${tableId})">
+                                ${
+                                  mesa.invoice.status === "paid"
+                                    ? "Marcar como Por Pagar"
+                                    : "Marcar como Paga"
+                                }
+                            </button>
+                        `
+                            : ""
+                        }
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <label for="kitchenNote"><strong>Nota da Cozinha:</strong></label>
+                    <textarea id="kitchenNote" rows="2" style="width: 100%;" ${
+                      mesa.status === "closed" ? "disabled" : ""
+                    }>${mesa.kitchenNote || ""}</textarea>
+                    ${
+                      mesa.status === "open"
+                        ? `<button class="btn btn-primary" onclick="saveKitchenNote(${tableId})">Guardar Nota</button>`
+                        : ""
+                    }
+                </div>
+                
+                ${renderItemsSection(
+                  "Pratos",
+                  mesa.order.plates,
+                  mesa.prepared.plates,
+                  "plates"
+                )}
+                ${renderItemsSection(
+                  "Bebidas",
+                  mesa.order.drinks,
+                  mesa.prepared.drinks,
+                  "drinks"
+                )}
+                ${renderItemsSection(
+                  "Extras",
+                  mesa.order.extras,
+                  mesa.prepared.extras,
+                  "extras"
+                )}
+                ${renderItemsSection(
+                  "Sobremesas",
+                  mesa.order.desserts,
+                  mesa.prepared.desserts,
+                  "desserts"
+                )}
+                ${renderItemsSection(
+                  "Cafés",
+                  mesa.order.coffee,
+                  mesa.prepared.coffee,
+                  "coffee"
+                )}
+                
+                <div class="section">
+                    <h3>Total da Mesa: ${orderTotal.toFixed(2)}€</h3>
+                    ${
+                      mesa.invoice
+                        ? `
+                        <div>Fatura: ${mesa.invoice.id} (${new Date(
+                            mesa.invoice.date
+                          ).toLocaleDateString()}) - 
+                            <span class="order-status status-${
+                              mesa.invoice.status
+                            }">${
+                            mesa.invoice.status === "paid"
+                              ? "Paga"
+                              : "Por Pagar"
+                          }</span>
+                        </div>
+                    `
+                        : ""
+                    }
+                </div>
+                
+                ${
+                  mesa.status === "open"
+                    ? `
+                    <div class="section">
+                        <h3>Informar Admin</h3>
+                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, 'PRATOS FEITOS, falta sobremesas e/ou cafés')">
+                            Pratos feitos, falta sobremesas e/ou cafés
+                        </button>
+                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, 'PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
+                            Este pedido não tem sobremesas ou cafés
+                        </button>
+                        <button class="btn btn-secondary" onclick="setKitchenNote(${tableId}, '')">
+                            Limpar Nota
+                        </button>
+                    </div>
+                `
+                    : ""
+                }
+            `;
+      }
+
+      // Funções para manipular mesas
+      function openEditTableModal(tableId) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        document.getElementById("modalTitle").textContent = "✏️ Editar Mesa";
+        document.getElementById("table_id").value = mesa.id;
+        document.getElementById("table_name").value = mesa.name;
+        document.getElementById("table_number").value = mesa.number;
+        document.getElementById("table_capacity").value = mesa.capacity;
+        document.getElementById("table_location").value = mesa.location;
+        document.getElementById("table_status").value = mesa.status;
+        document.getElementById("table_notes").value = mesa.notes;
+
+        document.getElementById("tableModal").style.display = "flex";
+      }
+
+      function openAddTableModal() {
+        document.getElementById("modalTitle").textContent = "➕ Nova Mesa";
+        document.getElementById("tableForm").reset();
+        document.getElementById("table_id").value = "";
+        document.getElementById("tableModal").style.display = "flex";
+      }
+
+      function toggleTableStatus(tableId) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        if (mesa.status === "open") {
+          // Fechar mesa - criar fatura
+          mesa.status = "closed";
+          mesa.invoice = {
+            id: "F" + new Date().getTime(),
+            date: new Date().toISOString().split("T")[0],
+            total: calculateTableTotal(mesa),
+            status: "unpaid",
+          };
+          showMessage("success", "Mesa fechada com sucesso. Fatura criada.");
+        } else {
+          // Reabrir mesa
+          mesa.status = "open";
+          mesa.invoice = null;
+          showMessage("success", "Mesa reaberta com sucesso.");
+        }
+
+        saveData();
+        renderTables();
+        renderOrderDetails(tableId);
+      }
+
+      function calculateTableTotal(mesa) {
+        const calculateSectionTotal = (items) =>
+          items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return (
+          calculateSectionTotal(mesa.order.plates) +
+          calculateSectionTotal(mesa.order.drinks) +
+          calculateSectionTotal(mesa.order.extras) +
+          calculateSectionTotal(mesa.order.desserts) +
+          calculateSectionTotal(mesa.order.coffee)
+        );
+      }
+
+      function toggleInvoiceStatus(tableId) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa || !mesa.invoice) return;
+
+        mesa.invoice.status =
+          mesa.invoice.status === "paid" ? "unpaid" : "paid";
+        showMessage(
+          "success",
+          `Fatura ${
+            mesa.invoice.status === "paid"
+              ? "marcada como paga"
+              : "marcada como por pagar"
+          }.`
+        );
+
+        saveData();
+        renderTables();
+        renderOrderDetails(tableId);
+      }
+
+      // Funções para manipular itens da mesa
+      function openAddItemModal(tableId) {
+        document.getElementById("target_table_id").value = tableId;
+        document.getElementById("addItemForm").reset();
+
+        // Atualizar opções de itens baseado no tipo selecionado
+        document.getElementById("item_type").onchange = function () {
+          const type = this.value;
+          const itemSelect = document.getElementById("item_id");
+          itemSelect.innerHTML =
+            '<option value="">-- Selecionar Item --</option>';
+
+          if (type) {
+            produtos
+              .filter((p) => p.type === type)
+              .forEach((p) => {
+                const option = document.createElement("option");
+                option.value = p.id;
+                option.textContent = `${p.name} - ${p.price.toFixed(2)}€`;
+                itemSelect.appendChild(option);
+              });
+          }
+        };
+
+        document.getElementById("addItemModal").style.display = "flex";
+      }
+
+      function addItemToTable(e) {
+        e.preventDefault();
+
+        const tableId = parseInt(
+          document.getElementById("target_table_id").value
+        );
+        const itemType = document.getElementById("item_type").value;
+        const itemId = parseInt(document.getElementById("item_id").value);
+        const quantity = parseInt(
+          document.getElementById("item_quantity").value
+        );
+        const notes = document.getElementById("item_notes").value;
+
+        const mesa = mesas.find((m) => m.id === tableId);
+        const produto = produtos.find((p) => p.id === itemId);
+
+        if (!mesa || !produto) {
+          showMessage("error", "Erro ao adicionar item.");
+          return;
+        }
+
+        const newItem = {
+          id: produto.id,
+          name: produto.name,
+          price: produto.price,
+          quantity: quantity,
+          notes: notes,
+        };
+
+        // Adicionar à seção correta
+        mesa.order[getOrderSection(itemType)].push(newItem);
+        mesa.prepared[getOrderSection(itemType)].push(false);
+
+        saveData();
+        renderOrderDetails(tableId);
+        document.getElementById("addItemModal").style.display = "none";
+        showMessage("success", "Item adicionado com sucesso.");
+      }
+
+      function getOrderSection(itemType) {
+        const mapping = {
+          plate: "plates",
+          drink: "drinks",
+          extra: "extras",
+          dessert: "desserts",
+          coffee: "coffee",
+        };
+        return mapping[itemType] || "plates";
+      }
+
+      function removeItemFromTable(tableId, section, index) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        mesa.order[section].splice(index, 1);
+        mesa.prepared[section].splice(index, 1);
+
+        saveData();
+        renderOrderDetails(tableId);
+        showMessage("success", "Item removido com sucesso.");
+      }
+
+      function togglePrepared(tableId, section, index) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa || mesa.status === "closed") return;
+
+        mesa.prepared[section][index] = !mesa.prepared[section][index];
+        saveData();
+        renderOrderDetails(tableId);
+      }
+
+      // Funções para notas da cozinha
+      function saveKitchenNote(tableId) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        mesa.kitchenNote = document.getElementById("kitchenNote").value;
+        saveData();
+        showMessage("success", "Nota da cozinha guardada com sucesso.");
+      }
+
+      function setKitchenNote(tableId, note) {
+        const mesa = mesas.find((m) => m.id === tableId);
+        if (!mesa) return;
+
+        mesa.kitchenNote = note;
+        saveData();
+        renderOrderDetails(tableId);
+        showMessage("success", "Nota da cozinha atualizada.");
+      }
+
+      // Manipulação do formulário de mesa
+      function handleTableFormSubmit(e) {
+        e.preventDefault();
+
+        const tableId = document.getElementById("table_id").value;
+        const name = document.getElementById("table_name").value;
+        const number = parseInt(document.getElementById("table_number").value);
+        const capacity = parseInt(
+          document.getElementById("table_capacity").value
+        );
+        const location = document.getElementById("table_location").value;
+        const status = document.getElementById("table_status").value;
+        const notes = document.getElementById("table_notes").value;
+
+        if (tableId) {
+          // Editar mesa existente
+          const mesa = mesas.find((m) => m.id === parseInt(tableId));
+          if (mesa) {
+            mesa.name = name;
+            mesa.number = number;
+            mesa.capacity = capacity;
+            mesa.location = location;
+            mesa.status = status;
+            mesa.notes = notes;
+
+            showMessage("success", "Mesa atualizada com sucesso.");
+          }
+        } else {
+          // Criar nova mesa
+          const newId =
+            mesas.length > 0 ? Math.max(...mesas.map((m) => m.id)) + 1 : 1;
+          mesas.push({
+            id: newId,
+            name: name,
+            number: number,
+            capacity: capacity,
+            location: location,
+            status: status,
+            notes: notes,
+            order: {
+              plates: [],
+              drinks: [],
+              extras: [],
+              desserts: [],
+              coffee: [],
+            },
+            invoice: null,
+            kitchenNote: "",
+            prepared: {
+              plates: [],
+              drinks: [],
+              extras: [],
+              desserts: [],
+              coffee: [],
+            },
+          });
+
+          showMessage("success", "Mesa criada com sucesso.");
+        }
+
+        saveData();
+        renderTables();
+        document.getElementById("tableModal").style.display = "none";
+      }
+
+      // Inicialização
+      document.addEventListener("DOMContentLoaded", function () {
+        // Event listeners
+        document
+          .getElementById("search")
+          .addEventListener("input", renderTables);
+        document
+          .getElementById("openModalBtn")
+          .addEventListener("click", openAddTableModal);
+        document.getElementById("refreshBtn").addEventListener("click", () => {
+          renderTables();
+          showMessage("success", "Dados atualizados.");
+        });
+
+        document.getElementById("closeModal").addEventListener("click", () => {
+          document.getElementById("tableModal").style.display = "none";
+        });
+
+        document
+          .getElementById("closeAddItemModal")
+          .addEventListener("click", () => {
+            document.getElementById("addItemModal").style.display = "none";
+          });
+
+        document
+          .getElementById("tableForm")
+          .addEventListener("submit", handleTableFormSubmit);
+        document
+          .getElementById("addItemForm")
+          .addEventListener("submit", addItemToTable);
+
+        // Fechar modais ao clicar fora
+        window.addEventListener("click", function (e) {
+          if (e.target === document.getElementById("tableModal")) {
+            document.getElementById("tableModal").style.display = "none";
+          }
+          if (e.target === document.getElementById("addItemModal")) {
+            document.getElementById("addItemModal").style.display = "none";
+          }
+        });
+
+        // Renderizar dados iniciais
+        renderTables();
+      });
+    </script>
+    <script src="./js/header.js"></script>
+  </body>
+</html>
