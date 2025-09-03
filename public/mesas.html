@@ -9,6 +9,8 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
       * {
         box-sizing: border-box;
@@ -74,6 +76,13 @@
       }
       .btn-success:hover {
         background-color: #27ae60;
+      }
+      .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+      }
+      .btn-danger:hover {
+        background-color: #c0392b;
       }
       .main-layout {
         display: flex;
@@ -269,6 +278,7 @@
         gap: 15px;
         margin-bottom: 20px;
         flex-wrap: wrap;
+        align-items: center;
       }
       .date-input {
         padding: 10px;
@@ -314,6 +324,14 @@
         font-weight: bold;
         color: #2c3e50;
       }
+      .export-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+      }
       @media (max-width: 1100px) {
         .charts-container {
           grid-template-columns: 1fr;
@@ -325,6 +343,7 @@
         }
         .date-filters {
           flex-direction: column;
+          align-items: stretch;
         }
       }
     </style>
@@ -420,10 +439,19 @@
             <canvas id="salesDistributionChart"></canvas>
           </div>
         </div>
+
+        <div class="export-actions">
+          <button class="btn btn-danger" id="exportPdf">
+            <i class="fas fa-file-pdf"></i> Exportar PDF
+          </button>
+        </div>
       </div>
     </div>
 
     <script>
+      // Inicializar jsPDF
+      const { jsPDF } = window.jspdf;
+
       // Dados das mesas (fechadas e com faturas pagas)
       const tables = [
         {
@@ -545,6 +573,18 @@
           },
         },
       ];
+
+      // Variáveis para armazenar dados do relatório
+      let currentReportData = {
+        startDate: "",
+        endDate: "",
+        totalRevenue: 0,
+        totalTables: 0,
+        dishes: {},
+        drinks: {},
+        desserts: {},
+        categories: {},
+      };
 
       // Renderizar a lista de mesas
       function renderTables() {
@@ -803,6 +843,18 @@
           }
         });
 
+        // Guardar dados para exportação
+        currentReportData = {
+          startDate,
+          endDate,
+          totalRevenue,
+          totalTables: filteredTables.length,
+          dishes,
+          drinks,
+          desserts,
+          categories,
+        };
+
         // Renderizar gráficos
         renderChart(
           "dishesChart",
@@ -934,6 +986,146 @@
         });
       }
 
+      // Exportar relatório para PDF
+      async function exportToPdf() {
+        if (currentReportData.totalTables === 0) {
+          alert("Gere um relatório primeiro antes de exportar.");
+          return;
+        }
+
+        // Criar um novo documento PDF
+        const doc = new jsPDF("p", "mm", "a4");
+        const margin = 15;
+        let yPosition = margin;
+
+        // Adicionar cabeçalho
+        doc.setFontSize(20);
+        doc.setTextColor(44, 62, 80);
+        doc.text("Relatório de Vendas", margin, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(
+          `Período: ${currentReportData.startDate} a ${currentReportData.endDate}`,
+          margin,
+          yPosition
+        );
+        yPosition += 15;
+
+        // Adicionar resumo
+        doc.setFontSize(14);
+        doc.setTextColor(44, 62, 80);
+        doc.text("Resumo do Período", margin, yPosition);
+        yPosition += 8;
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(
+          `Total Faturado: ${currentReportData.totalRevenue.toFixed(2)} €`,
+          margin,
+          yPosition
+        );
+        yPosition += 7;
+        doc.text(
+          `Número de Mesas: ${currentReportData.totalTables}`,
+          margin,
+          yPosition
+        );
+        yPosition += 10;
+
+        // Adicionar gráficos (capturar como imagens)
+        const charts = [
+          { id: "dishesChart", title: "Pratos Mais Vendidos" },
+          { id: "drinksChart", title: "Bebidas Mais Pedidas" },
+          { id: "dessertsChart", title: "Sobremesas Mais Pedidas" },
+          { id: "salesDistributionChart", title: "Distribuição de Vendas" },
+        ];
+
+        for (const chart of charts) {
+          // Verificar se há espaço suficiente na página atual
+          if (yPosition > 200) {
+            doc.addPage();
+            yPosition = margin;
+          }
+
+          const canvas = document.getElementById(chart.id);
+          const chartImage = await html2canvas(canvas);
+          const imgData = chartImage.toDataURL("image/png");
+
+          // Adicionar título do gráfico
+          doc.setFontSize(12);
+          doc.setTextColor(44, 62, 80);
+          doc.text(chart.title, margin, yPosition);
+          yPosition += 7;
+
+          // Adicionar imagem do gráfico
+          const imgWidth = 180;
+          const imgHeight = 90;
+          doc.addImage(imgData, "PNG", margin, yPosition, imgWidth, imgHeight);
+          yPosition += imgHeight + 10;
+        }
+
+        // Adicionar tabela de dados
+        if (yPosition > 180) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        doc.setFontSize(14);
+        doc.setTextColor(44, 62, 80);
+        doc.text("Detalhamento por Categoria", margin, yPosition);
+        yPosition += 10;
+
+        // Adicionar tabela de categorias
+        doc.setFontSize(10);
+        let tableX = margin;
+        let tableY = yPosition;
+
+        // Cabeçalho da tabela
+        doc.setFillColor(44, 62, 80);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(tableX, tableY, 130, 8, "F");
+        doc.text("Categoria", tableX + 2, tableY + 5);
+        doc.text("Valor (€)", tableX + 100, tableY + 5);
+
+        tableY += 8;
+        doc.setTextColor(0, 0, 0);
+
+        // Dados da tabela
+        for (const [category, value] of Object.entries(
+          currentReportData.categories
+        )) {
+          if (tableY > 270) {
+            doc.addPage();
+            tableY = margin;
+          }
+
+          doc.text(category, tableX + 2, tableY + 5);
+          doc.text(value.toFixed(2), tableX + 100, tableY + 5);
+          tableY += 6;
+        }
+
+        // Adicionar data de geração no rodapé
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(
+            `Relatório gerado em: ${new Date().toLocaleDateString()}`,
+            margin,
+            285
+          );
+          doc.text(`Página ${i} de ${totalPages}`, 180, 285);
+        }
+
+        // Salvar o PDF
+        doc.save(
+          `relatorio_vendas_${currentReportData.startDate}_a_${currentReportData.endDate}.pdf`
+        );
+      }
+
       // Inicializar a página
       document.addEventListener("DOMContentLoaded", () => {
         // Definir datas padrão (últimos 7 dias)
@@ -966,6 +1158,11 @@
         document
           .getElementById("generateReport")
           .addEventListener("click", generateReport);
+
+        // Exportar PDF
+        document
+          .getElementById("exportPdf")
+          .addEventListener("click", exportToPdf);
 
         // Selecionar a primeira mesa por padrão
         if (tables.length > 0) {
