@@ -29,6 +29,11 @@
           />
           <button type="submit" class="btn btn-primary">Login</button>
         </form>
+        <button onclick="emitirFaturaLocal(0)">Emitir Fatura Teste</button>
+        <button onclick="imprimirTalão()">Imprimir Fatura33</button>
+        <button id="btnImprimirFatura">Imprimir Fatura</button>
+
+
         <nav id="navLinks">
           <a href="./cozinha.html" class="protected"> Cozinha </a>
           <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
@@ -50,7 +55,7 @@
       <button class="btn protected" onclick="openCreateTableModal()">
         Abrir Nova Mesa
       </button>
-
+     
       <!-- Layout principal: 2 colunas -->
       <div
         class="main-layout"
@@ -94,6 +99,7 @@
           <p>Selecione uma mesa para ver os detalhes do pedido</p>
         </div>
       </div>
+
 
       <div id="createTableModal" class="modal">
         <div class="modal-content">
@@ -342,6 +348,17 @@
         // Se existe NIF e valor é maior que 0, usar FT
         return "FT";
       }
+      const tables = [
+  {
+    name: "Mesa Teste",
+    order: [
+      { name: "Bife com batatas", qty: 2, price: 12.5, product_id: 210061572, unit_id: 1 },
+      { name: "Coca-Cola", qty: 3, price: 2.0, product_id: 210061573, unit_id: 1 },
+      { name: "Bolo de chocolate", qty: 1, price: 4.5, product_id: 210061574, unit_id: 1 }
+    ]
+  }
+];
+
       async function emitirFatura(index, notes = "", docType = "FR", nif = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {
@@ -406,6 +423,7 @@
 
           if (data.pdfUrl && typeof data.pdfUrl === "string") {
             window.open(data.pdfUrl, "_blank");
+            imprimirFaturaLocal(table, data); // imprime localmente
           } else {
             console.error("PDF inválido:", data.pdfUrl);
             alert("Erro: Fatura criada mas sem PDF.");
@@ -415,6 +433,57 @@
           alert("Erro na comunicação com o servidor.");
         }
       }
+      async function emitirFaturaLocal(index) {
+  const table = tables[index];
+  if (!table) {
+    alert("Mesa inválida!");
+    return;
+  }
+
+  // calcular totais
+  let totalSemIVA = 0;
+  let ivaRate = 0.23; // 23%
+  table.order.forEach(item => {
+    totalSemIVA += item.qty * item.price;
+  });
+  const ivaValor = totalSemIVA * ivaRate;
+  const totalComIVA = totalSemIVA + ivaValor;
+
+  // === Gerar PDF ===
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFont("courier", "normal");
+  doc.setFontSize(12);
+
+  doc.text("FATURA SIMULADA", 14, 20);
+  doc.text(`Mesa: ${table.name}`, 14, 30);
+  doc.text("===================================", 14, 35);
+
+  let y = 45;
+  table.order.forEach(item => {
+    doc.text(`${item.name}  x${item.qty}  ${(item.price).toFixed(2)}€`, 14, y);
+    y += 8;
+  });
+
+  doc.text("===================================", 14, y);
+  y += 10;
+  doc.text(`Total s/ IVA: ${totalSemIVA.toFixed(2)} €`, 14, y);
+  y += 8;
+  doc.text(`IVA (23%): ${ivaValor.toFixed(2)} €`, 14, y);
+  y += 8;
+  doc.text(`Total c/ IVA: ${totalComIVA.toFixed(2)} €`, 14, y);
+  y += 15;
+  doc.text("Obrigado pela preferência!", 14, y);
+
+  // exporta PDF
+  doc.save("fatura_teste.pdf");
+
+  // também abre numa nova janela para imprimir
+  const pdfData = doc.output("bloburl");
+  const win = window.open(pdfData, "_blank");
+  win.print();
+}
 
       const moloniProductMap = {
         Bolo: {
@@ -425,7 +494,7 @@
         },
         // adiciona mais produtos aqui conforme fores criando
       };
-      let tables = [];
+     // let tables = [];
 
       const openTablesDiv = document.getElementById("openTables");
       const closedTablesDiv = document.getElementById("closedTables");
@@ -635,6 +704,7 @@
         tables[index].kitchenNote = textarea.value.trim();
         renderTables();
       };
+      
       function toggleLoginForm() {
         const form = document.getElementById("moloniLoginForm");
         form.style.display = form.style.display === "none" ? "block" : "none";
@@ -1031,7 +1101,8 @@
         document.getElementById("createTableModal").style.display = "none";
       }
     </script>
-    <script>
+ 
+    <script >
       const form = document.getElementById("loginForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -1065,6 +1136,89 @@
           alert("Erro ao conectar com o servidor.");
         }
       });
-    </script>
-  </body>
+
+      </script>
+   <script src="js/qz-tray.js"></script>
+    
+   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.2.5/qz-tray.js"></script>-->
+
+
+<!-- QZ Tray JS 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.1.0/qz-tray.js"></script>-->
+<script>
+  // Dados da mesa pré-definidos
+
+
+  const mesaTeste = {
+    name: "Mesa Teste",
+    order: [
+      { name: "Bife com batatas", qty: 2, price: 12.5 },
+      { name: "Coca-Cola", qty: 3, price: 2.0 },
+      { name: "Bolo de chocolate", qty: 1, price: 4.5 }
+    ]
+  };
+
+  function gerarFaturaTexto(mesa) {
+    let totalSemIVA = 0;
+    const ivaRate = 0.23;
+    let linhas = mesa.order.map(item => {
+      const subtotal = item.qty * item.price;
+      totalSemIVA += subtotal;
+      return `${item.name} x${item.qty}  ${subtotal.toFixed(2)}€`;
+    }).join('\n');
+
+    const totalComIVA = totalSemIVA * (1 + ivaRate);
+    const iva = totalComIVA - totalSemIVA;
+
+    return `*** FATURA TESTE ***
+Mesa: ${mesa.name}
+------------------------
+${linhas}
+------------------------
+TOTAL s/IVA: ${totalSemIVA.toFixed(2)}€
+IVA (${(ivaRate*100).toFixed(0)}%): ${iva.toFixed(2)}€
+TOTAL c/IVA: ${totalComIVA.toFixed(2)}€
+------------------------
+
+Obrigado pela preferência!
+`;
+  }
+
+  function initQZ() {
+    if (!window.qz) {
+      console.error("QZ Tray não carregado!");
+      setTimeout(initQZ, 100);
+      return;
+    }
+
+    qz.websocket.connect().then(() => {
+      console.log("QZ Tray conectado!");
+
+      const btn = document.getElementById("btnImprimirFatura");
+      btn.addEventListener("click", () => {
+        if (!qz.websocket.isActive()) {
+          alert("QZ Tray não está ligado. Abre o QZ Tray no teu PC.");
+          return;
+        }
+
+        const nomeImpressora = "VENUX ITV-150"; // substitui pelo nome real
+    
+        const fatura = gerarFaturaTexto(mesaTeste);
+        var config = qz.configs.create(nomeImpressora);
+        // Passa o nome da impressora diretamente
+        
+qz.print(config, [  // 🔹 passa config aqui, não { printer: nomeImpressora }
+  { type: 'raw', format: 'plain', data: fatura }
+]).then(() => {
+  console.log("Fatura enviada!");
+}).catch(err => console.error("Erro a imprimir:", err));
+      });
+
+    }).catch(err => console.error("Erro ao conectar QZ Tray:", err));
+  }
+
+  document.addEventListener("DOMContentLoaded", initQZ);
+</script>
+
+</body>
 </html>

@@ -20,5 +20,8 @@
     "open": "^10.1.2",
     "pdf-merger-js": "^5.1.2",
     "qs": "^6.14.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
   }
 }
