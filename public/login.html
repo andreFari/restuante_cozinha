@@ -29,6 +29,10 @@
           />
           <button type="submit" class="btn btn-primary">Login</button>
         </form>
+        <button onclick="emitirFaturaLocal(0)">Emitir Fatura Teste</button>
+        <button onclick="imprimirTalão()">Imprimir Fatura33</button>
+        <button id="btnImprimirFatura">Imprimir Fatura</button>
+
         <nav id="navLinks">
           <a href="./cozinha.html" class="protected"> Cozinha </a>
           <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
@@ -342,6 +346,35 @@
         // Se existe NIF e valor é maior que 0, usar FT
         return "FT";
       }
+      const tables = [
+        {
+          name: "Mesa Teste",
+          order: [
+            {
+              name: "Bife com batatas",
+              qty: 2,
+              price: 12.5,
+              product_id: 210061572,
+              unit_id: 1,
+            },
+            {
+              name: "Coca-Cola",
+              qty: 3,
+              price: 2.0,
+              product_id: 210061573,
+              unit_id: 1,
+            },
+            {
+              name: "Bolo de chocolate",
+              qty: 1,
+              price: 4.5,
+              product_id: 210061574,
+              unit_id: 1,
+            },
+          ],
+        },
+      ];
+
       async function emitirFatura(index, notes = "", docType = "FR", nif = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {
@@ -406,6 +439,7 @@
 
           if (data.pdfUrl && typeof data.pdfUrl === "string") {
             window.open(data.pdfUrl, "_blank");
+            imprimirFaturaLocal(table, data); // imprime localmente
           } else {
             console.error("PDF inválido:", data.pdfUrl);
             alert("Erro: Fatura criada mas sem PDF.");
@@ -414,6 +448,61 @@
           console.error("Erro no pedido:", err);
           alert("Erro na comunicação com o servidor.");
         }
+      }
+      async function emitirFaturaLocal(index) {
+        const table = tables[index];
+        if (!table) {
+          alert("Mesa inválida!");
+          return;
+        }
+
+        // calcular totais
+        let totalSemIVA = 0;
+        let ivaRate = 0.23; // 23%
+        table.order.forEach((item) => {
+          totalSemIVA += item.qty * item.price;
+        });
+        const ivaValor = totalSemIVA * ivaRate;
+        const totalComIVA = totalSemIVA + ivaValor;
+
+        // === Gerar PDF ===
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFont("courier", "normal");
+        doc.setFontSize(12);
+
+        doc.text("FATURA SIMULADA", 14, 20);
+        doc.text(`Mesa: ${table.name}`, 14, 30);
+        doc.text("===================================", 14, 35);
+
+        let y = 45;
+        table.order.forEach((item) => {
+          doc.text(
+            `${item.name}  x${item.qty}  ${item.price.toFixed(2)}€`,
+            14,
+            y
+          );
+          y += 8;
+        });
+
+        doc.text("===================================", 14, y);
+        y += 10;
+        doc.text(`Total s/ IVA: ${totalSemIVA.toFixed(2)} €`, 14, y);
+        y += 8;
+        doc.text(`IVA (23%): ${ivaValor.toFixed(2)} €`, 14, y);
+        y += 8;
+        doc.text(`Total c/ IVA: ${totalComIVA.toFixed(2)} €`, 14, y);
+        y += 15;
+        doc.text("Obrigado pela preferência!", 14, y);
+
+        // exporta PDF
+        doc.save("fatura_teste.pdf");
+
+        // também abre numa nova janela para imprimir
+        const pdfData = doc.output("bloburl");
+        const win = window.open(pdfData, "_blank");
+        win.print();
       }
 
       const moloniProductMap = {
@@ -425,7 +514,7 @@
         },
         // adiciona mais produtos aqui conforme fores criando
       };
-      let tables = [];
+      // let tables = [];
 
       const openTablesDiv = document.getElementById("openTables");
       const closedTablesDiv = document.getElementById("closedTables");
@@ -640,6 +729,7 @@
         tables[index].kitchenNote = textarea.value.trim();
         renderTables();
       };
+
       function toggleLoginForm() {
         const form = document.getElementById("moloniLoginForm");
         form.style.display = form.style.display === "none" ? "block" : "none";
@@ -1156,6 +1246,7 @@
         document.getElementById("createTableModal").style.display = "none";
       }
     </script>
+
     <script>
       const form = document.getElementById("loginForm");
       form.addEventListener("submit", async (e) => {
