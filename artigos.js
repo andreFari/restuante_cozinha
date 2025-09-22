@@ -26,10 +26,78 @@ const artigosLocais = [
   },
   // ... mais artigos
 ];
+const fakeArtigos = [
+  {
+    product_id: 1,
+    name: "Bife da Casa",
+    price: 12.5,
+    tax_id: 3630173,
+    summary: "Pratos",
+  },
+  {
+    product_id: 11,
+    name: "Bife da Casa",
+    price: 12.5,
+    tax_id: 3630173,
+    summary: "Pratos",
+  },
+  {
+    product_id: 12,
+    name: "Bife da Casa",
+    price: 12.5,
+    tax_id: 3630173,
+    summary: "prato principal",
+  },
+  {
+    product_id: 13,
+    name: "Bife da Casa",
+    price: 12.5,
+    tax_id: 3630173,
+    summary: "prato principal",
+  },
+  {
+    product_id: 14,
+    name: "Bife da Casa",
+    price: 12.5,
+    tax_id: 3630173,
+    summary: "prato principal",
+  },
+
+  {
+    product_id: 2,
+    name: "Arroz de Tomate",
+    price: 3.5,
+    tax_id: 3630173,
+    summary: "acompanhamento",
+  },
+  {
+    product_id: 3,
+    name: "Coca-Cola",
+    price: 2,
+    tax_id: 3630173,
+    summary: "Bebida",
+  },
+  {
+    product_id: 4,
+    name: "Mousse de Chocolate",
+    price: 3,
+    tax_id: 3630173,
+    summary: "Sobremesas",
+  },
+  {
+    product_id: 5,
+    name: "Café",
+    price: 1,
+    tax_id: 3630173,
+    summary: "Extra",
+  },
+];
+
 // Endpoint para obter artigos locais
 router.get("/artigos-locais", (req, res) => {
   res.json(artigosLocais);
 });
+
 // Função que sincroniza artigos locais com Moloni (insert ou update)
 async function sincronizarArtigos(token, company_id) {
   // 1. Buscar artigos na Moloni
@@ -143,7 +211,7 @@ async function sincronizarArtigos(token, company_id) {
     }
   }
 }
-
+/*necessário quando for a sério
 // Endpoint para disparar sincronização
 router.post("/sincronizar", async (req, res) => {
   try {
@@ -156,12 +224,21 @@ router.post("/sincronizar", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+});*/
 // Função para criar URLs com access_token e json=true
 function moloniUrl(endpoint, token) {
   return `https://api.moloni.pt/v1/${endpoint}/?access_token=${token}&json=true&human_errors=true`;
 }
-
+// 👉 Use fake data if Moloni is not set up
+router.get("/artigos", async (req, res) => {
+  try {
+    // just return fake data for now
+    res.json(fakeArtigos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+/*
 // GET produtos da categoria (ex: carne)
 router.get("/artigos", async (req, res) => {
   try {
@@ -187,7 +264,7 @@ router.get("/artigos", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+*/
 // rota para buscar unidades do Moloni
 router.get("/unidades", async (req, res) => {
   try {

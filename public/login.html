@@ -439,15 +439,15 @@
           const div = document.createElement("div");
           div.className = `table-item ${table.open ? "open" : "closed"}`;
           div.innerHTML = `
-                                    <strong>${table.name}</strong> - ${
+                                          <strong>${table.name}</strong> - ${
             table.open ? "Aberta" : "Fechada"
           }
-                                    ${
-                                      table.kitchenNote
-                                        ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
-                                        : ""
-                                    }
-                                  `;
+                                          ${
+                                            table.kitchenNote
+                                              ? `<br><small><em>Nota: ${table.kitchenNote}</em></small>`
+                                              : ""
+                                          }
+                                        `;
           div.onclick = () => renderOrderDetails(index);
 
           if (table.open) {
@@ -474,25 +474,25 @@
         const prepared = table.prepared;
 
         /*  function renderSection(title, items, prepState, key) {
-                            if (!items || items.length === 0) return "";
-                            return `
-                                    <div class="section">
-                                      <h3>${title}</h3>
-                                      ${items
-                                        .map(
-                                          (item, i) => `
-                                        <div class="item">
-                                          <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                                            onchange="togglePrepared(${index}, '${key}', ${i})">
-                                          <label>${item.name}</label>
-                                        </div>
-                                      `
-                                        )
-                                        .join("")}
-                                    </div>
-                                  `;
-                          }
-                     */
+                                  if (!items || items.length === 0) return "";
+                                  return `
+                                          <div class="section">
+                                            <h3>${title}</h3>
+                                            ${items
+                                              .map(
+                                                (item, i) => `
+                                              <div class="item">
+                                                <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                                                  onchange="togglePrepared(${index}, '${key}', ${i})">
+                                                <label>${item.name}</label>
+                                              </div>
+                                            `
+                                              )
+                                              .join("")}
+                                          </div>
+                                        `;
+                                }
+                           */
 
         // Função para renderizar **uma tabela única** para todos os itens
         function renderAllItemsTable(order, prepared, index) {
@@ -508,40 +508,40 @@
 
             items.forEach((item, i) => {
               rowsHtml += `
-              <tr>
-                <td style="border:1px solid #ccc; padding:5px;">${category}</td>
-                <td style="border:1px solid #ccc; padding:5px;">${
-                  item.name
-                }</td>
-                <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
-                  item.quantity
-                }</td>
-                <td style="border:1px solid #ccc; padding:5px; text-align:center;">
-                  <input type="checkbox" ${prepState[i] ? "checked" : ""}
-                    onchange="togglePrepared(${index}, '${key}', ${i})">
-                </td>
-              </tr>
-            `;
+                    <tr>
+                      <td style="border:1px solid #ccc; padding:5px;">${category}</td>
+                      <td style="border:1px solid #ccc; padding:5px;">${
+                        item.name
+                      }</td>
+                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">${
+                        item.quantity
+                      }</td>
+                      <td style="border:1px solid #ccc; padding:5px; text-align:center;">
+                        <input type="checkbox" ${prepState[i] ? "checked" : ""}
+                          onchange="togglePrepared(${index}, '${key}', ${i})">
+                      </td>
+                    </tr>
+                  `;
             });
           }
 
           return `
-          <div class="section" style="display:flex; justify-content:center; margin-top:10px;">
-            <table style="width:100%; max-width:600px; border-collapse: collapse; border:1px solid #ccc;">
-              <thead>
-                <tr style="background-color:#f2f2f2;">
-                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
-                  <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
-          </div>
-        `;
+                <div class="section" style="display:flex; justify-content:center; margin-top:10px;">
+                  <table style="width:100%; max-width:600px; border-collapse: collapse; border:1px solid #ccc;">
+                    <thead>
+                      <tr style="background-color:#f2f2f2;">
+                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Categoria</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:left;">Item</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Quantidade</th>
+                        <th style="border:1px solid #ccc; padding:5px; text-align:center;">Preparado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rowsHtml}
+                    </tbody>
+                  </table>
+                </div>
+              `;
         }
 
         // Mapeia títulos bonitinhos para as categorias
@@ -558,58 +558,63 @@
         const sectionsHtml = renderAllItemsTable(order, prepared, index);
 
         orderDetails.innerHTML = `
-              <h2 style="margin-bottom: 1rem;">
-                ${table.name} - <span style="color: ${
+                    <h2 style="margin-bottom: 1rem;">
+                      ${table.name} - <span style="color: ${
           table.open ? "#28a745" : "#dc3545"
         };">
-                  ${table.open ? "Aberta" : "Fechada"}
-                </span>
-              </h2>
+                        ${table.open ? "Aberta" : "Fechada"}
+                      </span>
+                    </h2>
 
-              <!-- Nota da Cozinha -->
-              <div class="section" style="margin-bottom: 20px;">
-                <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
-                <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
-                  ${table.kitchenNote}
-                </textarea>
-                <button class="btn btn-primary" onclick="saveKitchenNote(${index})" >Guardar Nota</button>
-              </div>
+                    <!-- Nota da Cozinha -->
+                    <div class="section" style="margin-bottom: 20px;">
+                      <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
+                      <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
+                        ${table.kitchenNote}
+                      </textarea>
+                      <button class="btn btn-primary" onclick="saveKitchenNote(${index})" >Guardar Nota</button>
+                    </div>
 
-              <!-- Status de Pagamento -->
-              <div class="section" style="margin-bottom:20px;">
-                <label style="font-weight:600; display:block;">Status do Pagamento:</label>
-                <div class="status ${
-                  order.status === "paid" ? "paid" : "unpaid"
-                }"
-                     style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
-                       order.status === "paid" ? "#d4edda" : "#f8d7da"
-                     }; color:${
+                    <!-- Status de Pagamento -->
+                    <div class="section" style="margin-bottom:20px;">
+                      <label style="font-weight:600; display:block;">Status do Pagamento:</label>
+                      <div class="status ${
+                        order.status === "paid" ? "paid" : "unpaid"
+                      }"
+                           style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
+                             order.status === "paid" ? "#d4edda" : "#f8d7da"
+                           }; color:${
           order.status === "paid" ? "#155724" : "#721c24"
         };">
-                  ${order.status === "paid" ? "Pago" : "Por Pagar"}
-                </div>
-                <button class="btn btn-secondary" onclick="togglePaid(${index})">
-                  Marcar como ${order.status === "paid" ? "Por Pagar" : "Pago"}
-                </button>
-              </div>
+                        ${order.status === "paid" ? "Pago" : "Por Pagar"}
+                      </div>
+                      <button class="btn btn-secondary" onclick="togglePaid(${index})">
+                        Marcar como ${
+                          order.status === "paid" ? "Por Pagar" : "Pago"
+                        }
+                      </button>
+                    </div>
 
-              <!-- Botões de ação -->
-             <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
-        <button class="btn btn-secondary" style="background-color:red; color:#fff;" onclick="toggleOpenClose(${index})">
-          ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+                    <!-- Botões de ação -->
+                   <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
+              <button class="btn btn-secondary" style="background-color:red; color:#fff;" onclick="toggleOpenClose(${index})">
+                ${table.open ? "Fechar Mesa" : "Abrir Mesa"}
+              </button>
+              <button class="btn btn-secondary" style="background-color:orange; color:black;" onclick="openEditTableModal(${index})">
+                Alterar Artigos
+              </button>
+              <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
+                Emitir Fatura
+              </button>
+               <button class="btn btn-secondary" style="background-color:black; color:#fff;" onclick="openCalculator(${index})">
+          Calculadora
         </button>
-        <button class="btn btn-secondary" style="background-color:orange; color:#fff;" onclick="openEditTableModal(${index})">
-          Alterar Artigos
-        </button>
-        <button class="btn btn-primary" style="background-color:#28a745; color:#fff;" onclick="openModal(${index})">
-          Emitir Fatura
-        </button>
-      </div>
+            </div>
 
-      <!-- Tabela de itens centralizada -->
-      ${sectionsHtml}
-              </div>
-            `;
+            <!-- Tabela de itens centralizada -->
+            ${sectionsHtml}
+                    </div>
+                  `;
       }
       window.togglePrepared = function (tableIndex, section, itemIndex) {
         tables[tableIndex].prepared[section][itemIndex] =
@@ -642,76 +647,106 @@
       function closeCreateTableModal() {
         document.getElementById("createTableModal").style.display = "none";
       }
-      window.addEventListener("DOMContentLoaded", async () => {
-        const tokenDisplayDiv = document.getElementById("tokenDisplay");
+      /*  window.addEventListener("DOMContentLoaded", async () => { necessário
+              const tokenDisplayDiv = document.getElementById("tokenDisplay");
 
-        // 1️⃣ Verifica se há erro ou code na URL (OAuth)
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-        const error = params.get("error");
+              // 1️⃣ Verifica se há erro ou code na URL (OAuth)
+              const params = new URLSearchParams(window.location.search);
+              const code = params.get("code");
+              const error = params.get("error");
 
-        if (code) {
-          try {
-            await fetch("/api/moloni-exchange-code", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code }),
+              if (code) {
+                try {
+                  await fetch("/api/moloni-exchange-code", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code }),
+                  });
+                  history.replaceState({}, "", "/login.html"); // limpa URL
+                } catch (err) {
+                  console.error("Erro a obter tokens:", err);
+                  alert("Erro no login com Moloni.");
+                }
+              }
+
+              if (error) {
+                alert(
+                  "Erro durante o login com Moloni: " + decodeURIComponent(error)
+                );
+              }
+
+              // 2️⃣ Verifica o status do token na sessão
+              try {
+                const res = await fetch("/api/moloni-token-status");
+                const { valid } = await res.json();
+                updateUI(valid);
+              } catch (err) {
+                console.error("Erro ao verificar status do token:", err);
+                tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
+              }
             });
-            history.replaceState({}, "", "/login.html"); // limpa URL
-          } catch (err) {
-            console.error("Erro a obter tokens:", err);
-            alert("Erro no login com Moloni.");
-          }
-        }
 
-        if (error) {
-          alert(
-            "Erro durante o login com Moloni: " + decodeURIComponent(error)
-          );
-        }
+            */
 
-        // 2️⃣ Verifica o status do token na sessão
-        try {
-          const res = await fetch("/api/moloni-token-status");
-          const { valid } = await res.json();
-          updateUI(valid);
-        } catch (err) {
-          console.error("Erro ao verificar status do token:", err);
-          tokenDisplayDiv.textContent = "❌ Erro ao verificar autenticação.";
-        }
+      window.addEventListener("DOMContentLoaded", async () => {
+        // 🔥 Skip Moloni auth and force UI valid
+        updateUI(true);
       });
+
+      /* function updateUI(isValid) { necessário
+              const tokenDisplayDiv = document.getElementById("tokenDisplay");
+              const mainContent = document.getElementById("mainContent");
+
+              if (isValid) {
+                tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+
+                tokenDisplayDiv.className = "token-status ok";
+                loginForm.style.display = "none"; // 🔥 esconde login
+                document.querySelector("header").classList.remove("login-active");
+
+                navLinks.style.display = "flex"; // 🔥 mostra navegação
+                mainContent.style.display = "block";
+                document.querySelectorAll(".protected").forEach((el) => {
+                  el.style.display = "inline-block";
+                });
+              } else {
+                tokenDisplayDiv.textContent = "⚠️ Sistema não autenticado";
+                tokenDisplayDiv.className = "token-status error";
+                document.querySelector("header").classList.add("login-active");
+                loginForm.style.display = "flex"; // 🔥 mostra login
+
+                navLinks.style.display = "none"; // 🔥 esconde navegação
+                mainContent.style.display = "none";
+                document.querySelectorAll(".protected").forEach((el) => {
+                  el.style.display = "none";
+                });
+                const modal = document.getElementById("createTableModal");
+                if (modal) modal.style.display = "none";
+              }
+            }
+
+
+            */
+
       function updateUI(isValid) {
         const tokenDisplayDiv = document.getElementById("tokenDisplay");
         const mainContent = document.getElementById("mainContent");
 
-        if (isValid) {
-          tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+        // 🔥 Force always valid
+        isValid = true;
 
-          tokenDisplayDiv.className = "token-status ok";
-          loginForm.style.display = "none"; // 🔥 esconde login
-          document.querySelector("header").classList.remove("login-active");
+        tokenDisplayDiv.textContent = "✔️ Sistema pronto a usar";
+        tokenDisplayDiv.className = "token-status ok";
 
-          navLinks.style.display = "flex"; // 🔥 mostra navegação
-          mainContent.style.display = "block";
-          document.querySelectorAll(".protected").forEach((el) => {
-            el.style.display = "inline-block";
-          });
-        } else {
-          tokenDisplayDiv.textContent = "⚠️ Sistema não autenticado";
-          tokenDisplayDiv.className = "token-status error";
-          document.querySelector("header").classList.add("login-active");
-          loginForm.style.display = "flex"; // 🔥 mostra login
+        loginForm.style.display = "none"; // esconde login
+        document.querySelector("header").classList.remove("login-active");
 
-          navLinks.style.display = "none"; // 🔥 esconde navegação
-          mainContent.style.display = "none";
-          document.querySelectorAll(".protected").forEach((el) => {
-            el.style.display = "none";
-          });
-          const modal = document.getElementById("createTableModal");
-          if (modal) modal.style.display = "none";
-        }
+        navLinks.style.display = "flex";
+        mainContent.style.display = "block";
+        document.querySelectorAll(".protected").forEach((el) => {
+          el.style.display = "inline-block";
+        });
       }
-
       function convertOrderToMoloniProducts(order) {
         const sections = [
           "plates",
@@ -748,6 +783,9 @@
       let moloniProducts = []; // global, para todas as funções
 
       async function openCreateTableModal() {
+        const saveBtn = document.getElementById("saveTableBtn");
+        saveBtn.textContent = "Abrir Mesa"; // ou "Criar Mesa"
+        saveBtn.onclick = createNewTable; // função de criar
         // Limpa os containers de botões
         const containerIds = [
           "principalArticles",
@@ -791,40 +829,72 @@
 
             const container = document.getElementById(containerId);
 
-            // Criar div para agrupar botão + input de quantidade
+            // Create container div for article + quantity controls
             const div = document.createElement("div");
             div.className = "article-item";
 
-            // Botão do artigo
+            // Article button
             const btn = document.createElement("button");
             btn.type = "button";
             btn.textContent = artigo.name;
             btn.className = "article-btn";
             btn.dataset.selected = "false";
-            btn.dataset.article = JSON.stringify({
-              product_id: artigo.product_id,
-              name: artigo.name,
-              price: artigo.price,
-              tax_id: artigo.tax_id || 3630173,
-            });
+            btn.classList.remove("selected");
+
+            // 🔹 guarda referência do artigo
+            btn.dataset.article = JSON.stringify(artigo);
 
             btn.onclick = () => {
-              btn.dataset.selected =
-                btn.dataset.selected === "true" ? "false" : "true";
+              const selected = btn.dataset.selected === "true";
+              btn.dataset.selected = selected ? "false" : "true";
               btn.classList.toggle("selected");
             };
+            // antigo
+            /* btn.onclick = () => {
+                    btn.dataset.selected =
+                      btn.dataset.selected === "true" ? "false" : "true";
+                    btn.classList.toggle("selected");
+                  };*/
 
-            // Input de quantidade
+            // Quantity container
+            const qtyContainer = document.createElement("div");
+            qtyContainer.className = "qty-container";
+            qtyContainer.style.display = "inline-flex"; // mostra sempre
+
+            // Minus button
+            const minus = document.createElement("button");
+            minus.type = "button";
+            minus.textContent = "–";
+            minus.className = "qty-btn";
+            minus.onclick = () => {
+              qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
+            };
+
+            // Quantity input
             const qtyInput = document.createElement("input");
             qtyInput.type = "number";
             qtyInput.min = 1;
             qtyInput.value = 1;
-            qtyInput.style.width = "50px";
-            qtyInput.style.marginLeft = "10px";
+            qtyInput.style.width = "55px";
+            qtyInput.style.textAlign = "center";
 
-            // Adiciona botão e input na div
+            // Plus button
+            const plus = document.createElement("button");
+            plus.type = "button";
+            plus.textContent = "+";
+            plus.className = "qty-btn";
+            plus.onclick = () => {
+              qtyInput.value = parseInt(qtyInput.value) + 1;
+            };
+
+            // Append controls
+            qtyContainer.appendChild(minus);
+            qtyContainer.appendChild(qtyInput);
+            qtyContainer.appendChild(plus);
+
+            // Add button + qty controls to div
             div.appendChild(btn);
-            div.appendChild(qtyInput);
+            div.appendChild(qtyContainer);
             container.appendChild(div);
           });
 
@@ -841,30 +911,50 @@
           return;
         }
 
+        const plates = getSelectedProductsFromButtons("principalArticles");
+        const secondaryPlates =
+          getSelectedProductsFromButtons("secondaryArticles");
+        const sides = getSelectedProductsFromButtons("sideArticles");
+        const desserts = getSelectedProductsFromButtons("dessertArticles");
+        const drinks = getSelectedProductsFromButtons("drinkArticles");
+        const extras = getSelectedProductsFromButtons("extraArticles");
+
+        // ❌ Validação: pelo menos um artigo deve ser selecionado
+        if (
+          plates.length === 0 &&
+          secondaryPlates.length === 0 &&
+          sides.length === 0 &&
+          desserts.length === 0 &&
+          drinks.length === 0 &&
+          extras.length === 0
+        ) {
+          alert("Seleciona pelo menos um artigo para criar a mesa!");
+          return;
+        }
+
         const newTable = {
           id: tables.length + 1,
           name: tableName,
           open: true,
-          kitchenNote: "", // podes preencher se houver nota da cozinha
+          kitchenNote: "",
           order: {
             status: "unpaid",
-            plates: getSelectedProductsFromButtons("principalArticles"),
-            secondaryPlates:
-              getSelectedProductsFromButtons("secondaryArticles"),
-            sides: getSelectedProductsFromButtons("sideArticles"),
-            desserts: getSelectedProductsFromButtons("dessertArticles"),
-            drinks: getSelectedProductsFromButtons("drinkArticles"), // adicionado
-            extras: getSelectedProductsFromButtons("extraArticles"), // adicionado
+            plates,
+            secondaryPlates,
+            sides,
+            desserts,
+            drinks,
+            extras,
             coffee: [],
           },
           prepared: {
-            plates: [],
-            secondaryPlates: [],
-            sides: [],
-            desserts: [],
-            drinks: [],
+            plates: Array(plates.length).fill(false),
+            secondaryPlates: Array(secondaryPlates.length).fill(false),
+            sides: Array(sides.length).fill(false),
+            desserts: Array(desserts.length).fill(false),
+            drinks: Array(drinks.length).fill(false),
+            extras: Array(extras.length).fill(false),
             coffee: [],
-            extras: [],
           },
         };
 
@@ -907,20 +997,38 @@
           btn.dataset.article = JSON.stringify(article);
         });
       }
-
       function getSelectedProductsFromButtons(containerId) {
         return Array.from(
           document.querySelectorAll(`#${containerId} .article-btn.selected`)
         )
           .map((btn) => {
-            if (!btn.dataset.article) return null; // ignora se não houver artigo
+            if (!btn.dataset.article) return null;
             const article = JSON.parse(btn.dataset.article);
-            const qty = parseInt(btn.nextSibling.value) || 1;
+
+            // Pega o input dentro do mesmo .article-item
+            const qtyInput = btn
+              .closest(".article-item")
+              .querySelector("input[type='number']");
+            const qty = parseInt(qtyInput?.value) || 1;
+
             return { ...article, quantity: qty };
           })
-          .filter((item) => item !== null); // remove os nulos
+          .filter(Boolean);
       }
-
+      /*
+            function getSelectedProductsFromButtons(containerId) { antigo necessário talvez quando for a sério
+              return Array.from(
+                document.querySelectorAll(`#${containerId} .article-btn.selected`)
+              )
+                .map((btn) => {
+                  if (!btn.dataset.article) return null; // ignora se não houver artigo
+                  const article = JSON.parse(btn.dataset.article);
+                  const qty = parseInt(btn.nextSibling.value) || 1;
+                  return { ...article, quantity: qty };
+                })
+                .filter((item) => item !== null); // remove os nulos
+            }
+      */
       window.addEventListener("DOMContentLoaded", () => {
         const btn = document.querySelector(".btn");
         if (btn) btn.addEventListener("click", openCreateTableModal);
@@ -929,7 +1037,7 @@
       function openEditTableModal(tableIndex) {
         const table = tables[tableIndex];
 
-        // Limpa os containers como no openCreateTableModal
+        // Limpa os containers de artigos
         const containerIds = [
           "principalArticles",
           "secondaryArticles",
@@ -941,16 +1049,30 @@
         containerIds.forEach((id) => {
           document.getElementById(id).innerHTML = "";
         });
+
+        // Atualiza botão de salvar
         const saveBtn = document.getElementById("saveTableBtn");
         saveBtn.textContent = "Atualizar Mesa";
         saveBtn.onclick = () => updateTable(tableIndex);
-        // Renderiza os artigos como no modal de criação
+
+        // Mapeamento container → key da ordem
+        const containerToKey = {
+          principalArticles: "plates",
+          secondaryArticles: "secondaryPlates",
+          sideArticles: "sides",
+          dessertArticles: "desserts",
+          drinkArticles: "drinks",
+          extraArticles: "extras",
+        };
+
+        // Renderiza artigos
         moloniProducts.forEach((artigo) => {
           const categoria = (artigo.summary || "")
             .trim()
             .toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
+
           let containerId;
           if (categoria === "prato principal")
             containerId = "principalArticles";
@@ -970,24 +1092,21 @@
           btn.type = "button";
           btn.textContent = artigo.name;
           btn.className = "article-btn";
-          btn.dataset.selected = "false";
           btn.dataset.article = JSON.stringify(artigo);
 
-          // Verifica se já está selecionado na mesa
-          const containerToKey = {
-            principalArticles: "plates",
-            secondaryArticles: "secondaryPlates",
-            sideArticles: "sides",
-            dessertArticles: "desserts",
-            drinkArticles: "drinks",
-            extraArticles: "extras",
-          };
+          // Verifica se o artigo já está selecionado na mesa
           const key = containerToKey[containerId];
           const currentItems = table.order[key] || [];
-          const selectedItem = currentItems.find((i) => i.name === artigo.name);
+          const selectedItem = currentItems.find(
+            (i) => i.product_id === artigo.product_id
+          );
+
           if (selectedItem) {
             btn.dataset.selected = "true";
             btn.classList.add("selected");
+          } else {
+            btn.dataset.selected = "false";
+            btn.classList.remove("selected");
           }
 
           btn.onclick = () => {
@@ -999,7 +1118,7 @@
           const qtyInput = document.createElement("input");
           qtyInput.type = "number";
           qtyInput.min = 1;
-          qtyInput.value = selectedItem ? selectedItem.quantity || 1 : 1;
+          qtyInput.value = selectedItem ? selectedItem.quantity : 1;
           qtyInput.style.width = "50px";
           qtyInput.style.marginLeft = "10px";
 
@@ -1008,25 +1127,31 @@
           container.appendChild(div);
         });
 
-        // Atualiza o modal
+        // Preenche o nome da mesa
         document.getElementById("newTableName").value = table.name;
-        const modal = document.getElementById("createTableModal");
-        modal.style.display = "flex";
+
+        // Mostra modal
+        document.getElementById("createTableModal").style.display = "flex";
       }
-      function updateTable(index) {
-        const table = tables[index];
 
-        table.order.plates =
-          getSelectedProductsFromButtons("principalArticles");
-        table.order.secondaryPlates =
-          getSelectedProductsFromButtons("secondaryArticles");
-        table.order.sides = getSelectedProductsFromButtons("sideArticles");
-        table.order.desserts =
-          getSelectedProductsFromButtons("dessertArticles");
-        table.order.coffee = getSelectedProductsFromButtons("coffeeArticles");
-        table.order.extras = getSelectedProductsFromButtons("extraArticles");
-        // café se necessário
+      function updateTable(tableIndex) {
+        const table = tables[tableIndex];
 
+        const containerToKey = {
+          principalArticles: "plates",
+          secondaryArticles: "secondaryPlates",
+          sideArticles: "sides",
+          dessertArticles: "desserts",
+          drinkArticles: "drinks",
+          extraArticles: "extras",
+        };
+
+        Object.keys(containerToKey).forEach((containerId) => {
+          table.order[containerToKey[containerId]] =
+            getSelectedProductsFromButtons(containerId);
+        });
+
+        // Atualiza a interface
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
       }
@@ -1065,6 +1190,97 @@
           alert("Erro ao conectar com o servidor.");
         }
       });
+      function openCalculator(index) {
+        const table = tables[index];
+        const order = table.order;
+
+        // Calcular total
+        let total = 0;
+        for (const key in order) {
+          if (key === "status") continue;
+          order[key].forEach((item) => {
+            total += item.price * (item.quantity || 1);
+          });
+        }
+
+        // Criar modal/overlay mais estilizado
+        const modalHtml = `
+    <div id="calculatorModal" style="
+        position:fixed;
+        top:0; left:0; right:0; bottom:0;
+        background: rgba(0,0,0,0.6);
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        z-index:1000;
+    ">
+      <div style="
+          background:#fff;
+          padding:30px;
+          border-radius:12px;
+          width:350px;
+          text-align:center;
+          font-family: Arial, sans-serif;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      ">
+        <h2 style="margin-bottom:20px; font-size:1.5em;">Calculadora da Mesa</h2>
+        <p style="margin-bottom:20px; font-size:1.2em;">Total: <strong>€${total.toFixed(
+          2
+        )}</strong></p>
+
+        <label for="amountGiven" style="font-size:1.1em; display:block; margin-bottom:8px;">Valor entregue pelo cliente:</label>
+        <input type="number" id="amountGiven" style="
+            width:100%; 
+            padding:12px; 
+            font-size:1.2em; 
+            margin-bottom:20px; 
+            border: 1px solid #ccc; 
+            border-radius:6px;
+        " />
+
+        <p id="changeOutput" style="font-size:1.2em; margin-bottom:20px;"></p>
+
+        <div style="display:flex; justify-content:space-between; gap:10px;">
+          <button class="btn btn-primary" onclick="calculateChange(${total})" style="
+              flex:1;
+              padding:12px 0; 
+              font-size:1.1em; 
+              border-radius:6px;
+          ">Calcular Troco</button>
+          <button class="btn btn-secondary" onclick="closeCalculator()" style="
+              flex:1;
+              padding:12px 0; 
+              font-size:1.1em; 
+              border-radius:6px;
+          ">Fechar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+        // Inserir modal no body
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+      }
+
+      function calculateChange(total) {
+        const amountGiven =
+          parseFloat(document.getElementById("amountGiven").value) || 0;
+        const change = amountGiven - total;
+        const output = document.getElementById("changeOutput");
+        if (change < 0) {
+          output.textContent = `Cliente entregou menos que o total! Faltam €${Math.abs(
+            change
+          ).toFixed(2)}`;
+          output.style.color = "red";
+        } else {
+          output.textContent = `Troco: €${change.toFixed(2)}`;
+          output.style.color = "green";
+        }
+      }
+      function closeCalculator() {
+        const modal = document.getElementById("calculatorModal");
+        if (modal) modal.remove();
+      }
     </script>
   </body>
 </html>
