@@ -3,27 +3,82 @@
   <head>
     <meta charset="UTF-8" />
     <title>Painel Cozinha</title>
+    <link rel="stylesheet" href="css/css.css" />
     <link rel="stylesheet" href="css/header.css" />
+
     <style>
+      /* ===== Reset & Font ===== */
       * {
+        margin: 0;
+        padding: 0;
         box-sizing: border-box;
       }
 
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f8f9fa;
+        background-color: #f7f8fa;
         color: #333;
       }
 
-      header {
-        color: white;
-        padding: 1rem 2rem;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      h1,
+      h3,
+      h4 {
+        margin-bottom: 0.75rem;
+        font-weight: 600;
       }
 
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        margin-left: 3%;
+        margin-top: 1%;
+      }
+
+      h3 {
+        font-size: 1.25rem;
+      }
+
+      h4 {
+        font-size: 1rem;
+      }
+
+      p {
+        margin-bottom: 1rem;
+        line-height: 1.5;
+      }
+
+      /* ===== Buttons ===== */
+      .btn {
+        padding: 14px 24px;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 1.05rem;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3;
+      }
+
+      .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background-color: #565e64;
+      }
+
+      /* ===== Painel Cozinha Layout ===== */
       .container {
         display: flex;
         padding: 20px;
@@ -44,15 +99,15 @@
       .table-item {
         padding: 12px;
         margin-bottom: 10px;
-        background-color: #f1f1f1;
+        background-color: #f9f9f9;
         border-left: 5px solid #198754;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         transition: background 0.2s;
       }
 
       .table-item:hover {
-        background-color: #e2e6ea;
+        background-color: #f1f1f1;
       }
 
       .order-details {
@@ -64,15 +119,13 @@
         height: fit-content;
         max-width: 100%;
       }
+
       .section-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 12px;
       }
 
-      .section-grid .section {
-        margin-bottom: 0; /* já temos o gap do grid */
-      }
       .section-column {
         display: flex;
         flex-direction: column;
@@ -92,13 +145,12 @@
         margin-bottom: 10px;
         font-size: 1.1rem;
         color: #495057;
-        grid-column: span 5; /* mantém para quando for grid */
+        grid-column: span 5;
       }
 
       .item {
         display: flex;
         align-items: center;
-        justify-content: flex-start;
         padding: 12px;
         background: #f1f1f1;
         border-radius: 6px;
@@ -108,7 +160,7 @@
       }
 
       .item input {
-        pointer-events: none; /* deixa o clique ir para o pai */
+        pointer-events: none;
         transform: scale(1.4);
         margin-right: 8px;
       }
@@ -116,6 +168,7 @@
       .item:hover {
         background: #e2e6ea;
       }
+
       .status {
         display: inline-block;
         font-size: 0.9em;
@@ -135,22 +188,6 @@
         color: #842029;
       }
 
-      button {
-        background-color: #0d6efd;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        margin-right: 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.95rem;
-        transition: background-color 0.3s;
-      }
-
-      button:hover {
-        background-color: #0b5ed7;
-      }
-
       @media (max-width: 768px) {
         .container {
           flex-direction: column;
@@ -165,6 +202,7 @@
           width: 100%;
         }
       }
+
       .order-header {
         display: flex;
         justify-content: space-between;
@@ -197,7 +235,25 @@
   </head>
 
   <body>
-    <div id="header-placeholder"></div>
+    <header>
+      <div class="logo-title">
+        <img src="" alt="Logo" class="logo" />
+      </div>
+
+      <div class="links-container">
+        <nav id="navLinks">
+          <a href="./login.html" class="protected"> Receção Bar </a>
+          <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
+          <a href="./cozinha.html" class="protected active"> Cozinha </a>
+          <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
+          <a href="./guiasTransporte.html" class="protected"
+            >🚚 Guias de Transporte
+          </a>
+
+          <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
+        </nav>
+      </div>
+    </header>
     <div style="padding: 20px">
       <h1>Painel Cozinha</h1>
       <div class="container">

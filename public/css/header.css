@@ -8,7 +8,10 @@ header {
   flex-wrap: wrap;
   gap: 1rem;
 }
-
+.links-container a.active {
+  color: white !important;
+  background-color: #007bff !important;
+}
 .logo-title {
   display: flex;
   align-items: center;
