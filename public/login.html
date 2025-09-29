@@ -910,6 +910,10 @@
               const selected = btn.dataset.selected === "true";
               btn.dataset.selected = selected ? "false" : "true";
               btn.classList.toggle("selected");
+
+              // Mostra/esconde os controlos de quantidade
+              qtyContainer.style.display =
+                btn.dataset.selected === "true" ? "inline-flex" : "none";
             };
             // antigo
             /* btn.onclick = () => {
@@ -921,8 +925,8 @@
             // Quantity container
             const qtyContainer = document.createElement("div");
             qtyContainer.className = "qty-container";
-            qtyContainer.style.display = "inline-flex"; // mostra sempre
-
+            // qtyContainer.style.display = "inline-flex"; // mostra sempre
+            qtyContainer.style.display = "none";
             // Minus button
             const minus = document.createElement("button");
             minus.type = "button";
@@ -1024,7 +1028,7 @@
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
       }
-      function renderArticleButtons(containerId, articles) {
+      function renderArticleButtons(containerId, articles, selectedItems = []) {
         const container = document.getElementById(containerId);
         container.innerHTML = "";
 
@@ -1037,26 +1041,65 @@
           btn.textContent = article.name;
           btn.className = "article-btn";
           btn.dataset.selected = "false";
+          btn.dataset.article = JSON.stringify(article);
+
+          // Quantity controls
+          const qtyContainer = document.createElement("div");
+          qtyContainer.className = "qty-container";
+          qtyContainer.style.display = "none";
+
+          const minus = document.createElement("button");
+          minus.type = "button";
+          minus.textContent = "–";
+          minus.className = "qty-btn";
 
           const qtyInput = document.createElement("input");
           qtyInput.type = "number";
           qtyInput.min = 1;
           qtyInput.value = 1;
-          qtyInput.style.width = "50px";
-          qtyInput.style.marginLeft = "10px";
+          qtyInput.style.width = "55px";
+          qtyInput.style.textAlign = "center";
 
+          const plus = document.createElement("button");
+          plus.type = "button";
+          plus.textContent = "+";
+          plus.className = "qty-btn";
+
+          minus.onclick = () => {
+            qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
+          };
+          plus.onclick = () => {
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+          };
+
+          qtyContainer.appendChild(minus);
+          qtyContainer.appendChild(qtyInput);
+          qtyContainer.appendChild(plus);
+
+          div.appendChild(btn);
+          div.appendChild(qtyContainer);
+          container.appendChild(div);
+
+          // 🔥 Verifica se este artigo já estava na mesa
+          const existing = selectedItems.find(
+            (i) => i.product_id === article.product_id
+          );
+          if (existing) {
+            btn.dataset.selected = "true";
+            btn.classList.add("selected");
+            qtyInput.value = existing.quantity || 1;
+            qtyContainer.style.display = "inline-flex"; // mostra logo
+          }
+
+          // Toggle seleção
           btn.onclick = () => {
             const selected = btn.dataset.selected === "true";
             btn.dataset.selected = selected ? "false" : "true";
             btn.classList.toggle("selected");
+
+            qtyContainer.style.display =
+              btn.dataset.selected === "true" ? "inline-flex" : "none";
           };
-
-          div.appendChild(btn);
-          div.appendChild(qtyInput);
-          container.appendChild(div);
-
-          // Guardar referência do artigo com quantidade
-          btn.dataset.article = JSON.stringify(article);
         });
       }
       function getSelectedProductsFromButtons(containerId) {
@@ -1128,7 +1171,7 @@
         };
 
         // Renderiza artigos
-        moloniProducts.forEach((artigo) => {
+        /*moloniProducts.forEach((artigo) => {
           const categoria = (artigo.summary || "")
             .trim()
             .toLowerCase()
@@ -1188,12 +1231,89 @@
           div.appendChild(qtyInput);
           container.appendChild(div);
         });
-
+*/
         // Preenche o nome da mesa
         document.getElementById("newTableName").value = table.name;
 
         // Mostra modal
         document.getElementById("createTableModal").style.display = "flex";
+        renderArticleButtons(
+          "principalArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "prato principal"
+          ),
+          table.order.plates
+        );
+
+        renderArticleButtons(
+          "secondaryArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "prato secundario"
+          ),
+          table.order.secondaryPlates
+        );
+
+        renderArticleButtons(
+          "sideArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "acompanhamento"
+          ),
+          table.order.sides
+        );
+
+        renderArticleButtons(
+          "dessertArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "sobremesa"
+          ),
+          table.order.desserts
+        );
+
+        renderArticleButtons(
+          "drinkArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "bebida"
+          ),
+          table.order.drinks
+        );
+
+        renderArticleButtons(
+          "extraArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "extra"
+          ),
+          table.order.extras
+        );
       }
 
       function updateTable(tableIndex) {
@@ -1216,6 +1336,10 @@
         // Atualiza a interface
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
+        // Atualiza UI
+        renderTables();
+        renderOrderDetails(selectedTableIndex);
+        closeCreateTableModal();
       }
     </script>
 

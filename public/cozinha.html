@@ -28,7 +28,7 @@
       }
 
       h1 {
-        font-size: 2rem;
+        font-size: 1rem;
         margin-bottom: 1rem;
         margin-left: 3%;
         margin-top: 1%;
@@ -63,6 +63,8 @@
       .btn-primary {
         background-color: #007bff;
         color: white;
+        height: 70px;
+        width: 200px;
       }
 
       .btn-primary:hover {
@@ -255,7 +257,6 @@
       </div>
     </header>
     <div style="padding: 20px">
-      <h1>Painel Cozinha</h1>
       <div class="container">
         <div class="table-list" id="tableList"></div>
         <div class="order-details" id="orderDetails">
@@ -340,7 +341,7 @@
 
         if (openTables.length) {
           const openHeader = document.createElement("h3");
-          openHeader.textContent = "Mesas Abertas";
+          openHeader.textContent = "Mesas Abertas  Painel Cozinha";
           tableList.appendChild(openHeader);
 
           openTables.forEach((table, index) => {
@@ -405,14 +406,15 @@
     </div>
 
     <!-- Nota da Cozinha -->
-   <div class="section section-grid">
-      <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
-      <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">${
-        table.kitchenNote
-      }</textarea>
-      <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
-    </div>
-
+<div class="section section-grid">
+  <label for="kitchenNote" style="font-weight:500; display:block;">Nota da Cozinha:</label>
+  <input type="text" 
+         id="kitchenNote" 
+         placeholder="" 
+         style="width:100%; box-sizing:border-box; padding:0px; border-radius:6px; border:1px solid #ccc;" 
+         maxlength="250">
+  <button class="btn btn-primary" onclick="saveKitchenNote(${index})">Guardar Nota</button>
+</div>
   
 
   
@@ -424,18 +426,42 @@ ${renderSection("Extras", order.extras, prepared.extras, "extras")}
 ${renderSection("Sobremesas", order.desserts, prepared.desserts, "desserts")}
 ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
 </div>
-<div class="section section-grid">
-  <h3>Informar Admin</h3>
-  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')">
-    Pratos feitos, falta sobremesas e/ou cafés 
-  </button>
-  <button onclick="setKitchenNote(${index}, ' PRATOS FEITOS, este pedido não tem sobremesas ou cafés')">
-    Este pedido não tem sobremesas ou cafés 
-  </button>
-  <button onclick="setKitchenNote(${index}, '' )" style="background-color: #6c757d;">
-    Limpar Nota
-  </button>
+<div class="section" style="align-items:center;">
+  <h3 style="text-align: center; margin-bottom:10xp; ">Informar Receção</h3>
+  
+  <!-- First 3 buttons centered -->
+  <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+    
+    <button class="btn btn-warning" 
+            onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')" 
+            style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 10px; background-color: #ffc107; font-weight: 600;">
+      Pratos feitos, falta sobremesas e/ou cafés
+    </button>
+
+    <button class="btn btn-info" 
+            onclick="setKitchenNote(${index}, ' PRATOS FEITOS, este pedido não tem sobremesas ou cafés')" 
+            style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 10px; background-color: #007bff; color: #fff; font-weight: 600;">
+      Este pedido não tem sobremesas ou cafés
+    </button>
+
+    <button class="btn btn-secondary" 
+            onclick="setKitchenNote(${index}, '' )" 
+            style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 10px; background-color: #6c757d; color: #fff; font-weight: 600;">
+      Limpar Nota
+    </button>
+
+  </div>
+
+  <!-- Last button -->
+  <div style="text-align:center; margin-top:20px">
+    <button class="btn btn-success" 
+            onclick="markAsFinished(${index})" 
+            style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 12px; background-color: green; color: #fff; font-weight: 500;">
+      Marcar como Terminada
+    </button>
+  </div>
 </div>
+
 `;
       }
 
@@ -471,6 +497,91 @@ ${renderSection("Cafés", order.coffee, prepared.coffee, "coffee")}
         renderOrderDetails(index);
       };
       renderTables();
+      // Função para marcar mesa como terminada
+      window.markAsFinished = function (index) {
+        const table = tables[index];
+        const prepared = table.prepared;
+        let allPrepared = true;
+
+        // Verifica se há itens não preparados
+        for (const section in prepared) {
+          if (!prepared[section]) continue;
+          if (prepared[section].some((p) => !p)) {
+            allPrepared = false;
+            break;
+          }
+        }
+
+        if (!allPrepared) {
+          // Modal de confirmação
+          const modalHtml = `
+      <div id="confirmFinishModal" style="
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      ">
+        <div style="
+          background: #fff;
+          padding: 30px;
+          border-radius: 12px;
+          width: 400px;
+          text-align: center;
+          font-family: Arial, sans-serif;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        ">
+          <h2 style="margin-bottom: 20px;">Itens não preparados</h2>
+          <p style="margin-bottom: 30px;">Ainda não estão todos os pedidos preparados. Tem a certeza que quer avançar?</p>
+          <div style="display: flex; justify-content: space-between; gap: 10px;">
+            <button style="
+              flex: 1;
+              padding: 10px 0;
+              background: orange;
+              color: #fff;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+            " onclick="document.getElementById('confirmFinishModal').remove()">
+              Cancelar
+            </button>
+            <button style="
+              flex: 1;
+              padding: 10px 0;
+              background: green;
+              color: #fff;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+            " onclick="proceedFinish(${index})">
+              Avançar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+          document.body.insertAdjacentHTML("beforeend", modalHtml);
+          return;
+        }
+
+        // Se todos preparados, termina direto
+        proceedFinish(index);
+      };
+      // Função que realmente marca a mesa como terminada
+      function proceedFinish(index) {
+        const table = tables[index];
+        table.open = false; // Fecha a mesa
+        table.order.status = "finished"; // Marca como finalizada
+
+        // Remove modal se existir
+        const modal = document.getElementById("confirmFinishModal");
+        if (modal) modal.remove();
+
+        renderTables();
+        renderOrderDetails(index);
+      }
     </script>
     <script src="./js/header.js"></script>
   </body>
