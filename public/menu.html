@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gestão de Menu - Moloni</title>
+    <link rel="stylesheet" href="css/header.css" />
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        margin: 0;
+        background-color: #f4f6f8;
+        color: #333;
+      }
+      h1 {
+        margin: 15px 0;
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+      }
+      .list {
+        flex: 1;
+        background: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        overflow-y: auto;
+        max-height: 75vh;
+      }
+      .list h2 {
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+      }
+      tr {
+        cursor: pointer;
+      }
+      tr:hover {
+        background: #f9fafb;
+      }
+      input[type="checkbox"] {
+        transform: scale(1.2);
+        pointer-events: none; /* impede clique direto no checkbox */
+      }
+      /* Mensagens */
+      .message {
+        padding: 10px;
+        margin: 10px 20px;
+        border-radius: 5px;
+        display: none;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo-title">
+        <img src="" alt="Logo" class="logo" />
+      </div>
+      <div class="links-container">
+        <nav id="navLinks">
+          <a href="./login.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
+          <!-- Layout principal: 2 colunas
+          <a href="./guiasTransporte.html" class="protected"
+
+            >🚚 Guias de Transporte
+          </a>
+ -->
+          <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
+          <a href="./menu.html" class="protected active">📋 Menu</a>
+        </nav>
+      </div>
+      <div id="tokenDisplay" class="token-status">
+        ⚠️ Sistema não autenticado
+      </div>
+    </header>
+
+    <h1>📋 Gestão de Menu</h1>
+
+    <div class="message success" id="msgSuccess"></div>
+    <div class="message error" id="msgError"></div>
+
+    <div class="container">
+      <!-- Lista de todos os pratos -->
+      <div class="list">
+        <h2>🍳 Todos os Pratos</h2>
+        <table id="allDishes">
+          <thead>
+            <tr>
+              <th>Selecionar</th>
+              <th>Nome</th>
+              <th>Preço</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Lista de pratos do menu -->
+      <div class="list">
+        <h2>✅ No Menu</h2>
+        <table id="menuDishes">
+          <thead>
+            <tr>
+              <th>Selecionar</th>
+              <th>Nome</th>
+              <th>Preço</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      let pratos = [
+        {
+          product_id: 1,
+          name: "Bife à Portuguesa",
+          price: 12.5,
+          disponivel: false,
+        },
+        {
+          product_id: 2,
+          name: "Bacalhau à Brás",
+          price: 10.0,
+          disponivel: true,
+        },
+        {
+          product_id: 3,
+          name: "Sopa de Legumes",
+          price: 3.5,
+          disponivel: false,
+        },
+        { product_id: 4, name: "Francesinha", price: 11.0, disponivel: true },
+      ];
+
+      // Mensagens
+      function showMessage(type, text) {
+        const msg =
+          type === "success"
+            ? document.getElementById("msgSuccess")
+            : document.getElementById("msgError");
+        msg.textContent = text;
+        msg.style.display = "block";
+        setTimeout(() => (msg.style.display = "none"), 3000);
+      }
+
+      // Renderizar listas
+      function renderLists() {
+        const allBody = document.querySelector("#allDishes tbody");
+        const menuBody = document.querySelector("#menuDishes tbody");
+        allBody.innerHTML = "";
+        menuBody.innerHTML = "";
+
+        pratos.forEach((p) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="checkbox" ${p.disponivel ? "checked" : ""}></td>
+            <td>${p.name}</td>
+            <td>${p.price} €</td>
+          `;
+          row.onclick = () => toggleDisponibilidade(p.product_id);
+
+          if (p.disponivel) {
+            menuBody.appendChild(row);
+          } else {
+            allBody.appendChild(row);
+          }
+        });
+      }
+
+      // Alternar estado localmente
+      function toggleDisponibilidade(id) {
+        const prato = pratos.find((p) => p.product_id === id);
+        if (!prato) return;
+
+        prato.disponivel = !prato.disponivel;
+        showMessage(
+          "success",
+          `Prato "${prato.name}" ${
+            prato.disponivel ? "adicionado" : "removido"
+          } do menu.`
+        );
+        renderLists();
+      }
+
+      // Init
+      renderLists();
+    </script>
+    <script src="./js/header.js"></script>
+  </body>
+</html>
