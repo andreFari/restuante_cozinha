@@ -158,22 +158,20 @@ p {
 }
 .modal-content {
   display: flex;
-  flex-direction: row; /* horizontal */
+  flex-direction: row;
   gap: 40px;
   background: #fff;
   border-radius: 10px;
-  width: 90%;
-    max-width: 1200px;   /* antes 900px → aumenta a largura */
-  max-height: 95vh;    /* ocupa quase toda a tela */
-  padding: 10px;       /* mais espaço interno */
-  font-size: 1.1rem;  
-   
   
- 
+  width: 100%;      /* ocupa quase toda a largura */
+  height: 95%;     /* ocupa quase toda a altura */
+  max-width: 1200px;  /* opcional para limitar em telas grandes */
+  max-height: 95vh;   /* garante que não ultrapasse a tela */
+  
+  padding: 10px;
   overflow: hidden;
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
   animation: slideIn 0.3s ease;
-  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 @keyframes slideIn {
@@ -576,4 +574,31 @@ header.login-active .login-form {
   height: 24px;
   margin-right: 6px;
   vertical-align: middle;
+}
+
+/* ====== Mesas ====== */
+
+.table-number-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 50px); /* 5 colunas */
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.table-number-grid button {
+  width: 50px;
+  height: 50px;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  background: #f9f9f9;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.table-number-grid button.selected {
+  background-color: #007bff;
+  color: #fff;
 }

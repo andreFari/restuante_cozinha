@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Receção Cozinha</title>
+    <title>Receção bar</title>
     <link rel="stylesheet" href="css/login.css" />
     <link rel="stylesheet" href="css/header.css" />
   </head>
@@ -36,16 +36,16 @@
             Receção Cozinha
           </a>
           <a href="./cozinha.html" class="protected"> Cozinha </a>
-          <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
+          <a href="./faturas.html" class="protected"> Ver Faturas</a>
           <!-- Layout principal: 2 colunas
           <a href="./guiasTransporte.html" class="protected"
 
             >🚚 Guias de Transporte
           </a>
  -->
-
-          <a href="./artigos.html" class="protected">🍽️ Gerir Pratos</a>
-          <a href="./menu.html" class="protected">📋 Menu</a>
+          <a href="./artigos.html" class="protected"> Gerir Pratos</a>
+          <a href="./menu.html" class="protected">Menu</a>
+          <a href="./gest_mesas.html" class="protected"> Gestão mesas</a>
         </nav>
       </div>
 
@@ -54,7 +54,7 @@
       </div>
     </header>
     <div id="mainContent" style="display: none">
-      <h1>Receção Cozinha</h1>
+      <h1>Receção Bar</h1>
 
       <button class="btn protected" onclick="openCreateTableModal()">
         Abrir Nova Mesa
@@ -110,12 +110,11 @@
           <div class="modal-left">
             <h3>Abrir Nova Mesa</h3>
 
-            <label for="newTableName">Nome da Mesa:</label>
-            <input
-              type="text"
-              id="newTableName"
-              placeholder="(Dropdown das mesas do restaurante)"
-            />
+            <label>Escolha a Mesa:</label>
+            <div id="tableNumbers" class="table-number-grid"></div>
+
+            <input type="hidden" id="newTableName" />
+            <!-- guardará o nr da mesa selecionada -->
 
             <div class="modal-actions">
               <button
@@ -140,32 +139,48 @@
             <!-- 🔹 título fixo -->
 
             <div class="category-section">
-              <h4>Pratos Principais</h4>
+              <h4
+                onclick="toggleCategory('principalArticles','prato principal')"
+              >
+                🍽️ Pratos Principais
+              </h4>
               <div id="principalArticles" class="article-list"></div>
             </div>
 
             <div class="category-section">
-              <h4>Pratos Secundários</h4>
+              <h4
+                onclick="toggleCategory('secondaryArticles','prato secundario')"
+              >
+                🍲 Pratos Secundários
+              </h4>
               <div id="secondaryArticles" class="article-list"></div>
             </div>
 
             <div class="category-section">
-              <h4>Acompanhamentos</h4>
+              <h4 onclick="toggleCategory('sideArticles','acompanhamento')">
+                🥗 Acompanhamentos
+              </h4>
               <div id="sideArticles" class="article-list"></div>
             </div>
 
             <div class="category-section">
-              <h4>Sobremesas</h4>
+              <h4 onclick="toggleCategory('dessertArticles','sobremesa')">
+                🍰 Sobremesas
+              </h4>
               <div id="dessertArticles" class="article-list"></div>
             </div>
 
             <div class="category-section">
-              <h4>Bebidas</h4>
+              <h4 onclick="toggleCategory('drinkArticles','bebida')">
+                🥤 Bebidas
+              </h4>
               <div id="drinkArticles" class="article-list"></div>
             </div>
 
             <div class="category-section">
-              <h4>Extras</h4>
+              <h4 onclick="toggleCategory('extraArticles','extra')">
+                ➕ Extras
+              </h4>
               <div id="extraArticles" class="article-list"></div>
             </div>
           </div>
@@ -848,13 +863,14 @@
         return products;
       }
 
-      let moloniProducts = []; // global, para todas as funções
+      let moloniProducts = []; // global
 
       async function openCreateTableModal() {
         const saveBtn = document.getElementById("saveTableBtn");
-        saveBtn.textContent = "Abrir Mesa"; // ou "Criar Mesa"
-        saveBtn.onclick = createNewTable; // função de criar
-        // Limpa os containers de botões
+        saveBtn.textContent = "Abrir Mesa";
+        saveBtn.onclick = createNewTable;
+
+        // Limpa containers
         const containerIds = [
           "principalArticles",
           "secondaryArticles",
@@ -869,108 +885,94 @@
 
         try {
           const response = await fetch("/artigo/artigos");
-          //  if (!response.ok) throw new Error("Erro ao buscar artigos");
-
-          const artigos = await response.json();
-          console.log("Artigos carregados:", artigos); // 👈 aqui sim já são os dados
-
-          moloniProducts = artigos; // guarda globalmente
-
-          artigos.forEach((artigo) => {
-            const categoria = (artigo.summary || "")
-              .trim()
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "");
-
-            let containerId;
-            if (categoria === "prato principal")
-              containerId = "principalArticles";
-            else if (categoria === "prato secundario")
-              containerId = "secondaryArticles";
-            else if (categoria === "acompanhamento")
-              containerId = "sideArticles";
-            else if (categoria === "sobremesa") containerId = "dessertArticles";
-            else if (categoria === "bebida") containerId = "drinkArticles";
-            else if (categoria === "extra") containerId = "extraArticles";
-            else return; // ignora categorias desconhecidas
-
-            const container = document.getElementById(containerId);
-
-            // Create container div for article + quantity controls
-            const div = document.createElement("div");
-            div.className = "article-item";
-
-            // Article button
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = artigo.name;
-            btn.className = "article-btn";
-            btn.dataset.selected = "false";
-            btn.classList.remove("selected");
-
-            // 🔹 guarda referência do artigo
-            btn.dataset.article = JSON.stringify(artigo);
-
-            btn.onclick = () => {
-              const selected = btn.dataset.selected === "true";
-              btn.dataset.selected = selected ? "false" : "true";
-              btn.classList.toggle("selected");
-            };
-            // antigo
-            /* btn.onclick = () => {
-                    btn.dataset.selected =
-                      btn.dataset.selected === "true" ? "false" : "true";
-                    btn.classList.toggle("selected");
-                  };*/
-
-            // Quantity container
-            const qtyContainer = document.createElement("div");
-            qtyContainer.className = "qty-container";
-            qtyContainer.style.display = "inline-flex"; // mostra sempre
-
-            // Minus button
-            const minus = document.createElement("button");
-            minus.type = "button";
-            minus.textContent = "–";
-            minus.className = "qty-btn";
-            minus.onclick = () => {
-              qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
-            };
-
-            // Quantity input
-            const qtyInput = document.createElement("input");
-            qtyInput.type = "number";
-            qtyInput.min = 1;
-            qtyInput.value = 1;
-            qtyInput.style.width = "55px";
-            qtyInput.style.textAlign = "center";
-
-            // Plus button
-            const plus = document.createElement("button");
-            plus.type = "button";
-            plus.textContent = "+";
-            plus.className = "qty-btn";
-            plus.onclick = () => {
-              qtyInput.value = parseInt(qtyInput.value) + 1;
-            };
-
-            // Append controls
-            qtyContainer.appendChild(minus);
-            qtyContainer.appendChild(qtyInput);
-            qtyContainer.appendChild(plus);
-
-            // Add button + qty controls to div
-            div.appendChild(btn);
-            div.appendChild(qtyContainer);
-            container.appendChild(div);
-          });
+          moloniProducts = await response.json();
 
           document.getElementById("newTableName").value = "";
           document.getElementById("createTableModal").style.display = "flex";
         } catch (err) {
-          // alert("Não foi possível carregar os artigos: " + err.message);
+          console.error("Erro ao carregar artigos", err);
         }
+      }
+
+      // 🔥 Gera os botões só quando clicamos numa categoria
+      function toggleCategory(containerId, categoriaFiltro) {
+        const container = document.getElementById(containerId);
+
+        if (container.innerHTML !== "") {
+          container.innerHTML = ""; // toggle: esconde se já estiver preenchido
+          return;
+        }
+
+        const artigosFiltrados = moloniProducts.filter((artigo) => {
+          const categoria = (artigo.summary || "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+          return categoria === categoriaFiltro;
+        });
+
+        artigosFiltrados.forEach((artigo) => {
+          const div = document.createElement("div");
+          div.className = "article-item";
+
+          // Botão do artigo
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = artigo.name;
+          btn.className = "article-btn";
+          btn.dataset.selected = "false";
+          btn.classList.remove("selected");
+
+          // guarda referência do artigo
+          btn.dataset.article = JSON.stringify(artigo);
+
+          // Controles de quantidade
+          const qtyContainer = document.createElement("div");
+          qtyContainer.className = "qty-container";
+          qtyContainer.style.display = "none";
+
+          const qtyInput = document.createElement("input");
+          qtyInput.type = "number";
+          qtyInput.min = 1;
+          qtyInput.value = 1;
+          qtyInput.style.width = "55px";
+          qtyInput.style.textAlign = "center";
+
+          const minus = document.createElement("button");
+          minus.type = "button";
+          minus.textContent = "–";
+          minus.className = "qty-btn";
+          minus.onclick = () => {
+            qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
+          };
+
+          const plus = document.createElement("button");
+          plus.type = "button";
+          plus.textContent = "+";
+          plus.className = "qty-btn";
+          plus.onclick = () => {
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+          };
+
+          qtyContainer.appendChild(minus);
+          qtyContainer.appendChild(qtyInput);
+          qtyContainer.appendChild(plus);
+
+          // toggle seleção
+          btn.onclick = () => {
+            const selected = btn.dataset.selected === "true";
+            btn.dataset.selected = selected ? "false" : "true";
+            btn.classList.toggle("selected");
+            qtyContainer.style.display =
+              btn.dataset.selected === "true" ? "inline-flex" : "none";
+          };
+
+          div.appendChild(btn);
+          div.appendChild(qtyContainer);
+          container.appendChild(div);
+        });
       }
       function createNewTable() {
         const tableName = document.getElementById("newTableName").value.trim();
@@ -1030,7 +1032,7 @@
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
       }
-      function renderArticleButtons(containerId, articles) {
+      function renderArticleButtons(containerId, articles, selectedItems = []) {
         const container = document.getElementById(containerId);
         container.innerHTML = "";
 
@@ -1043,26 +1045,65 @@
           btn.textContent = article.name;
           btn.className = "article-btn";
           btn.dataset.selected = "false";
+          btn.dataset.article = JSON.stringify(article);
+
+          // Quantity controls
+          const qtyContainer = document.createElement("div");
+          qtyContainer.className = "qty-container";
+          qtyContainer.style.display = "none";
+
+          const minus = document.createElement("button");
+          minus.type = "button";
+          minus.textContent = "–";
+          minus.className = "qty-btn";
 
           const qtyInput = document.createElement("input");
           qtyInput.type = "number";
           qtyInput.min = 1;
           qtyInput.value = 1;
-          qtyInput.style.width = "50px";
-          qtyInput.style.marginLeft = "10px";
+          qtyInput.style.width = "55px";
+          qtyInput.style.textAlign = "center";
 
+          const plus = document.createElement("button");
+          plus.type = "button";
+          plus.textContent = "+";
+          plus.className = "qty-btn";
+
+          minus.onclick = () => {
+            qtyInput.value = Math.max(1, parseInt(qtyInput.value) - 1);
+          };
+          plus.onclick = () => {
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+          };
+
+          qtyContainer.appendChild(minus);
+          qtyContainer.appendChild(qtyInput);
+          qtyContainer.appendChild(plus);
+
+          div.appendChild(btn);
+          div.appendChild(qtyContainer);
+          container.appendChild(div);
+
+          // 🔥 Verifica se este artigo já estava na mesa
+          const existing = selectedItems.find(
+            (i) => i.product_id === article.product_id
+          );
+          if (existing) {
+            btn.dataset.selected = "true";
+            btn.classList.add("selected");
+            qtyInput.value = existing.quantity || 1;
+            qtyContainer.style.display = "inline-flex"; // mostra logo
+          }
+
+          // Toggle seleção
           btn.onclick = () => {
             const selected = btn.dataset.selected === "true";
             btn.dataset.selected = selected ? "false" : "true";
             btn.classList.toggle("selected");
+
+            qtyContainer.style.display =
+              btn.dataset.selected === "true" ? "inline-flex" : "none";
           };
-
-          div.appendChild(btn);
-          div.appendChild(qtyInput);
-          container.appendChild(div);
-
-          // Guardar referência do artigo com quantidade
-          btn.dataset.article = JSON.stringify(article);
         });
       }
       function getSelectedProductsFromButtons(containerId) {
@@ -1134,7 +1175,7 @@
         };
 
         // Renderiza artigos
-        moloniProducts.forEach((artigo) => {
+        /*moloniProducts.forEach((artigo) => {
           const categoria = (artigo.summary || "")
             .trim()
             .toLowerCase()
@@ -1194,12 +1235,89 @@
           div.appendChild(qtyInput);
           container.appendChild(div);
         });
-
+*/
         // Preenche o nome da mesa
         document.getElementById("newTableName").value = table.name;
 
         // Mostra modal
         document.getElementById("createTableModal").style.display = "flex";
+        renderArticleButtons(
+          "principalArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "prato principal"
+          ),
+          table.order.plates
+        );
+
+        renderArticleButtons(
+          "secondaryArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "prato secundario"
+          ),
+          table.order.secondaryPlates
+        );
+
+        renderArticleButtons(
+          "sideArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "acompanhamento"
+          ),
+          table.order.sides
+        );
+
+        renderArticleButtons(
+          "dessertArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "sobremesa"
+          ),
+          table.order.desserts
+        );
+
+        renderArticleButtons(
+          "drinkArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "bebida"
+          ),
+          table.order.drinks
+        );
+
+        renderArticleButtons(
+          "extraArticles",
+          moloniProducts.filter(
+            (a) =>
+              (a.summary || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") === "extra"
+          ),
+          table.order.extras
+        );
       }
 
       function updateTable(tableIndex) {
@@ -1222,6 +1340,10 @@
         // Atualiza a interface
         renderTables();
         document.getElementById("createTableModal").style.display = "none";
+        // Atualiza UI
+        renderTables();
+        renderOrderDetails(selectedTableIndex);
+        closeCreateTableModal();
       }
     </script>
 
@@ -1331,6 +1453,33 @@
         document.body.insertAdjacentHTML("beforeend", modalHtml);
       }
 
+      //mesas
+
+      const tableGrid = document.getElementById("tableNumbers");
+      const tableInput = document.getElementById("newTableName");
+
+      // gerar botões 1 a 20
+      for (let i = 1; i <= 20; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.addEventListener("click", () => selectTable(i, btn));
+        tableGrid.appendChild(btn);
+      }
+
+      function selectTable(number, button) {
+        // remover seleção anterior
+        document
+          .querySelectorAll("#tableNumbers button")
+          .forEach((b) => b.classList.remove("selected"));
+
+        // adicionar seleção atual
+        button.classList.add("selected");
+
+        // atualizar input escondido
+        tableInput.value = number;
+      }
+
+      //troco
       function calculateChange(total) {
         const amountGiven =
           parseFloat(document.getElementById("amountGiven").value) || 0;
