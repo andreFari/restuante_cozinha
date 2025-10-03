@@ -36,6 +36,7 @@
       <div>
         <button id="syncBtn">🔄 Sincronizar</button>
         <button id="openModalBtn">➕ Criar Novo Prato</button>
+        <button id="toggleOrderBtn">⚙️ Ajustar posições</button>
       </div>
     </div>
     <!-- 🔥 Barra de Seções -->
@@ -109,94 +110,108 @@
         msg.style.display = "block";
         setTimeout(() => (msg.style.display = "none"), 3000);
       }
+      let orderMode = false; // modo organização
 
       function renderGrid(data) {
         const grid = document.getElementById("productGrid");
         grid.innerHTML = "";
 
-        data.forEach((prod, index) => {
+        let filtered = data;
+        if (currentCategory !== "Todos") {
+          filtered = data.filter((p) => {
+            const descricao = (p.summary || "").toLowerCase();
+            if (currentCategory === "Bebidas")
+              return descricao.includes("bebida");
+            if (currentCategory === "Principais")
+              return descricao.includes("principal");
+            if (currentCategory === "Secundarios")
+              return (
+                descricao.includes("secundário") ||
+                descricao.includes("secundario")
+              );
+            if (currentCategory === "Extras")
+              return descricao.includes("extra");
+            if (currentCategory === "Sobremesas")
+              return descricao.includes("sobremesa");
+            return false;
+          });
+        }
+        filtered.forEach((prod, index) => {
           const card = document.createElement("div");
           card.className = "card";
-          card.draggable = true; // <- torna arrastável
-          card.dataset.index = index; // guardar a posição original
+          card.dataset.index = index;
 
-          card.innerHTML = `
+          card.style.backgroundImage = `url(${
+            prod.image_url || "imagens/placeholder.jpg"
+          })`;
+          card.style.backgroundSize = "cover";
+          card.style.backgroundPosition = "center";
+
+          const overlay = document.createElement("div");
+          overlay.className = "overlay";
+          overlay.innerHTML = `
       <h3>${prod.name}</h3>
       <p>${prod.price} €</p>
-      <small>Ref: ${prod.reference}</small>
+      <small>${prod.category_id}</small>
+  `;
+
+          card.appendChild(overlay);
+
+          if (orderMode) {
+            const controls = document.createElement("div");
+            controls.className = "controls";
+            controls.innerHTML = `
+      <button class="moveLeft">⬅</button>
+      <button class="moveRight">➡</button>
     `;
 
-          card.onclick = (e) => {
-            // só abre detalhes se não estivermos a arrastar
-            if (!card.classList.contains("dragging")) {
-              openDetails(prod);
-            }
-          };
+            controls.querySelector(".moveLeft").onclick = (e) => {
+              e.stopPropagation(); // 👈 evita abrir detalhes ao clicar aqui
+              moveItem(index, -1);
+            };
+            controls.querySelector(".moveRight").onclick = (e) => {
+              e.stopPropagation();
+              moveItem(index, 1);
+            };
 
-          // Eventos drag & drop
-          card.addEventListener("dragstart", (e) => {
-            card.classList.add("dragging");
-            e.dataTransfer.effectAllowed = "move";
-          });
-
-          card.addEventListener("dragend", () => {
-            card.classList.remove("dragging");
-            updateOrder();
-          });
+            card.appendChild(controls);
+          } else {
+            // 👇 garante que qualquer clique no card abre detalhes
+            card.onclick = () => openDetails(prod);
+          }
 
           grid.appendChild(card);
         });
-
-        // Permitir drop dentro da grelha
-        grid.addEventListener("dragover", (e) => {
-          e.preventDefault();
-          const dragging = document.querySelector(".dragging");
-          const cards = [...grid.querySelectorAll(".card:not(.dragging)")];
-          const afterElement = getDragAfterElement(grid, e.clientY);
-          if (afterElement == null) {
-            grid.appendChild(dragging);
-          } else {
-            grid.insertBefore(dragging, afterElement);
-          }
-        });
       }
 
-      // Função para encontrar o elemento correto ao arrastar
-      function getDragAfterElement(container, y) {
-        const draggableElements = [
-          ...container.querySelectorAll(".card:not(.dragging)"),
-        ];
-
-        return draggableElements.reduce(
-          (closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-              return { offset: offset, element: child };
-            } else {
-              return closest;
-            }
-          },
-          { offset: Number.NEGATIVE_INFINITY }
-        ).element;
+      function moveItem(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= produtos.length) return;
+        const temp = produtos[index];
+        produtos[index] = produtos[newIndex];
+        produtos[newIndex] = temp;
+        renderGrid(produtos);
       }
 
-      // Atualizar array `produtos` conforme a nova ordem
-      function updateOrder() {
-        const newOrder = [];
-        document.querySelectorAll(".card").forEach((card) => {
-          const index = card.dataset.index;
-          newOrder.push(produtos[index]);
-        });
-        produtos = newOrder;
-        console.log(
-          "Nova ordem:",
-          produtos.map((p) => p.name)
-        );
+      document.getElementById("toggleOrderBtn").onclick = () => {
+        orderMode = !orderMode;
+        document.getElementById("toggleOrderBtn").textContent = orderMode
+          ? "✅ Guardar ordem"
+          : "⚙️ Ajustar posições";
 
-        // 👉 Aqui podes enviar para o backend se quiseres guardar no servidor:
-        // fetch("/artigo/reordenar", { method:"POST", body: JSON.stringify(produtos) })
-      }
+        if (!orderMode) {
+          console.log(
+            "Nova ordem:",
+            produtos.map((p) => p.name)
+          );
+
+          // 👉 Guardar no localStorage
+          localStorage.setItem("ordemProdutos", JSON.stringify(produtos));
+          showMessage("success", "Ordem guardada!");
+        }
+
+        renderGrid(produtos);
+      };
 
       let currentEditId = null; // para saber se estamos a editar ou criar
 
@@ -223,7 +238,7 @@
       let currentCategory = "Todos"; // categoria ativa
 
       // Renderização com filtro
-      function renderGrid(data) {
+      /*function renderGrid(data) {
         const grid = document.getElementById("productGrid");
         grid.innerHTML = "";
 
@@ -297,6 +312,7 @@
           }
         });
       }
+*/
 
       // Clique nos botões de categoria
       document.querySelectorAll(".sectionBtn").forEach((btn) => {
@@ -400,15 +416,25 @@
         const term = this.value.toLowerCase();
         renderGrid(produtos.filter((p) => p.name.toLowerCase().includes(term)));
       });
-
-      // Fetch produtos
       async function fetchProducts() {
         const res = await fetch("/artigo/artigos");
         produtos = await res.json();
         if (!Array.isArray(produtos)) produtos = produtos.products || [];
+
+        // 👉 Repor ordem do localStorage (se existir)
+        const ordemGuardada = JSON.parse(
+          localStorage.getItem("ordemProdutos") || "[]"
+        );
+        if (ordemGuardada.length) {
+          // juntar info nova do servidor com a ordem guardada
+          const mapById = new Map(produtos.map((p) => [p.product_id, p]));
+          produtos = ordemGuardada
+            .map((p) => mapById.get(p.product_id))
+            .filter(Boolean);
+        }
+
         renderGrid(produtos);
       }
-
       async function deleteProduct(id) {
         if (!confirm("Eliminar este produto?")) return;
         try {

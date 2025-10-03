@@ -36,6 +36,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use("/molo", moloniRoutes);
 app.use("/artigo", artigosRoutes);
+app.use("/images", express.static("public/imagens"));
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, "uploads");

@@ -127,88 +127,124 @@
         const allBody = document.querySelector("#allDishes tbody");
         const menuBody = document.querySelector("#menuDishes tbody");
         const menuName = document.getElementById("currentMenuName");
-
-        function initAllDishes() {
-          allBody.innerHTML = "";
-          pratos.forEach((p) => {
-            const row = document.createElement("tr");
-            row.dataset.id = p.product_id;
-            row.innerHTML = `
-        <td><input type="checkbox"></td>
-        <td>${p.name}</td>
-        <td>${p.price.toFixed(2)} €</td>
-        <td>${p.category}</td>
-      `;
-            allBody.appendChild(row);
-
-            const checkbox = row.querySelector("input");
-            checkbox.addEventListener("change", () => {
-              if (checkbox.checked) {
-                menus[currentMenu].push(p);
-              } else {
-                menus[currentMenu] = menus[currentMenu].filter(
-                  (m) => m.product_id !== p.product_id
-                );
-              }
-              updateMenuTable();
-            });
-          });
-        }
-
-        function updateAllDishes() {
-          // Atualiza checkboxes de acordo com o menu atual e categoria
-          Array.from(allBody.children).forEach((row) => {
+        // Delegação de evento para todos os pratos
+        allBody.addEventListener("change", (e) => {
+          if (e.target.tagName === "INPUT") {
+            const row = e.target.closest("tr");
             const id = parseInt(row.dataset.id);
             const prato = pratos.find((p) => p.product_id === id);
 
-            // Filtra por categoria
-            if (
-              currentCategory !== "all" &&
-              prato.category !== currentCategory
-            ) {
-              row.style.display = "none";
+            if (e.target.checked) {
+              if (!menus[currentMenu].some((m) => m.product_id === id)) {
+                menus[currentMenu].push(prato);
+              }
             } else {
-              row.style.display = "";
+              menus[currentMenu] = menus[currentMenu].filter(
+                (m) => m.product_id !== id
+              );
             }
 
-            row.querySelector("input").checked = menus[currentMenu].some(
+            renderMenuDishes();
+          }
+        });
+        function renderAllDishes() {
+          allBody.innerHTML = "";
+
+          pratos
+            .filter(
+              (p) => currentCategory === "all" || p.category === currentCategory
+            )
+            .forEach((p) => {
+              const row = document.createElement("tr");
+              row.dataset.id = p.product_id;
+
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = menus[currentMenu].some(
+                (m) => m.product_id === p.product_id
+              );
+
+              const tdCheck = document.createElement("td");
+              tdCheck.appendChild(checkbox);
+
+              const tdName = document.createElement("td");
+              tdName.textContent = p.name;
+
+              const tdPrice = document.createElement("td");
+              tdPrice.textContent = p.price.toFixed(2) + " €";
+
+              const tdCategory = document.createElement("td");
+              tdCategory.textContent = p.category;
+
+              row.append(tdCheck, tdName, tdPrice, tdCategory);
+
+              // Aqui: adicionamos clique na linha inteira
+              row.addEventListener("click", (e) => {
+                // Evita que clicar diretamente na checkbox dispare duas vezes
+                if (e.target.tagName !== "INPUT") {
+                  checkbox.checked = !checkbox.checked;
+                }
+
+                if (checkbox.checked) {
+                  if (
+                    !menus[currentMenu].some(
+                      (m) => m.product_id === p.product_id
+                    )
+                  ) {
+                    menus[currentMenu].push(p);
+                  }
+                } else {
+                  menus[currentMenu] = menus[currentMenu].filter(
+                    (m) => m.product_id !== p.product_id
+                  );
+                }
+                renderMenuDishes();
+              });
+
+              allBody.appendChild(row);
+            });
+        }
+
+        function updateAllDishesCheckboxes() {
+          Array.from(allBody.querySelectorAll("tr")).forEach((row) => {
+            const id = parseInt(row.dataset.id);
+            const checkbox = row.querySelector("input");
+            checkbox.checked = menus[currentMenu].some(
               (m) => m.product_id === id
             );
           });
         }
 
-        function updateMenuTable() {
+        function renderMenuDishes() {
           menuBody.innerHTML = "";
           menus[currentMenu].forEach((p) => {
             const row = document.createElement("tr");
             row.dataset.id = p.product_id;
             row.innerHTML = `
-        <td><input type="checkbox" checked></td>
-        <td>${p.name}</td>
-        <td>${p.price.toFixed(2)} €</td>
-        <td>${p.category}</td>
-      `;
+      <td><input type="checkbox" checked></td>
+      <td>${p.name}</td>
+      <td>${p.price.toFixed(2)} €</td>
+      <td>${p.category}</td>
+    `;
             menuBody.appendChild(row);
 
             row.querySelector("input").addEventListener("change", () => {
               menus[currentMenu] = menus[currentMenu].filter(
                 (m) => m.product_id !== p.product_id
               );
-              updateAllDishes();
-              updateMenuTable();
+              renderMenuDishes();
+              updateAllDishesCheckboxes();
             });
           });
         }
-
         function render() {
           menuName.textContent =
             currentMenu.charAt(0).toUpperCase() + currentMenu.slice(1);
-          updateAllDishes();
-          updateMenuTable();
+          renderAllDishes();
+          renderMenuDishes();
         }
 
         // Inicialização
-        initAllDishes();
         render();
 
         // Alternar menu
@@ -231,7 +267,7 @@
               .forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             currentCategory = btn.dataset.category;
-            render();
+            renderAllDishes();
           });
         });
       });

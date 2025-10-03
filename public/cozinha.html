@@ -273,7 +273,7 @@
           id: 1,
           name: "Mesa 1",
           open: true,
-          kitchenNote: "Tens que fazer mais uma de frango",
+          kitchenNote: "Bife mal passado",
           order: {
             status: "unpaid",
             plates: ["Frango Assado", "Sopa"],
@@ -402,9 +402,9 @@
           table.open ? "Aberta" : "Fechada"
         }</div>
       <div class="admin-note-short" title="${
-        table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
+        table.kitchenNote ? table.kitchenNote : "Nenhuma nota."
       }">
-        ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."}
+        ${table.kitchenNote ? table.kitchenNote : "Nenhuma nota."}
       </div>
     </div>
 
@@ -431,7 +431,7 @@
   <!-- First 3 buttons centered -->
   <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
     
-    <button class="btn btn-warning" 
+    <!--  <button class="btn btn-warning" 
             onclick="setKitchenNote(${index}, ' PRATOS FEITOS , falta sobremesas e/ou cafés')" 
             style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 10px; background-color: #C46210; font-weight: 600;">
       Pratos feitos, falta sobremesas e/ou cafés
@@ -447,12 +447,12 @@
             onclick="setKitchenNote(${index}, '' )" 
             style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 10px; background-color: #6c757d; color: #fff; font-weight: 600;">
       Limpar Nota
-    </button>
+    </button>-->
 
   </div>
 
   <!-- Last button -->
-  <div style="text-align:center; margin-top:20px">
+  <div style="text-align:center; ">
     <button class="btn btn-success" 
             onclick="markAsFinished(${index})" 
             style="height: 50px; min-width: 180px; font-size: 1rem; border-radius: 12px; background-color: green; color: #fff; font-weight: 500;">
