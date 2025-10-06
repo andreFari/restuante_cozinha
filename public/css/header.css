@@ -2,7 +2,7 @@ header {
   background: #fff;
   padding: 1rem 2rem;
   display: flex;
-  justify-content: space-between; /* mantém logo e links em extremidades */
+  justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #e3e3e3;
   flex-wrap: wrap;
