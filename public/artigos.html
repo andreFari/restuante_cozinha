@@ -97,8 +97,21 @@
         </form>
       </div>
     </div>
+
     <script>
-      let produtos = [];
+      let produtos = []; // array global com todos os produtos
+      let ordemPorCategoria = {}; // map de arrays por categoria
+      let orderMode = false; // modo organização
+      let currentCategory = "Todos"; // categoria ativa
+
+      const categorias = [
+        "Todos",
+        "Bebidas",
+        "Principais",
+        "Secundarios",
+        "Extras",
+        "Sobremesas",
+      ];
 
       // Mostrar mensagens
       function showMessage(type, text) {
@@ -110,37 +123,34 @@
         msg.style.display = "block";
         setTimeout(() => (msg.style.display = "none"), 3000);
       }
-      let orderMode = false; // modo organização
 
-      function renderGrid(data) {
+      function categoriaMatches(p, cat) {
+        const desc = (p.summary || "").toLowerCase();
+        if (cat === "Todos") return true;
+        if (cat === "Bebidas") return desc.includes("bebida");
+        if (cat === "Principais") return desc.includes("principal");
+        if (cat === "Secundarios")
+          return desc.includes("secundário") || desc.includes("secundario");
+        if (cat === "Extras") return desc.includes("extra");
+        if (cat === "Sobremesas") return desc.includes("sobremesa");
+        return false;
+      }
+
+      function renderGrid() {
         const grid = document.getElementById("productGrid");
         grid.innerHTML = "";
 
-        let filtered = data;
-        if (currentCategory !== "Todos") {
-          filtered = data.filter((p) => {
-            const descricao = (p.summary || "").toLowerCase();
-            if (currentCategory === "Bebidas")
-              return descricao.includes("bebida");
-            if (currentCategory === "Principais")
-              return descricao.includes("principal");
-            if (currentCategory === "Secundarios")
-              return (
-                descricao.includes("secundário") ||
-                descricao.includes("secundario")
-              );
-            if (currentCategory === "Extras")
-              return descricao.includes("extra");
-            if (currentCategory === "Sobremesas")
-              return descricao.includes("sobremesa");
-            return false;
-          });
-        }
-        filtered.forEach((prod, index) => {
+        if (!ordemPorCategoria[currentCategory])
+          ordemPorCategoria[currentCategory] = produtos.filter((p) =>
+            categoriaMatches(p, currentCategory)
+          );
+
+        const data = ordemPorCategoria[currentCategory];
+
+        data.forEach((prod, index) => {
           const card = document.createElement("div");
           card.className = "card";
           card.dataset.index = index;
-
           card.style.backgroundImage = `url(${
             prod.image_url || "imagens/placeholder.jpg"
           })`;
@@ -149,34 +159,23 @@
 
           const overlay = document.createElement("div");
           overlay.className = "overlay";
-          overlay.innerHTML = `
-      <h3>${prod.name}</h3>
-      <p>${prod.price} €</p>
-      <small>${prod.category_id}</small>
-  `;
-
+          overlay.innerHTML = `<h3>${prod.name}</h3><p>${prod.price} €</p><small>${prod.category_id}</small>`;
           card.appendChild(overlay);
 
           if (orderMode) {
             const controls = document.createElement("div");
             controls.className = "controls";
-            controls.innerHTML = `
-      <button class="moveLeft">⬅</button>
-      <button class="moveRight">➡</button>
-    `;
-
+            controls.innerHTML = `<button class="moveLeft">⬅</button><button class="moveRight">➡</button>`;
             controls.querySelector(".moveLeft").onclick = (e) => {
-              e.stopPropagation(); // 👈 evita abrir detalhes ao clicar aqui
+              e.stopPropagation();
               moveItem(index, -1);
             };
             controls.querySelector(".moveRight").onclick = (e) => {
               e.stopPropagation();
               moveItem(index, 1);
             };
-
             card.appendChild(controls);
           } else {
-            // 👇 garante que qualquer clique no card abre detalhes
             card.onclick = () => openDetails(prod);
           }
 
@@ -185,12 +184,13 @@
       }
 
       function moveItem(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= produtos.length) return;
-        const temp = produtos[index];
-        produtos[index] = produtos[newIndex];
-        produtos[newIndex] = temp;
-        renderGrid(produtos);
+        const arr = ordemPorCategoria[currentCategory];
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= arr.length) return;
+
+        [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
+
+        renderGrid();
       }
 
       document.getElementById("toggleOrderBtn").onclick = () => {
@@ -200,17 +200,15 @@
           : "⚙️ Ajustar posições";
 
         if (!orderMode) {
-          console.log(
-            "Nova ordem:",
-            produtos.map((p) => p.name)
+          // salvar no localStorage por categoria
+          localStorage.setItem(
+            "ordemPorCategoria",
+            JSON.stringify(ordemPorCategoria)
           );
-
-          // 👉 Guardar no localStorage
-          localStorage.setItem("ordemProdutos", JSON.stringify(produtos));
           showMessage("success", "Ordem guardada!");
         }
 
-        renderGrid(produtos);
+        renderGrid();
       };
 
       let currentEditId = null; // para saber se estamos a editar ou criar
@@ -234,8 +232,6 @@
 
         modal.style.display = "flex";
       }
-
-      let currentCategory = "Todos"; // categoria ativa
 
       // Renderização com filtro
       /*function renderGrid(data) {
@@ -318,7 +314,7 @@
       document.querySelectorAll(".sectionBtn").forEach((btn) => {
         btn.addEventListener("click", () => {
           currentCategory = btn.dataset.cat;
-          renderGrid(produtos);
+          renderGrid();
         });
       });
 
@@ -421,20 +417,33 @@
         produtos = await res.json();
         if (!Array.isArray(produtos)) produtos = produtos.products || [];
 
-        // 👉 Repor ordem do localStorage (se existir)
+        // restaurar ordem do localStorage
         const ordemGuardada = JSON.parse(
-          localStorage.getItem("ordemProdutos") || "[]"
+          localStorage.getItem("ordemPorCategoria") || "{}"
         );
-        if (ordemGuardada.length) {
-          // juntar info nova do servidor com a ordem guardada
-          const mapById = new Map(produtos.map((p) => [p.product_id, p]));
-          produtos = ordemGuardada
-            .map((p) => mapById.get(p.product_id))
-            .filter(Boolean);
-        }
+        ordemPorCategoria = {};
 
-        renderGrid(produtos);
+        categorias.forEach((cat) => {
+          const ids = ordemGuardada[cat]?.map((p) => p.product_id) || [];
+          const produtosCat = produtos.filter((p) => categoriaMatches(p, cat));
+          if (ids.length) {
+            // manter ordem guardada
+            const mapById = new Map(produtosCat.map((p) => [p.product_id, p]));
+            ordemPorCategoria[cat] = ids
+              .map((id) => mapById.get(id))
+              .filter(Boolean);
+            // adicionar novos produtos não guardados
+            ordemPorCategoria[cat].push(
+              ...produtosCat.filter((p) => !ids.includes(p.product_id))
+            );
+          } else {
+            ordemPorCategoria[cat] = produtosCat;
+          }
+        });
+
+        renderGrid();
       }
+
       async function deleteProduct(id) {
         if (!confirm("Eliminar este produto?")) return;
         try {

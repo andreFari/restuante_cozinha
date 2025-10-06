@@ -31,8 +31,8 @@
         </form>
 
         <nav id="navLinks">
-          <a href="./takeway.html" class="protected">Takeway</a>
-          <a href="./login.html" class="protected active"> Receção Bar </a>
+          <a href="./takeway.html" class="protected active">Takeway</a>
+          <a href="./login.html" class="protected"> Receção Bar </a>
           <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
           <a href="./cozinha.html" class="protected"> Cozinha </a>
           <a href="./faturas.html" class="protected"> Ver Faturas</a>
@@ -63,7 +63,7 @@
           margin-bottom: 20px;
         "
       >
-        <h1>Receção Bar</h1>
+        <h1>Takeaway</h1>
         <!--<button id="openCalcBtn" class="btn">Calculadora</button> -->
       </div>
 
@@ -87,12 +87,12 @@
           "
         >
           <div class="table-section">
-            <h3>Mesas Abertas</h3>
+            <h3>Pedidos por Enviar</h3>
             <div id="openTables"></div>
           </div>
 
           <div class="table-section">
-            <h3>Mesas Fechadas</h3>
+            <h3>Pedidos Enviados</h3>
             <div id="closedTables"></div>
           </div>
         </div>
@@ -705,34 +705,9 @@
                       </span>
                     </h2>
 
-                    <!-- Nota da Cozinha -->
-                    <div class="section" style="margin-bottom: 20px;">
-                      <label for="kitchenNote" style="font-weight:600; display:block;">Nota da Cozinha:</label>
-                      <textarea id="kitchenNote" rows="3" style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; border:1px solid #ccc;">
-                        ${table.kitchenNote}
-                      </textarea>
-                      <button class="btn btn-primary" onclick="saveKitchenNote(${index})" >Guardar Nota</button>
-                    </div>
+                 
 
-                    <!-- Status de Pagamento -->
-                    <div class="section" style="margin-bottom:20px;">
-                      <label style="font-weight:600; display:block;">Status do Pagamento:</label>
-                      <div class="status ${
-                        order.status === "paid" ? "paid" : "unpaid"
-                      }"
-                           style="margin-bottom:10px; padding:8px 12px; border-radius:6px; background-color:${
-                             order.status === "paid" ? "#d4edda" : "#f8d7da"
-                           }; color:${
-          order.status === "paid" ? "#155724" : "#721c24"
-        };">
-                        ${order.status === "paid" ? "Pago" : "Por Pagar"}
-                      </div>
-                      <button class="btn btn-secondary" onclick="togglePaid(${index})">
-                        Marcar como ${
-                          order.status === "paid" ? "Por Pagar" : "Pago"
-                        }
-                      </button>
-                    </div>
+                   
 
                     <!-- Botões de ação -->
                    <div class="section buttons" style="display:flex; gap:10px; margin-bottom:20px;">
@@ -1034,7 +1009,7 @@
       function createNewTable() {
         const tableName = document.getElementById("newTableName").value.trim();
         if (!tableName) {
-          alert("Insere um nome para a mesa!");
+          alert("Escolha uma mesa");
           return;
         }
 

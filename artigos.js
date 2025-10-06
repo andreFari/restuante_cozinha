@@ -128,7 +128,7 @@ const fakeArtigos = [
   },
   {
     product_id: 8,
-    name: "Suco de Laranja",
+    name: "Sumo de Laranja",
     price: 2.5,
     tax_id: 3630173,
     category_id: "Bebida",
