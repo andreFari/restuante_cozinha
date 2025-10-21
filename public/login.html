@@ -272,7 +272,7 @@
               rows="4"
               style="width: 100%"
             ></textarea>
-
+            <select id="printerSelect"></select>
             <div class="modal-actions">
               <button onclick="closeModal()">Cancelar</button>
               <button onclick="confirmEmitirFatura()">Confirmar</button>
@@ -343,7 +343,7 @@
         selectedTableIndex = index;
         const modal = document.getElementById("invoiceModal");
         const textarea = document.getElementById("modalInvoiceNotes");
-
+        populatePrinterDropdown(); //popular maquinas faturação
         textarea.value = ""; // limpa
         modal.style.display = "flex";
         textarea.focus();
@@ -425,6 +425,22 @@
       }
       const tables = [];
 
+      async function fetchPrinters() {
+        const res = await fetch("/api/printers");
+        const printers = await res.json();
+        return printers;
+      }
+      async function populatePrinterDropdown() {
+        const printers = await fetchPrinters();
+        const select = document.getElementById("printerSelect");
+        select.innerHTML = "";
+        printers.forEach((p) => {
+          const option = document.createElement("option");
+          option.value = `${p.agent_id}|${p.printer_id}`;
+          option.textContent = `${p.display_name} (${p.agent_id})`;
+          select.appendChild(option);
+        });
+      }
       async function emitirFatura(index, notes = "", docType = "FR", nif = "") {
         const token = localStorage.getItem("moloni_token");
         if (!token) {

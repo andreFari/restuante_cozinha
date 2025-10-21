@@ -13,7 +13,9 @@ import qs from "qs";
 import multer from "multer";
 import moloniRoutes from "./getmoloni.js";
 import artigosRoutes from "./artigos.js";
-
+import os from "os";
+import http from "http";
+import { Server } from "socket.io";
 import { moloniTokens, getValidAccessToken } from "./moloniAuth.js";
 
 dotenv.config();
@@ -62,6 +64,16 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, "public")));
+
+//agentes para imprimir
+// --- criar servidor HTTP + socket.io ---
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+const AGENT_ID = os.hostname();
+
+const agents = new Map(); // { agent_id -> { lastSeen, printers } }
+const agentSockets = new Map(); // { agent_id -> socket }
 
 // ----- Gerar SAF-T -----
 app.post("/api/gerar-saft", async (req, res) => {
@@ -556,6 +568,75 @@ async function getOrCreateCustomerByNif(nif, access_token) {
     throw err;
   }
 }
+
+app.post("/api/agents/register", (req, res) => {
+  const { agent_id, token, printers } = req.body;
+  if (token !== process.env.AGENT_TOKEN) {
+    return res.status(403).json({ error: "token_invalido" });
+  }
+
+  agents.set(agent_id, {
+    lastSeen: new Date(),
+    printers,
+  });
+
+  console.log(`Agent ${agent_id} registado com ${printers.length} impressoras`);
+  res.json({ ok: true });
+});
+
+app.get("/api/printers", (req, res) => {
+  const allPrinters = Array.from(agents.entries()).flatMap(([agent_id, info]) =>
+    info.printers.map((p) => ({
+      ...p,
+      agent_id,
+      lastSeen: info.lastSeen,
+    }))
+  );
+  res.json(allPrinters);
+});
+
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [agent_id, info] of agents.entries()) {
+    if (info.lastSeen.getTime() < cutoff) {
+      console.log(`Agent ${agent_id} inativo — removido`);
+      agents.delete(agent_id);
+    }
+  }
+}, 60000);
+// ============================
+// 🔌 SOCKET.IO PARA PRINT JOBS
+// ============================
+io.on("connection", (socket) => {
+  console.log("🔌 Novo socket conectado");
+
+  socket.on("register_agent", ({ agent_id, token }) => {
+    if (token !== process.env.AGENT_TOKEN) {
+      socket.disconnect();
+      return;
+    }
+    agentSockets.set(agent_id, socket);
+    console.log(`✅ Agent ${agent_id} autenticado via socket`);
+  });
+
+  socket.on("disconnect", () => {
+    for (const [id, s] of agentSockets.entries()) {
+      if (s === socket) agentSockets.delete(id);
+    }
+  });
+});
+
+// ============================
+// 🖨️ ENDPOINT PARA PRINT JOB
+// ============================
+app.post("/api/print", async (req, res) => {
+  const { agent_id, printer_id, pdfUrl } = req.body;
+  const socket = agentSockets.get(agent_id);
+  if (!socket) return res.status(404).json({ error: "agent_offline" });
+
+  socket.emit("print_job", { printer_id, pdfUrl });
+  res.json({ ok: true });
+});
 
 app.post("/api/emitir-fatura", async (req, res) => {
   try {
