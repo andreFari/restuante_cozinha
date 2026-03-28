@@ -1,52 +1,133 @@
+body {
+  margin: 0;
+  background: #f3f5f8;
+  color: #17202a;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
 header {
-  background: #fff;
-  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  padding: 14px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e3e3e3;
+  border-bottom: 1px solid #e4e8ef;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
+
+.brand-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.links-container {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex: 1 1 auto;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#navLinks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.links-container a {
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #dbe3ee;
+  background: #fff;
+  transition: .18s ease;
+}
+
+.links-container a:hover {
+  background: #eff6ff;
+  border-color: #bfd1ee;
+}
+
 .links-container a.active {
   color: white !important;
-  background-color: #007bff !important;
+  background-color: #0f766e !important;
+  border-color: #0f766e !important;
 }
+
 .logo-title {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
-.logo {
-  height: 40px;
+.logo { height: 40px; }
+
+#tokenDisplay,
+.token-status {
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
 }
 
-.links-container {
+.login-form {
   display: flex;
-  gap: 1rem;
-  align-items: center; /* centraliza verticalmente os links */
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.links-container a {
-  color: black;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s ease;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
+.login-form input,
+.login-form button {
+  border-radius: 12px;
+  border: 1px solid #dbe3ee;
+  padding: 10px 12px;
 }
 
-.links-container a:hover {
-  color: #fff;
-  background-color: #007bff;
+body > h1,
+#mainContent,
+body > .top-bar,
+body > .menu-selector,
+body > .menu-container,
+body > .message,
+body > .grid,
+body > div[style*="padding: 20px"] {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-#tokenDisplay {
-  font-weight: 600;
-  color: #333;
-  text-align: center;
-  width: 100%;
-  margin-top: 0.5rem; /* pequeno espaçamento abaixo do header principal */
+body > h1 {
+  margin: 22px auto 14px;
+  padding: 0 20px;
+}
+
+@media (max-width: 900px) {
+  header {
+    padding: 12px;
+  }
+
+  .links-container {
+    justify-content: flex-start;
+  }
+
+  #tokenDisplay,
+  .token-status {
+    width: 100%;
+  }
 }

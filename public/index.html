@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -265,7 +265,7 @@
           const prep = table.prepared;
 
           const hasUnprepared = Object.keys(prep).some((section) =>
-            prep[section].some((prepared) => !prepared)
+            prep[section].some((prepared) => !prepared),
           );
 
           if (order.status !== "paid" || hasUnprepared) {
@@ -298,7 +298,7 @@
               prepState[i] ? "checked" : ""
             } onchange="togglePrepared(${index}, '${key}', ${i})">
             <label>${item}</label>
-          </div>`
+          </div>`,
           )
           .join("")}
       </div>
@@ -308,8 +308,8 @@
         orderDetails.innerHTML = `
   <div class="order-header">
     <div class="order-title">${table.name} - ${
-          table.open ? "Aberta" : "Fechada"
-        }</div>
+      table.open ? "Aberta" : "Fechada"
+    }</div>
     <div class="admin-note-short" title="${
       table.kitchenNote ? table.kitchenNote : "Nenhuma nota do admin."
     }">
@@ -317,8 +317,8 @@
     </div>
   </div>
   <div class="status ${order.status === "paid" ? "paid" : "unpaid"}">${
-          order.status === "paid" ? "Pago" : "Por Pagar"
-        }</div>
+    order.status === "paid" ? "Pago" : "Por Pagar"
+  }</div>
 
 ${renderSection("Pratos", order.plates, prepared.plates, "plates")}
 ${renderSection("Extras", order.extras, prepared.extras, "extras")}
