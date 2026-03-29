@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
@@ -12,46 +12,78 @@
       <div class="logo-title">
         <div class="brand-chip">Restaurant OS</div>
       </div>
-
       <div class="links-container">
         <nav id="navLinks">
           <a href="./takeway.html" class="protected">Takeway</a>
           <a href="./login.html" class="protected">Receção Bar</a>
-          <a href="./rececaoCozi.html" class="protected active">Receção Cozinha</a>
-          <a href="./cozinha-v2.html" class="protected">Cozinha</a>
+          <a href="./rececaoCozi.html" class="protected active"
+            >Receção Cozinha</a
+          >
+          <a href="./cozinha.html" class="protected">Cozinha</a>
           <a href="./faturas.html" class="protected">Ver Faturas</a>
           <a href="./artigos.html" class="protected">Gerir Pratos</a>
-          <a href="./menu.html" class="protected">Menu</a>
+          <a href="./menu.html" class="protected">Gestão Menu</a>
           <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
         </nav>
       </div>
-
       <div id="tokenDisplay" class="token-status">Sistema operacional</div>
     </header>
     <div class="page-shell">
       <div id="operatorShell"></div>
-
-      <div class="toolbar-row" style="margin-bottom: 16px;">
-        <input id="searchInput" type="search" placeholder="Pesquisar mesa, zona ou estado" style="min-width: 280px;" />
+      <div class="info-banner">
+        <strong>Receção Cozinha</strong>
+        <div class="helper-text">
+          Aqui abres mesas, lanças pratos, envias pedidos para a cozinha e
+          consultas o histórico. É o cockpit principal da sala.
+        </div>
+      </div>
+      <div class="page-actions">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="Pesquisar mesa, zona ou estado"
+          style="min-width: 280px"
+        />
         <button id="refreshBtn" class="ghost-btn">Atualizar</button>
         <button id="openTableBtn" class="primary-btn">Abrir mesa</button>
         <button id="historyBtn" class="ghost-btn">Ver histórico</button>
-        <button id="sendKitchenBtn" class="secondary-btn">Enviar cozinha</button>
+        <button id="sendKitchenBtn" class="secondary-btn">
+          Enviar cozinha
+        </button>
         <button id="closeTableBtn" class="ghost-btn">Fechar mesa</button>
+        <button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button>
+        <button id="resetDemoBtn" class="ghost-btn">Limpar demo</button>
       </div>
 
-      <div class="layout-3col">
+      <div
+        class="filter-chips"
+        id="zoneFilters"
+        style="margin-bottom: 16px"
+      ></div>
+
+      <div class="wide-panel-grid">
         <section class="panel">
           <div class="panel-title-row">
             <div>
               <strong>Mapa de mesas</strong>
-              <div class="helper-text">Seleciona a mesa e trabalha o pedido sem trocar de ecrã.</div>
+              <div class="helper-text">
+                Operação de sala com foco nas zonas normais do restaurante.
+              </div>
             </div>
           </div>
           <div class="kpi-row">
-            <div class="kpi"><div class="kpi-label">Mesas ativas</div><div class="kpi-value" id="kpiOpen">0</div></div>
-            <div class="kpi"><div class="kpi-label">Pendentes cozinha</div><div class="kpi-value" id="kpiPending">0</div></div>
-            <div class="kpi"><div class="kpi-label">Ticket médio</div><div class="kpi-value" id="kpiAverage">€0</div></div>
+            <div class="kpi">
+              <div class="kpi-label">Mesas ativas</div>
+              <div class="kpi-value" id="kpiOpen">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Pendentes cozinha</div>
+              <div class="kpi-value" id="kpiPending">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Ticket médio</div>
+              <div class="kpi-value" id="kpiAverage">€0</div>
+            </div>
           </div>
           <div id="tablesList" class="list-stack"></div>
         </section>
@@ -60,11 +92,15 @@
           <div class="panel-title-row">
             <div>
               <strong>Pedido da mesa</strong>
-              <div class="helper-text">Aqui vês tudo o que a mesa já pediu e o estado atual.</div>
+              <div class="helper-text">
+                Tudo o que já foi pedido, o estado atual e a linha de tempo.
+              </div>
             </div>
             <span id="selectedTableBadge" class="badge">Sem seleção</span>
           </div>
-          <div id="tableSummary" class="meta" style="margin-bottom: 12px;">Nenhuma mesa selecionada.</div>
+          <div id="tableSummary" class="meta" style="margin-bottom: 12px">
+            Nenhuma mesa selecionada.
+          </div>
           <div id="orderItems" class="list-stack"></div>
         </section>
 
@@ -72,7 +108,9 @@
           <div class="panel-title-row">
             <div>
               <strong>Adicionar artigos</strong>
-              <div class="helper-text">Sem sair da mesa, sem perder contexto.</div>
+              <div class="helper-text">
+                Os pratos da sala. Toque rápido, sem abrir modais confusos.
+              </div>
             </div>
           </div>
           <div id="menuGrid" class="menu-grid"></div>
@@ -94,10 +132,37 @@
     </div>
 
     <script type="module">
-      import { restaurantApi } from "./js/restaurant-api.js";
-      import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from "./js/restaurant-shell.js";
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import {
+        mountOperatorShell,
+        ensureOperatorSelected,
+        euro,
+        toast,
+        relativeMinutes,
+      } from "./js/restaurant-shell.js";
 
-      const state = { bootstrap: null, selectedTableId: null };
+      setTerminalId("terminal_main");
+      const TODAY = new Date().getDay();
+      function currentMenuKeyForSelection() {
+        const selected = (state.bootstrap?.tables || []).find(
+          (table) => table.id === state.selectedTableId,
+        );
+        return selected?.zone === "Esplanada" ? "esplanada" : "sala";
+      }
+      function itemAvailableForMenu(item) {
+        const menuKey = currentMenuKeyForSelection();
+        return (
+          item &&
+          item.active !== false &&
+          Array.isArray(item.menu_rules?.[menuKey]) &&
+          item.menu_rules[menuKey].includes(TODAY)
+        );
+      }
+      function findPreferredTable(tables) {
+        return tables.find((table) => table.session) || tables[0] || null;
+      }
+
+      const state = { bootstrap: null, selectedTableId: null, zone: "Todas" };
       const tablesList = document.getElementById("tablesList");
       const orderItems = document.getElementById("orderItems");
       const menuGrid = document.getElementById("menuGrid");
@@ -106,68 +171,158 @@
       const searchInput = document.getElementById("searchInput");
       const historyModal = document.getElementById("historyModal");
       const historyTimeline = document.getElementById("historyTimeline");
+      const zoneFilters = document.getElementById("zoneFilters");
 
-      await mountOperatorShell({ title: "Receção Cozinha", eyebrow: "Operação de sala" });
+      await mountOperatorShell({
+        title: "Receção Cozinha",
+        eyebrow: "Sala principal",
+      });
       await refreshAll();
 
-      document.getElementById("refreshBtn").addEventListener("click", refreshAll);
-      document.getElementById("openTableBtn").addEventListener("click", async () => {
-        if (!ensureOperatorSelected()) return;
-        if (!state.selectedTableId) return toast("Seleciona uma mesa primeiro.", true);
-        try {
-          await restaurantApi.openTable(state.selectedTableId);
-          toast("Mesa aberta.");
-          await refreshAll();
-        } catch (error) {
-          toast(error.message, true);
-        }
-      });
-      document.getElementById("sendKitchenBtn").addEventListener("click", async () => {
-        if (!ensureOperatorSelected()) return;
-        if (!state.selectedTableId) return toast("Seleciona uma mesa primeiro.", true);
-        try {
-          await restaurantApi.sendToKitchen(state.selectedTableId);
-          toast("Pedido enviado para a cozinha.");
-          await refreshAll();
-        } catch (error) {
-          toast(error.message, true);
-        }
-      });
-      document.getElementById("closeTableBtn").addEventListener("click", async () => {
-        if (!ensureOperatorSelected()) return;
-        if (!state.selectedTableId) return toast("Seleciona uma mesa primeiro.", true);
-        try {
-          await restaurantApi.closeTable(state.selectedTableId);
-          toast("Mesa fechada.");
-          await refreshAll();
-        } catch (error) {
-          toast(error.message, true);
-        }
-      });
-      document.getElementById("historyBtn").addEventListener("click", openHistory);
-      document.getElementById("closeHistoryModal").addEventListener("click", () => historyModal.classList.remove("show"));
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", refreshAll);
+      document
+        .getElementById("openTableBtn")
+        .addEventListener("click", async () =>
+          runTableAction((id) => restaurantApi.openTable(id), "Mesa aberta."),
+        );
+      document
+        .getElementById("sendKitchenBtn")
+        .addEventListener("click", async () =>
+          runTableAction(
+            (id) => restaurantApi.sendToKitchen(id),
+            "Pedido enviado para a cozinha.",
+          ),
+        );
+      document
+        .getElementById("closeTableBtn")
+        .addEventListener("click", async () =>
+          runTableAction((id) => restaurantApi.closeTable(id), "Mesa fechada."),
+        );
+      document
+        .getElementById("historyBtn")
+        .addEventListener("click", openHistory);
+      document
+        .getElementById("seedDemoBtn")
+        .addEventListener("click", async () => {
+          try {
+            const result = await restaurantApi.seedDemo();
+            toast(result?.message || "Exemplo carregado.");
+            state.selectedTableId = null;
+            state.zone = "Todas";
+            searchInput.value = "";
+            await refreshAll(true);
+            setTimeout(() => window.location.reload(), 120);
+          } catch (error) {
+            toast(error.message, true);
+          }
+        });
+
+      document
+        .getElementById("resetDemoBtn")
+        .addEventListener("click", async () => {
+          try {
+            const result = await restaurantApi.resetDemo();
+            toast(result?.message || "Demo limpa.");
+            state.selectedTableId = null;
+            state.zone = "Todas";
+            searchInput.value = "";
+            await refreshAll(true);
+            setTimeout(() => window.location.reload(), 120);
+          } catch (error) {
+            toast(error.message, true);
+          }
+        });
+      document
+        .getElementById("closeHistoryModal")
+        .addEventListener("click", () => historyModal.classList.remove("show"));
       searchInput.addEventListener("input", renderTables);
       document.addEventListener("restaurant:operator-changed", refreshAll);
       setInterval(refreshAll, 30000);
 
-      async function refreshAll() {
-        state.bootstrap = await restaurantApi.bootstrap();
-        const currentTables = state.bootstrap.tables || [];
-        if (!state.selectedTableId && currentTables.length) state.selectedTableId = currentTables[0].id;
-        if (state.selectedTableId && !currentTables.some((table) => table.id === state.selectedTableId)) {
-          state.selectedTableId = currentTables[0]?.id || null;
+      async function runTableAction(fn, okMessage) {
+        if (!ensureOperatorSelected()) return;
+        if (!state.selectedTableId)
+          return toast("Seleciona uma mesa primeiro.", true);
+        try {
+          await fn(state.selectedTableId);
+          toast(okMessage);
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
         }
+      }
+
+      async function refreshAll(forcePreferredSelection = false) {
+        state.bootstrap = await restaurantApi.bootstrap();
+        const currentTables = filteredTables(state.bootstrap.tables || []);
+        const preferred =
+          currentTables.find((table) => table.session) ||
+          currentTables[0] ||
+          null;
+        if (forcePreferredSelection && preferred)
+          state.selectedTableId = preferred.id;
+        if (!state.selectedTableId && preferred)
+          state.selectedTableId = preferred.id;
+        if (
+          state.selectedTableId &&
+          !currentTables.some((table) => table.id === state.selectedTableId)
+        )
+          state.selectedTableId = preferred?.id || null;
+        renderZoneFilters();
         renderTables();
         renderMenu();
         await renderSelectedTable();
         renderKpis();
       }
 
+      function filteredTables(rows) {
+        return rows
+          .filter((table) => !["Bar", "Takeaway"].includes(table.zone))
+          .filter(
+            (table) => state.zone === "Todas" || table.zone === state.zone,
+          );
+      }
+
+      function renderZoneFilters() {
+        const zones = [
+          "Todas",
+          ...new Set(
+            (state.bootstrap?.tables || [])
+              .filter((t) => !["Bar", "Takeaway"].includes(t.zone))
+              .map((t) => t.zone),
+          ),
+        ];
+        zoneFilters.innerHTML = zones
+          .map(
+            (zone) =>
+              `<button class="chip-btn ${state.zone === zone ? "is-active" : ""}" data-zone="${zone}">${zone}</button>`,
+          )
+          .join("");
+        zoneFilters.querySelectorAll("button[data-zone]").forEach((btn) =>
+          btn.addEventListener("click", async () => {
+            state.zone = btn.dataset.zone;
+            await refreshAll();
+          }),
+        );
+      }
+
       function renderKpis() {
-        const tables = state.bootstrap?.tables || [];
+        const tables = filteredTables(state.bootstrap?.tables || []);
         const open = tables.filter((table) => table.session).length;
-        const pending = tables.reduce((sum, table) => sum + Number(table.metrics?.pending_kitchen || 0), 0);
-        const average = open ? tables.filter((table) => table.session).reduce((sum, table) => sum + Number(table.metrics?.total || 0), 0) / open : 0;
+        const pending = tables.reduce(
+          (sum, table) => sum + Number(table.metrics?.pending_kitchen || 0),
+          0,
+        );
+        const average = open
+          ? tables
+              .filter((table) => table.session)
+              .reduce(
+                (sum, table) => sum + Number(table.metrics?.total || 0),
+                0,
+              ) / open
+          : 0;
         document.getElementById("kpiOpen").textContent = String(open);
         document.getElementById("kpiPending").textContent = String(pending);
         document.getElementById("kpiAverage").textContent = euro(average);
@@ -175,12 +330,21 @@
 
       function renderTables() {
         const term = (searchInput.value || "").trim().toLowerCase();
-        const tables = (state.bootstrap?.tables || []).filter((table) => {
-          if (!term) return true;
-          return [table.name, table.zone, table.session?.status].some((value) => String(value || "").toLowerCase().includes(term));
-        });
+        const tables = filteredTables(state.bootstrap?.tables || []).filter(
+          (table) => {
+            if (!term) return true;
+            return [table.name, table.zone, table.session?.status].some(
+              (value) =>
+                String(value || "")
+                  .toLowerCase()
+                  .includes(term),
+            );
+          },
+        );
         tablesList.innerHTML = tables.length
-          ? tables.map((table) => `
+          ? tables
+              .map(
+                (table) => `
             <article class="table-card ${state.selectedTableId === table.id ? "is-active" : ""}" data-table-id="${table.id}">
               <div class="table-card-head">
                 <strong>${table.name}</strong>
@@ -192,42 +356,57 @@
                 <span>${table.metrics?.pending_kitchen || 0} cozinha</span>
                 <span>${euro(table.metrics?.total || 0)}</span>
               </div>
-            </article>`).join("")
-          : `<div class="helper-text">Sem mesas para mostrar.</div>`;
-        tablesList.querySelectorAll(".table-card").forEach((card) => {
+            </article>`,
+              )
+              .join("")
+          : `<div class="empty-state">Sem mesas para mostrar com estes filtros.</div>`;
+        tablesList.querySelectorAll(".table-card").forEach((card) =>
           card.addEventListener("click", async () => {
             state.selectedTableId = card.dataset.tableId;
             renderTables();
             await renderSelectedTable();
-          });
-        });
+          }),
+        );
       }
 
       function renderMenu() {
-        const items = state.bootstrap?.menu_items || [];
-        menuGrid.innerHTML = items.map((item) => `
+        const items = (state.bootstrap?.menu_items || []).filter((item) =>
+          itemAvailableForMenu(item),
+        );
+        menuGrid.innerHTML = items
+          .map(
+            (item) => `
           <button class="menu-card" data-menu-item-id="${item.id}">
             <div class="menu-card-name">${item.name}</div>
-            <div class="meta">${item.category} · ${item.station}</div>
+            <div class="meta">${item.category} · ${item.station} · ${item.prep_minutes || 0} min</div>
             <div class="menu-card-price">${euro(item.price)}</div>
-          </button>`).join("");
-        menuGrid.querySelectorAll(".menu-card").forEach((btn) => {
+          </button>`,
+          )
+          .join("");
+        menuGrid.querySelectorAll(".menu-card").forEach((btn) =>
           btn.addEventListener("click", async () => {
             if (!ensureOperatorSelected()) return;
-            if (!state.selectedTableId) return toast("Seleciona uma mesa primeiro.", true);
+            if (!state.selectedTableId)
+              return toast("Seleciona uma mesa primeiro.", true);
             try {
-              const table = (state.bootstrap?.tables || []).find((row) => row.id === state.selectedTableId);
-              if (!table?.session) {
+              const table = filteredTables(state.bootstrap?.tables || []).find(
+                (row) => row.id === state.selectedTableId,
+              );
+              if (!table?.session)
                 await restaurantApi.openTable(state.selectedTableId);
-              }
-              await restaurantApi.addItem(state.selectedTableId, btn.dataset.menuItemId, 1, "");
+              await restaurantApi.addItem(
+                state.selectedTableId,
+                btn.dataset.menuItemId,
+                1,
+                "",
+              );
               toast("Artigo adicionado.");
               await refreshAll();
             } catch (error) {
               toast(error.message, true);
             }
-          });
-        });
+          }),
+        );
       }
 
       async function renderSelectedTable() {
@@ -244,69 +423,84 @@
         tableSummary.textContent = session
           ? `${session.status} · aberta há ${relativeMinutes(session.opened_at)} · total ${euro(details.totals?.total || 0)}`
           : "Mesa livre. Podes abrir e começar o pedido.";
-
         orderItems.innerHTML = (details.order_items || []).length
-          ? details.order_items.map((item) => `
-                <article class="item-row">
-                  <div class="item-row-main">
-                    <div>
-                      <div class="item-name">${item.name}</div>
-                      <div class="meta">${item.station} · ${item.status}</div>
-                    </div>
-                    <div><strong>${euro(item.unit_price * item.quantity)}</strong></div>
-                  </div>
-                  <div class="item-controls">
-                    <div class="qty-stepper">
-                      <button data-action="minus" data-item-id="${item.id}" ${item.quantity <= 1 ? "disabled" : ""}>−</button>
-                      <span>${item.quantity}</span>
-                      <button data-action="plus" data-item-id="${item.id}">+</button>
-                    </div>
-                    <button class="ghost-btn" data-action="remove" data-item-id="${item.id}">Remover</button>
-                  </div>
-                </article>`).join("")
-          : `<div class="helper-text">Ainda não existem itens nesta mesa.</div>`;
-
-        orderItems.querySelectorAll("button[data-action]").forEach((btn) => {
+          ? details.order_items
+              .map(
+                (item) => `
+          <article class="item-row">
+            <div class="item-row-main">
+              <div>
+                <div class="item-name">${item.name}</div>
+                <div class="meta">${item.station} · ${item.status}</div>
+              </div>
+              <div><strong>${euro(item.unit_price * item.quantity)}</strong></div>
+            </div>
+            <div class="item-controls">
+              <div class="qty-stepper">
+                <button data-action="minus" data-item-id="${item.id}" ${item.quantity <= 1 ? "disabled" : ""}>−</button>
+                <span>${item.quantity}</span>
+                <button data-action="plus" data-item-id="${item.id}">+</button>
+              </div>
+              <button class="ghost-btn" data-action="remove" data-item-id="${item.id}">Remover</button>
+            </div>
+          </article>`,
+              )
+              .join("")
+          : `<div class="empty-state">Ainda não existem itens nesta mesa.</div>`;
+        orderItems.querySelectorAll("button[data-action]").forEach((btn) =>
           btn.addEventListener("click", async () => {
             if (!ensureOperatorSelected()) return;
             const itemId = btn.dataset.itemId;
             const row = details.order_items.find((item) => item.id === itemId);
             if (!row) return;
             try {
-              if (btn.dataset.action === "remove") {
+              if (btn.dataset.action === "remove")
                 await restaurantApi.removeItem(state.selectedTableId, itemId);
-              } else if (btn.dataset.action === "plus") {
-                await restaurantApi.updateItemQuantity(state.selectedTableId, itemId, Number(row.quantity) + 1);
-              } else if (btn.dataset.action === "minus") {
-                await restaurantApi.updateItemQuantity(state.selectedTableId, itemId, Math.max(1, Number(row.quantity) - 1));
-              }
+              else if (btn.dataset.action === "plus")
+                await restaurantApi.updateItemQuantity(
+                  state.selectedTableId,
+                  itemId,
+                  Number(row.quantity) + 1,
+                );
+              else if (btn.dataset.action === "minus")
+                await restaurantApi.updateItemQuantity(
+                  state.selectedTableId,
+                  itemId,
+                  Math.max(1, Number(row.quantity) - 1),
+                );
               await refreshAll();
             } catch (error) {
               toast(error.message, true);
             }
-          });
-        });
+          }),
+        );
       }
 
       async function openHistory() {
-        if (!state.selectedTableId) return toast("Seleciona uma mesa primeiro.", true);
-        try {
-          const history = await restaurantApi.getHistory(state.selectedTableId);
-          historyTimeline.innerHTML = history.length
-            ? history.map((row) => `
-                  <article class="timeline-row">
-                    <div class="timeline-row-head">
-                      <strong>${row.action_type}</strong>
-                      <span class="meta">${new Date(row.created_at).toLocaleString("pt-PT")}</span>
-                    </div>
-                    <div class="meta">${row.actor_name || "—"}</div>
-                    <div style="margin-top: 8px;">${JSON.stringify(row.payload || {})}</div>
-                  </article>`).join("")
-            : `<div class="helper-text">Sem histórico disponível.</div>`;
-          historyModal.classList.add("show");
-        } catch (error) {
-          toast(error.message, true);
-        }
+        if (!state.selectedTableId)
+          return toast("Seleciona uma mesa primeiro.", true);
+        const events = await restaurantApi.getHistory(state.selectedTableId);
+        historyTimeline.innerHTML = events.length
+          ? events
+              .map(
+                (event) => `
+          <article class="timeline-row">
+            <div class="timeline-row-head">
+              <strong>${event.actor_name}</strong>
+              <span class="meta">${new Date(event.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
+            <div class="meta">${event.action_type}</div>
+            <div>${Object.entries(event.payload || {})
+              .map(
+                ([key, value]) =>
+                  `<div><strong>${key}:</strong> ${value}</div>`,
+              )
+              .join("")}</div>
+          </article>`,
+              )
+              .join("")
+          : `<div class="empty-state">Ainda não existe histórico nesta mesa.</div>`;
+        historyModal.classList.add("show");
       }
     </script>
   </body>

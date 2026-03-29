@@ -2,480 +2,196 @@
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <title>Gerir Pratos - Moloni</title>
-    <link rel="stylesheet" href="css/artigos.css" />
-    <link rel="stylesheet" href="css/header.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gerir Pratos</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
   </head>
   <body>
     <header>
-      <div class="logo-title">
-        <img src="" alt="Logo" class="logo" />
-      </div>
-
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
       <div class="links-container">
         <nav id="navLinks">
           <a href="./takeway.html" class="protected">Takeway</a>
-          <a href="./login.html" class="protected"> Receção Bar </a>
-          <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
-          <a href="./cozinha-v2.html" class="protected"> Cozinha </a>
-          <a href="./faturas.html" class="protected"> Ver Faturas</a>
-          <!-- Layout principal: 2 colunas
-          <a href="./guiasTransporte.html" class="protected"
-
-            >🚚 Guias de Transporte
-          </a>
- -->
-          <a href="./artigos.html" class="protected active"> Gerir Pratos</a>
-          <a href="./menu.html" class="protected">Menu</a>
-          <a href="./gest_mesas.html" class="protected"> Gestão mesas</a>
+          <a href="./login.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">Ver Faturas</a>
+          <a href="./artigos.html" class="protected active">Gerir Pratos</a>
+          <a href="./menu.html" class="protected">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
         </nav>
       </div>
-
-      <div id="tokenDisplay" class="token-status">
-        ⚠️ Sistema não autenticado
-      </div>
+      <div id="tokenDisplay" class="token-status">Catálogo local</div>
     </header>
-
-    <h1>Lista de Pratos</h1>
-
-    <div class="message success" id="msgSuccess"></div>
-    <div class="message error" id="msgError"></div>
-
-    <div class="top-bar">
-      <input
-        type="text"
-        id="search"
-        class="search-input"
-        placeholder="Pesquisar..."
-      />
-      <div>
-        <button id="syncBtn">🔄 Sincronizar</button>
-        <button id="openModalBtn">➕ Criar Novo Prato</button>
-        <button id="toggleOrderBtn">⚙️ Ajustar posições</button>
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+      <div class="info-banner"><strong>Gerir Pratos</strong><div class="helper-text">Aqui tratas do catálogo base. A disponibilidade por dia/menu é na página <strong>Gestão Menu</strong>.</div></div>
+      <div class="wide-panel-grid">
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Pratos configurados</strong><div class="helper-text">Seleciona um prato para editar.</div></div><button id="refreshBtn" class="ghost-btn">Atualizar</button></div>
+          <div id="menuList" class="list-stack"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Editar prato</strong><div class="helper-text">Nome, preço, estação e menus base.</div></div><span id="formBadge" class="badge">Novo</span></div>
+          <form id="itemForm" class="form-stack">
+            <label>Nome<input id="itemName" type="text" required /></label>
+            <div class="form-grid-2">
+              <label>Categoria<input id="itemCategory" type="text" placeholder="Pratos, Bebidas..." /></label>
+              <label>Estação<input id="itemStation" type="text" placeholder="grelha, bar, fogao..." /></label>
+            </div>
+            <div class="form-grid-2">
+              <label>Tempo preparação<input id="itemPrep" type="number" min="0" value="5" /></label>
+              <label>Preço (€)<input id="itemPrice" type="number" min="0" step="0.01" value="0" /></label>
+            </div>
+            <div>
+              <div class="helper-text" style="margin-bottom:8px;">Menus base onde este prato pode existir.</div>
+              <div class="tag-row" id="menuBaseChecks"></div>
+            </div>
+            <label class="switch-row"><input id="itemActive" type="checkbox" checked />Ativo</label>
+            <div class="toolbar-row">
+              <button type="submit" class="primary-btn">Guardar</button>
+              <button type="button" id="resetBtn" class="ghost-btn">Novo prato</button>
+              <button type="button" id="archiveBtn" class="ghost-btn">Ocultar</button>
+            </div>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Regras rápidas</strong><div class="helper-text">Catálogo base e composição diária são coisas diferentes. Não mistures.</div></div></div>
+          <div class="list-stack">
+            <article class="timeline-row"><strong>Gerir Pratos</strong><div class="meta">Cria o prato, preço, estação e em que menus ele pode existir.</div></article>
+            <article class="timeline-row"><strong>Gestão Menu</strong><div class="meta">Decide em que dias o prato entra em cada menu.</div></article>
+            <article class="timeline-row"><strong>Cozinha</strong><div class="meta">Só recebe o que realmente foi lançado pelo posto.</div></article>
+          </div>
+        </section>
       </div>
     </div>
-    <!-- 🔥 Barra de Seções -->
-    <div style="text-align: center; margin: 10px">
-      <button class="sectionBtn" data-cat="Bebidas">🥤 Bebidas</button>
-      <button class="sectionBtn" data-cat="Principais">🍽️ Principais</button>
-      <button class="sectionBtn" data-cat="Secundarios">🍲 Secundários</button>
-      <button class="sectionBtn" data-cat="Extras">➕ Extras</button>
-      <button class="sectionBtn" data-cat="Sobremesas">🍰 Sobremesas</button>
-      <button class="sectionBtn" data-cat="Todos">📋 Todos</button>
-    </div>
-    <!-- Grelha de artigos -->
-    <div class="grid" id="productGrid"></div>
-
-    <!-- Modal Detalhes -->
-    <div id="productModal" class="modal">
-      <div class="modal-content">
-        <span class="close" id="closeModal">&times;</span>
-        <h2 id="modalTitle">Detalhes do Prato</h2>
-        <div id="modalBody"></div>
-        <div style="margin-top: 15px; text-align: right">
-          <button id="editBtn">✏️ Editar</button>
-          <button id="deleteBtn" style="background: #d9534f">
-            🗑️ Eliminar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Formulário Criar/Editar -->
-    <div id="formModal" class="modal">
-      <div class="modal-content">
-        <span class="close" id="closeForm">&times;</span>
-        <h2 id="formTitle">➕ Criar Novo Prato</h2>
-        <form id="productForm">
-          <label>Nome *</label>
-          <input type="text" id="name" required />
-
-          <label>Categoria *</label>
-          <input type="text" id="category_id" required />
-
-          <label>Referência *</label>
-          <input type="text" id="reference" required />
-
-          <label>Preço *</label>
-          <input type="number" step="0.01" id="price" required />
-
-          <label>IVA *</label>
-          <input type="text" id="tax_id" required />
-
-          <label>Descrição</label>
-          <input type="text" id="summary" />
-
-          <label>EAN</label>
-          <input type="text" id="ean" />
-
-          <button type="submit">Salvar</button>
-        </form>
-      </div>
-    </div>
-
-    <script>
-      let produtos = []; // array global com todos os produtos
-      let ordemPorCategoria = {}; // map de arrays por categoria
-      let orderMode = false; // modo organização
-      let currentCategory = "Todos"; // categoria ativa
-
-      const categorias = [
-        "Todos",
-        "Bebidas",
-        "Principais",
-        "Secundarios",
-        "Extras",
-        "Sobremesas",
+    <script type="module">
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import { mountOperatorShell, ensureOperatorSelected, euro, toast } from "./js/restaurant-shell.js";
+      setTerminalId("terminal_main");
+      const MENU_KEYS = [
+        { key: "sala", label: "Interior" },
+        { key: "esplanada", label: "Fora" },
+        { key: "takeaway", label: "Takeaway" },
+        { key: "bar", label: "Bar" },
       ];
-
-      // Mostrar mensagens
-      function showMessage(type, text) {
-        const msg =
-          type === "success"
-            ? document.getElementById("msgSuccess")
-            : document.getElementById("msgError");
-        msg.textContent = text;
-        msg.style.display = "block";
-        setTimeout(() => (msg.style.display = "none"), 3000);
-      }
-
-      function categoriaMatches(p, cat) {
-        const desc = (p.summary || "").toLowerCase();
-        if (cat === "Todos") return true;
-        if (cat === "Bebidas") return desc.includes("bebida");
-        if (cat === "Principais") return desc.includes("principal");
-        if (cat === "Secundarios")
-          return desc.includes("secundário") || desc.includes("secundario");
-        if (cat === "Extras") return desc.includes("extra");
-        if (cat === "Sobremesas") return desc.includes("sobremesa");
-        return false;
-      }
-
-      function renderGrid() {
-        const grid = document.getElementById("productGrid");
-        grid.innerHTML = "";
-
-        if (!ordemPorCategoria[currentCategory])
-          ordemPorCategoria[currentCategory] = produtos.filter((p) =>
-            categoriaMatches(p, currentCategory)
-          );
-
-        const data = ordemPorCategoria[currentCategory];
-
-        data.forEach((prod, index) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.dataset.index = index;
-          card.style.backgroundImage = `url(${
-            prod.image_url || "imagens/placeholder.jpg"
-          })`;
-          card.style.backgroundSize = "cover";
-          card.style.backgroundPosition = "center";
-
-          const overlay = document.createElement("div");
-          overlay.className = "overlay";
-          overlay.innerHTML = `<h3>${prod.name}</h3><p>${prod.price} €</p><small>${prod.category_id}</small>`;
-          card.appendChild(overlay);
-
-          if (orderMode) {
-            const controls = document.createElement("div");
-            controls.className = "controls";
-            controls.innerHTML = `<button class="moveLeft">⬅</button><button class="moveRight">➡</button>`;
-            controls.querySelector(".moveLeft").onclick = (e) => {
-              e.stopPropagation();
-              moveItem(index, -1);
-            };
-            controls.querySelector(".moveRight").onclick = (e) => {
-              e.stopPropagation();
-              moveItem(index, 1);
-            };
-            card.appendChild(controls);
-          } else {
-            card.onclick = () => openDetails(prod);
-          }
-
-          grid.appendChild(card);
-        });
-      }
-
-      function moveItem(index, direction) {
-        const arr = ordemPorCategoria[currentCategory];
-        const targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= arr.length) return;
-
-        [arr[index], arr[targetIndex]] = [arr[targetIndex], arr[index]];
-
-        renderGrid();
-      }
-
-      document.getElementById("toggleOrderBtn").onclick = () => {
-        orderMode = !orderMode;
-        document.getElementById("toggleOrderBtn").textContent = orderMode
-          ? "✅ Guardar ordem"
-          : "⚙️ Ajustar posições";
-
-        if (!orderMode) {
-          // salvar no localStorage por categoria
-          localStorage.setItem(
-            "ordemPorCategoria",
-            JSON.stringify(ordemPorCategoria)
-          );
-          showMessage("success", "Ordem guardada!");
-        }
-
-        renderGrid();
-      };
-
-      let currentEditId = null; // para saber se estamos a editar ou criar
-
-      // Abrir modal de detalhes
-      function openDetails(prod) {
-        document.getElementById("modalTitle").textContent = prod.name;
-        document.getElementById("modalBody").innerHTML = `
-    <p><strong>ID:</strong> ${prod.product_id}</p>
-    <p><strong>Referência:</strong> ${prod.reference}</p>
-    <p><strong>Preço:</strong> ${prod.price} €</p>
-    <p><strong>Categoria:</strong> ${prod.category_id}</p>
-    <p><strong>IVA:</strong> ${prod.tax_id}</p>
-    <p><strong>Descrição:</strong> ${prod.summary || "-"}</p>
-    <p><strong>EAN:</strong> ${prod.ean || "-"}</p>
-  `;
-
-        document.getElementById("editBtn").onclick = () => openEditForm(prod);
-        document.getElementById("deleteBtn").onclick = () =>
-          deleteProduct(prod.product_id);
-
-        modal.style.display = "flex";
-      }
-
-      // Renderização com filtro
-      /*function renderGrid(data) {
-        const grid = document.getElementById("productGrid");
-        grid.innerHTML = "";
-
-        // 🔥 aplicar filtro pela categoria
-        let filtered = data;
-        if (currentCategory !== "Todos") {
-          filtered = data.filter((p) => {
-            const descricao = (p.summary || "").toLowerCase();
-
-            if (currentCategory === "Bebidas") {
-              return descricao.includes("bebida");
-            }
-            if (currentCategory === "Principais") {
-              return descricao.includes("principal");
-            }
-            if (currentCategory === "Secundarios") {
-              return (
-                descricao.includes("secundário") ||
-                descricao.includes("secundario")
-              );
-            }
-            if (currentCategory === "Extras") {
-              return descricao.includes("extra");
-            }
-            if (currentCategory === "Sobremesas") {
-              return descricao.includes("sobremesa");
-            }
-            return false;
-          });
-        }
-
-        filtered.forEach((prod, index) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.draggable = true;
-          card.dataset.index = index;
-
-          card.innerHTML = `
-      <h3>${prod.name}</h3>
-      <p>${prod.price} €</p>
-      <small>Categoria: ${prod.category_id}</small>
-    `;
-
-          card.onclick = (e) => {
-            if (!card.classList.contains("dragging")) {
-              openDetails(prod);
-            }
-          };
-
-          card.addEventListener("dragstart", (e) => {
-            card.classList.add("dragging");
-            e.dataTransfer.effectAllowed = "move";
-          });
-
-          card.addEventListener("dragend", () => {
-            card.classList.remove("dragging");
-            updateOrder();
-          });
-
-          grid.appendChild(card);
-        });
-
-        grid.addEventListener("dragover", (e) => {
-          e.preventDefault();
-          const dragging = document.querySelector(".dragging");
-          const afterElement = getDragAfterElement(grid, e.clientY);
-          if (afterElement == null) {
-            grid.appendChild(dragging);
-          } else {
-            grid.insertBefore(dragging, afterElement);
-          }
-        });
-      }
-*/
-
-      // Clique nos botões de categoria
-      document.querySelectorAll(".sectionBtn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          currentCategory = btn.dataset.cat;
-          renderGrid();
-        });
-      });
-
-      // Abrir formulário para editar
-      function openEditForm(prod) {
-        modal.style.display = "none"; // fecha detalhes
-        const formModal = document.getElementById("formModal");
-        const form = document.getElementById("productForm");
-
-        // Preenche campos
-        document.getElementById("formTitle").textContent = "✏️ Editar Prato";
-        document.getElementById("name").value = prod.name;
-        document.getElementById("category_id").value = prod.category_id;
-        document.getElementById("reference").value = prod.reference;
-        document.getElementById("price").value = prod.price;
-        document.getElementById("tax_id").value = prod.tax_id;
-        document.getElementById("summary").value = prod.summary || "";
-        document.getElementById("ean").value = prod.ean || "";
-
-        currentEditId = prod.product_id; // guardamos o id
-
-        formModal.style.display = "flex";
-      }
-
-      // Abrir formulário para criar novo prato
-      document.getElementById("openModalBtn").onclick = () => {
-        const form = document.getElementById("productForm");
-        form.reset();
-        document.getElementById("formTitle").textContent =
-          "➕ Criar Novo Prato";
-        currentEditId = null;
-        document.getElementById("formModal").style.display = "flex";
-      };
-
-      // Submeter formulário
-      document
-        .getElementById("productForm")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const product = {
-            name: document.getElementById("name").value,
-            category_id: document.getElementById("category_id").value,
-            reference: document.getElementById("reference").value,
-            price: parseFloat(document.getElementById("price").value),
-            tax_id: document.getElementById("tax_id").value,
-            summary: document.getElementById("summary").value,
-            ean: document.getElementById("ean").value,
-          };
-
-          let url = "/artigo/artigos";
-          let method = "POST";
-
-          if (currentEditId) {
-            url = `/artigo/artigos/${currentEditId}`;
-            method = "PUT";
-          }
-
-          try {
-            const res = await fetch(url, {
-              method,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(product),
-            });
-
-            if (!res.ok) throw new Error();
-
-            showMessage(
-              "success",
-              currentEditId ? "Prato atualizado com sucesso!" : "Prato criado!"
-            );
-            document.getElementById("formModal").style.display = "none";
-            fetchProducts();
-          } catch {
-            showMessage("error", "Erro ao salvar prato.");
-          }
-        });
-
-      // Fechar modais
-      document.getElementById("closeModal").onclick = () =>
-        (modal.style.display = "none");
-      document.getElementById("closeForm").onclick = () =>
-        (document.getElementById("formModal").style.display = "none");
-
-      // Fechar modal
-      const modal = document.getElementById("productModal");
-      document.getElementById("closeModal").onclick = () =>
-        (modal.style.display = "none");
-      window.onclick = (e) => {
-        if (e.target == modal) modal.style.display = "none";
-      };
-
-      // Pesquisa instantânea
-      document.getElementById("search").addEventListener("input", function () {
-        const term = this.value.toLowerCase();
-        renderGrid(produtos.filter((p) => p.name.toLowerCase().includes(term)));
-      });
-      async function fetchProducts() {
-        const res = await fetch("/artigo/artigos");
-        produtos = await res.json();
-        if (!Array.isArray(produtos)) produtos = produtos.products || [];
-
-        // restaurar ordem do localStorage
-        const ordemGuardada = JSON.parse(
-          localStorage.getItem("ordemPorCategoria") || "{}"
-        );
-        ordemPorCategoria = {};
-
-        categorias.forEach((cat) => {
-          const ids = ordemGuardada[cat]?.map((p) => p.product_id) || [];
-          const produtosCat = produtos.filter((p) => categoriaMatches(p, cat));
-          if (ids.length) {
-            // manter ordem guardada
-            const mapById = new Map(produtosCat.map((p) => [p.product_id, p]));
-            ordemPorCategoria[cat] = ids
-              .map((id) => mapById.get(id))
-              .filter(Boolean);
-            // adicionar novos produtos não guardados
-            ordemPorCategoria[cat].push(
-              ...produtosCat.filter((p) => !ids.includes(p.product_id))
-            );
-          } else {
-            ordemPorCategoria[cat] = produtosCat;
-          }
-        });
-
-        renderGrid();
-      }
-
-      async function deleteProduct(id) {
-        if (!confirm("Eliminar este produto?")) return;
+      const state = { rows: [], selectedId: null };
+      const listNode = document.getElementById("menuList");
+      const form = document.getElementById("itemForm");
+      const badge = document.getElementById("formBadge");
+      const nameInput = document.getElementById("itemName");
+      const categoryInput = document.getElementById("itemCategory");
+      const stationInput = document.getElementById("itemStation");
+      const prepInput = document.getElementById("itemPrep");
+      const priceInput = document.getElementById("itemPrice");
+      const activeInput = document.getElementById("itemActive");
+      const menuBaseChecks = document.getElementById("menuBaseChecks");
+      menuBaseChecks.innerHTML = MENU_KEYS.map((menu) => `<label class="chip-btn"><input type="checkbox" data-menu-key="${menu.key}" style="margin-right:8px;">${menu.label}</label>`).join("");
+      await mountOperatorShell({ title: "Gerir Pratos", eyebrow: "Catálogo base" });
+      await refreshList();
+      document.getElementById("refreshBtn").addEventListener("click", refreshList);
+      document.getElementById("resetBtn").addEventListener("click", resetForm);
+      document.getElementById("archiveBtn").addEventListener("click", archiveCurrent);
+      document.addEventListener("restaurant:operator-changed", refreshList);
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!ensureOperatorSelected()) return;
+        const payload = {
+          name: nameInput.value.trim(),
+          category: categoryInput.value.trim(),
+          station: stationInput.value.trim(),
+          prep_minutes: Number(prepInput.value || 0),
+          price: Number(priceInput.value || 0),
+          menu_rules: buildMenuRulesFromForm(),
+          active: activeInput.checked,
+        };
         try {
-          const res = await fetch(`/artigo/artigos/${id}`, {
-            method: "DELETE",
-          });
-          if (!res.ok) throw new Error();
-          showMessage("success", "Produto eliminado com sucesso!");
-          fetchProducts();
-          modal.style.display = "none";
-        } catch {
-          showMessage("error", "Erro ao eliminar produto.");
+          if (state.selectedId) {
+            await restaurantApi.updateMenuItem(state.selectedId, payload);
+            toast("Prato atualizado.");
+          } else {
+            await restaurantApi.createMenuItem(payload);
+            toast("Prato criado.");
+          }
+          resetForm();
+          await refreshList();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      });
+
+      async function refreshList() {
+        state.rows = await restaurantApi.listMenuItems();
+        renderList();
+      }
+
+      function renderList() {
+        listNode.innerHTML = state.rows.length ? state.rows.map((item) => `
+          <article class="table-card ${state.selectedId === item.id ? "is-active" : ""}" data-item-id="${item.id}">
+            <div class="table-card-head"><strong>${item.name}</strong><span class="badge ${item.active ? "open" : "closed"}">${item.active ? "ativo" : "oculto"}</span></div>
+            <div class="meta">${item.category} · ${item.station} · ${item.prep_minutes || 0} min</div>
+            <div class="meta-row"><span>${euro(item.price)}</span><span>${formatMenus(item)}</span></div>
+          </article>`).join("") : `<div class="empty-state">Ainda não existem pratos.</div>`;
+        listNode.querySelectorAll(".table-card").forEach((node) => node.addEventListener("click", () => fillForm(node.dataset.itemId)));
+      }
+
+      function fillForm(itemId) {
+        const item = state.rows.find((row) => row.id === itemId);
+        if (!item) return;
+        state.selectedId = item.id;
+        badge.textContent = item.name;
+        nameInput.value = item.name;
+        categoryInput.value = item.category || "";
+        stationInput.value = item.station || "";
+        prepInput.value = item.prep_minutes || 0;
+        priceInput.value = item.price || 0;
+        activeInput.checked = item.active !== false;
+        const rules = item.menu_rules || {};
+        menuBaseChecks.querySelectorAll("input[data-menu-key]").forEach((input) => {
+          input.checked = Array.isArray(rules[input.dataset.menuKey]) && rules[input.dataset.menuKey].length > 0;
+        });
+        renderList();
+      }
+
+      function buildMenuRulesFromForm() {
+        const rules = {};
+        menuBaseChecks.querySelectorAll("input[data-menu-key]").forEach((input) => {
+          rules[input.dataset.menuKey] = input.checked ? [0,1,2,3,4,5,6] : [];
+        });
+        return rules;
+      }
+
+      function formatMenus(item) {
+        const labels = MENU_KEYS.filter((menu) => Array.isArray(item.menu_rules?.[menu.key]) && item.menu_rules[menu.key].length).map((menu) => menu.label);
+        return labels.length ? labels.join(", ") : "Sem menu";
+      }
+
+      async function archiveCurrent() {
+        if (!ensureOperatorSelected()) return;
+        if (!state.selectedId) return toast("Seleciona um prato para ocultar.", true);
+        try {
+          await restaurantApi.archiveMenuItem(state.selectedId);
+          toast("Prato ocultado.");
+          resetForm();
+          await refreshList();
+        } catch (error) {
+          toast(error.message, true);
         }
       }
 
-      // Inicializar
-      fetchProducts();
+      function resetForm() {
+        state.selectedId = null;
+        badge.textContent = "Novo";
+        form.reset();
+        prepInput.value = 5;
+        priceInput.value = 0;
+        activeInput.checked = true;
+        menuBaseChecks.querySelectorAll("input[data-menu-key]").forEach((input) => { input.checked = input.dataset.menuKey === "sala"; });
+        renderList();
+      }
+
+      resetForm();
     </script>
   </body>
 </html>

@@ -2,287 +2,340 @@
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <title>Gestão de Menu - Moloni</title>
-    <link rel="stylesheet" href="css/menu.css" />
-    <link rel="stylesheet" href="css/header.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão do Menu</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
   </head>
   <body>
     <header>
-      <div class="logo-title">
-        <img src="" alt="Logo" class="logo" />
-      </div>
-
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
       <div class="links-container">
         <nav id="navLinks">
           <a href="./takeway.html" class="protected">Takeway</a>
-          <a href="./login.html" class="protected"> Receção Bar </a>
-          <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
-          <a href="./cozinha-v2.html" class="protected"> Cozinha </a>
-          <a href="./faturas.html" class="protected"> Ver Faturas</a>
-          <!-- Layout principal: 2 colunas
-          <a href="./guiasTransporte.html" class="protected"
-
-            >🚚 Guias de Transporte
-          </a>
- -->
-          <a href="./artigos.html" class="protected"> Gerir Pratos</a>
-          <a href="./menu.html" class="protected active">Menu</a>
-          <a href="./gest_mesas.html" class="protected"> Gestão mesas</a>
+          <a href="./login.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">Ver Faturas</a>
+          <a href="./artigos.html" class="protected">Gerir Pratos</a>
+          <a href="./menu.html" class="protected active">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
         </nav>
       </div>
-
-      <div id="tokenDisplay" class="token-status">
-        ⚠️ Sistema não autenticado
-      </div>
+      <div id="tokenDisplay" class="token-status">Admin do menu</div>
     </header>
 
-    <h1>Gestão de Menus</h1>
+    <div class="page-shell">
+      <div id="operatorShell"></div>
 
-    <div class="menu-selector">
-      <button class="menu-tab active" data-menu="takeaway">🍱 Takeaway</button>
-      <button class="menu-tab" data-menu="bar">🍺 Bar</button>
-      <button class="menu-tab" data-menu="esplanada">🌞 Esplanada</button>
-      <button class="menu-tab" data-menu="restaurante">🍽️ Restaurante</button>
-    </div>
-
-    <div class="menu-container">
-      <div class="list">
-        <h2>🍳 Todos os Pratos</h2>
-        <div class="category-selector">
-          <button class="category-tab active" data-category="all">Todas</button>
-          <button class="category-tab" data-category="Prato">Pratos</button>
-          <button class="category-tab" data-category="Sopa">Sopas</button>
-          <button class="category-tab" data-category="Bebida">Bebidas</button>
+      <div class="info-banner">
+        <strong>Gestão do menu por dia e por canal</strong>
+        <div class="helper-text">
+          Agora tens o que faltava: o admin escolhe o menu do <strong>restaurante interior</strong>, <strong>fora do restaurante</strong>, <strong>takeaway</strong> ou <strong>bar</strong>, escolhe o dia, e ativa/desativa os pratos desse menu.
         </div>
-
-        <table id="allDishes">
-          <thead>
-            <tr>
-              <th>Selecionar</th>
-              <th>Nome</th>
-              <th>Preço</th>
-              <th>Categoria</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
       </div>
 
-      <div class="list">
-        <h2>✅ No Menu <span id="currentMenuName">Takeaway</span></h2>
-        <table id="menuDishes">
-          <thead>
-            <tr>
-              <th>Selecionar</th>
-              <th>Nome</th>
-              <th>Preço</th>
-              <th>Categoria</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+      <div class="page-actions">
+        <button id="refreshBtn" class="ghost-btn">Atualizar</button>
+        <button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button>
+        <button id="resetDemoBtn" class="ghost-btn">Limpar demo</button>
+      </div>
+
+      <div class="wide-panel-grid menu-admin-grid">
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <strong>Menus disponíveis</strong>
+              <div class="helper-text">Cada bloco representa um menu operacional.</div>
+            </div>
+            <span id="selectedMenuBadge" class="badge">—</span>
+          </div>
+          <div id="menuProfileTabs" class="card-grid-2"></div>
+          <div class="panel-title-row" style="margin-top:14px;">
+            <div>
+              <strong>Dia do menu</strong>
+              <div class="helper-text">Alteras o que fica disponível nesse dia.</div>
+            </div>
+            <span id="selectedDayBadge" class="badge">Hoje</span>
+          </div>
+          <div id="dayTabs" class="tab-row"></div>
+          <div id="menuStats" class="stat-strip"></div>
+          <div class="panel-title-row" style="margin-top:14px;">
+            <div>
+              <strong>Pratos ativos neste menu</strong>
+              <div class="helper-text">Isto é o que o posto vai ver no dia selecionado.</div>
+            </div>
+          </div>
+          <div id="enabledList" class="list-stack"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <strong>Compor o menu</strong>
+              <div class="helper-text">Liga ou desliga os pratos deste menu no dia selecionado.</div>
+            </div>
+          </div>
+          <div class="toolbar-row" style="margin-top:0; margin-bottom:14px;">
+            <button id="enableAllTodayBtn" class="ghost-btn">Ativar todos hoje</button>
+            <button id="disableAllTodayBtn" class="ghost-btn">Desligar todos hoje</button>
+            <button id="enableAllWeekBtn" class="ghost-btn">Todos os dias</button>
+            <button id="disableAllWeekBtn" class="ghost-btn">Remover do menu</button>
+          </div>
+          <div id="catalogMatrix" class="list-stack"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <strong>Flow de teste</strong>
+              <div class="helper-text">Usa isto para perceber o sistema sem adivinhar.</div>
+            </div>
+          </div>
+          <div class="list-stack">
+            <article class="timeline-row">
+              <strong>1. Carregar exemplo</strong>
+              <div class="meta">Cria mesas abertas, takeaway e pedidos já enviados para a cozinha.</div>
+            </article>
+            <article class="timeline-row">
+              <strong>2. Escolher menu + dia</strong>
+              <div class="meta">Exemplo: bar de sexta, takeaway de domingo, esplanada de sábado.</div>
+            </article>
+            <article class="timeline-row">
+              <strong>3. Ligar pratos</strong>
+              <div class="meta">Os postos só mostram os pratos ativos para esse menu no dia selecionado.</div>
+            </article>
+            <article class="timeline-row">
+              <strong>4. Testar no posto</strong>
+              <div class="meta">Vai a Receção Cozinha, Receção Bar ou Takeaway e confirma o catálogo disponível.</div>
+            </article>
+            <article class="timeline-row">
+              <strong>5. Ver cozinha</strong>
+              <div class="meta">Na Cozinha vais ver cartões com mesa, prato, estado e tempo de preparação.</div>
+            </article>
+          </div>
+
+          <div class="panel-title-row" style="margin-top:16px;">
+            <div>
+              <strong>Resumo do menu selecionado</strong>
+              <div class="helper-text">Contagem por categoria do dia.</div>
+            </div>
+          </div>
+          <div id="categorySummary" class="list-stack"></div>
+        </section>
       </div>
     </div>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        let menus = {
-          takeaway: [],
-          bar: [],
-          esplanada: [],
-          restaurante: [],
-        };
 
-        let pratos = [
-          {
-            product_id: 1,
-            name: "Bife à Portuguesa",
-            price: 12.5,
-            category: "Prato",
-          },
-          {
-            product_id: 2,
-            name: "Bacalhau à Brás",
-            price: 10.0,
-            category: "Prato",
-          },
-          {
-            product_id: 3,
-            name: "Sopa de Legumes",
-            price: 3.5,
-            category: "Sopa",
-          },
-          {
-            product_id: 4,
-            name: "Francesinha",
-            price: 11.0,
-            category: "Prato",
-          },
-          {
-            product_id: 5,
-            name: "Vinho Tinto",
-            price: 5.0,
-            category: "Bebida",
-          },
-          {
-            product_id: 6,
-            name: "Água Mineral",
-            price: 1.5,
-            category: "Bebida",
-          },
-        ];
+    <script type="module">
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import { mountOperatorShell, ensureOperatorSelected, euro, toast } from "./js/restaurant-shell.js";
 
-        let currentMenu = "takeaway";
-        let currentCategory = "all";
+      setTerminalId("terminal_main");
+      await mountOperatorShell({ title: "Gestão do Menu", eyebrow: "Administração de disponibilidade" });
 
-        const allBody = document.querySelector("#allDishes tbody");
-        const menuBody = document.querySelector("#menuDishes tbody");
-        const menuName = document.getElementById("currentMenuName");
-        // Delegação de evento para todos os pratos
-        allBody.addEventListener("change", (e) => {
-          if (e.target.tagName === "INPUT") {
-            const row = e.target.closest("tr");
-            const id = parseInt(row.dataset.id);
-            const prato = pratos.find((p) => p.product_id === id);
+      const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const state = {
+        profiles: [],
+        items: [],
+        selectedMenuKey: "sala",
+        selectedDay: new Date().getDay(),
+      };
 
-            if (e.target.checked) {
-              if (!menus[currentMenu].some((m) => m.product_id === id)) {
-                menus[currentMenu].push(prato);
-              }
-            } else {
-              menus[currentMenu] = menus[currentMenu].filter(
-                (m) => m.product_id !== id
-              );
-            }
+      const profileTabs = document.getElementById("menuProfileTabs");
+      const dayTabs = document.getElementById("dayTabs");
+      const statsNode = document.getElementById("menuStats");
+      const enabledList = document.getElementById("enabledList");
+      const catalogMatrix = document.getElementById("catalogMatrix");
+      const categorySummary = document.getElementById("categorySummary");
+      const selectedMenuBadge = document.getElementById("selectedMenuBadge");
+      const selectedDayBadge = document.getElementById("selectedDayBadge");
 
-            renderMenuDishes();
-          }
-        });
-        function renderAllDishes() {
-          allBody.innerHTML = "";
-
-          pratos
-            .filter(
-              (p) => currentCategory === "all" || p.category === currentCategory
-            )
-            .forEach((p) => {
-              const row = document.createElement("tr");
-              row.dataset.id = p.product_id;
-
-              const checkbox = document.createElement("input");
-              checkbox.type = "checkbox";
-              checkbox.checked = menus[currentMenu].some(
-                (m) => m.product_id === p.product_id
-              );
-
-              const tdCheck = document.createElement("td");
-              tdCheck.appendChild(checkbox);
-
-              const tdName = document.createElement("td");
-              tdName.textContent = p.name;
-
-              const tdPrice = document.createElement("td");
-              tdPrice.textContent = p.price.toFixed(2) + " €";
-
-              const tdCategory = document.createElement("td");
-              tdCategory.textContent = p.category;
-
-              row.append(tdCheck, tdName, tdPrice, tdCategory);
-
-              // Aqui: adicionamos clique na linha inteira
-              row.addEventListener("click", (e) => {
-                // Evita que clicar diretamente na checkbox dispare duas vezes
-                if (e.target.tagName !== "INPUT") {
-                  checkbox.checked = !checkbox.checked;
-                }
-
-                if (checkbox.checked) {
-                  if (
-                    !menus[currentMenu].some(
-                      (m) => m.product_id === p.product_id
-                    )
-                  ) {
-                    menus[currentMenu].push(p);
-                  }
-                } else {
-                  menus[currentMenu] = menus[currentMenu].filter(
-                    (m) => m.product_id !== p.product_id
-                  );
-                }
-                renderMenuDishes();
-              });
-
-              allBody.appendChild(row);
-            });
+      document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+      document.getElementById("seedDemoBtn").addEventListener("click", async () => {
+        try {
+          const result = await restaurantApi.seedDemo();
+          toast(result?.message || "Exemplo carregado.");
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
         }
-
-        function updateAllDishesCheckboxes() {
-          Array.from(allBody.querySelectorAll("tr")).forEach((row) => {
-            const id = parseInt(row.dataset.id);
-            const checkbox = row.querySelector("input");
-            checkbox.checked = menus[currentMenu].some(
-              (m) => m.product_id === id
-            );
-          });
-        }
-
-        function renderMenuDishes() {
-          menuBody.innerHTML = "";
-          menus[currentMenu].forEach((p) => {
-            const row = document.createElement("tr");
-            row.dataset.id = p.product_id;
-            row.innerHTML = `
-      <td><input type="checkbox" checked></td>
-      <td>${p.name}</td>
-      <td>${p.price.toFixed(2)} €</td>
-      <td>${p.category}</td>
-    `;
-            menuBody.appendChild(row);
-
-            row.querySelector("input").addEventListener("change", () => {
-              menus[currentMenu] = menus[currentMenu].filter(
-                (m) => m.product_id !== p.product_id
-              );
-              renderMenuDishes();
-              updateAllDishesCheckboxes();
-            });
-          });
-        }
-        function render() {
-          menuName.textContent =
-            currentMenu.charAt(0).toUpperCase() + currentMenu.slice(1);
-          renderAllDishes();
-          renderMenuDishes();
-        }
-
-        // Inicialização
-        render();
-
-        // Alternar menu
-        document.querySelectorAll(".menu-tab").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            document
-              .querySelectorAll(".menu-tab")
-              .forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentMenu = btn.dataset.menu;
-            render();
-          });
-        });
-
-        // Alternar categoria
-        document.querySelectorAll(".category-tab").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            document
-              .querySelectorAll(".category-tab")
-              .forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentCategory = btn.dataset.category;
-            renderAllDishes();
-          });
-        });
       });
-    </script>
+      document.getElementById("resetDemoBtn").addEventListener("click", async () => {
+        try {
+          const result = await restaurantApi.resetDemo();
+          toast(result?.message || "Demo limpa.");
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      });
+      document.getElementById("enableAllTodayBtn").addEventListener("click", () => bulkApply("day", true));
+      document.getElementById("disableAllTodayBtn").addEventListener("click", () => bulkApply("day", false));
+      document.getElementById("enableAllWeekBtn").addEventListener("click", () => bulkApply("week", true));
+      document.getElementById("disableAllWeekBtn").addEventListener("click", () => bulkApply("week", false));
+      document.addEventListener("restaurant:operator-changed", refreshAll);
 
-    <script src="./js/header.js"></script>
+      await refreshAll();
+
+      async function refreshAll() {
+        const [profiles, items] = await Promise.all([
+          restaurantApi.listMenuProfiles(),
+          restaurantApi.listMenuItems(),
+        ]);
+        state.profiles = profiles || [];
+        state.items = items || [];
+        if (!state.profiles.some((profile) => profile.id === state.selectedMenuKey)) {
+          state.selectedMenuKey = state.profiles[0]?.id || "sala";
+        }
+        renderProfileTabs();
+        renderDayTabs();
+        renderSummary();
+        renderEnabledList();
+        renderCatalog();
+      }
+
+      function renderProfileTabs() {
+        profileTabs.innerHTML = state.profiles.map((profile) => {
+          const enabledCount = getEnabledItems(profile.id, state.selectedDay).length;
+          return `<button class="table-card ${state.selectedMenuKey === profile.id ? "is-active" : ""}" data-menu-key="${profile.id}">
+            <div class="table-card-head"><strong>${profile.name}</strong><span class="badge">${enabledCount}</span></div>
+            <div class="meta">${profile.description || ""}</div>
+          </button>`;
+        }).join("");
+        selectedMenuBadge.textContent = currentProfile()?.name || "—";
+        profileTabs.querySelectorAll("[data-menu-key]").forEach((btn) => btn.addEventListener("click", () => {
+          state.selectedMenuKey = btn.dataset.menuKey;
+          renderProfileTabs();
+          renderSummary();
+          renderEnabledList();
+          renderCatalog();
+        }));
+      }
+
+      function renderDayTabs() {
+        selectedDayBadge.textContent = DAY_LABELS[state.selectedDay] || "Hoje";
+        dayTabs.innerHTML = DAY_LABELS.map((label, idx) => `<button class="chip-btn ${state.selectedDay === idx ? "is-active" : ""}" data-day="${idx}">${label}</button>`).join("");
+        dayTabs.querySelectorAll("[data-day]").forEach((btn) => btn.addEventListener("click", () => {
+          state.selectedDay = Number(btn.dataset.day);
+          renderDayTabs();
+          renderSummary();
+          renderEnabledList();
+          renderCatalog();
+        }));
+      }
+
+      function renderSummary() {
+        const items = getEnabledItems(state.selectedMenuKey, state.selectedDay);
+        const categories = new Map();
+        items.forEach((item) => categories.set(item.category || "Sem categoria", (categories.get(item.category || "Sem categoria") || 0) + 1));
+        const totalValue = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+        statsNode.innerHTML = `
+          <div class="kpi"><div class="kpi-label">Pratos ativos</div><div class="kpi-value">${items.length}</div></div>
+          <div class="kpi"><div class="kpi-label">Categorias</div><div class="kpi-value">${categories.size}</div></div>
+          <div class="kpi"><div class="kpi-label">Preço médio</div><div class="kpi-value">${items.length ? euro(totalValue / items.length) : euro(0)}</div></div>
+          <div class="kpi"><div class="kpi-label">Menu</div><div class="kpi-value">${currentProfile()?.name?.split(" ")[0] || "—"}</div></div>
+        `;
+        categorySummary.innerHTML = categories.size ? Array.from(categories.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([category, count]) => `
+          <article class="timeline-row">
+            <div class="timeline-row-head"><strong>${category}</strong><span class="badge">${count}</span></div>
+            <div class="meta">${currentProfile()?.name || "Menu"} · ${DAY_LABELS[state.selectedDay]}</div>
+          </article>`).join("") : `<div class="empty-state">Ainda não há pratos ativos neste menu para este dia.</div>`;
+      }
+
+      function renderEnabledList() {
+        const items = getEnabledItems(state.selectedMenuKey, state.selectedDay);
+        enabledList.innerHTML = items.length ? items.map((item) => `
+          <article class="table-card">
+            <div class="table-card-head"><strong>${item.name}</strong><span class="badge open">ativo</span></div>
+            <div class="meta">${item.category} · ${item.station} · ${item.prep_minutes || 0} min</div>
+            <div class="meta-row"><span>${euro(item.price)}</span><span>${daySummary(item.menu_rules?.[state.selectedMenuKey])}</span></div>
+          </article>`).join("") : `<div class="empty-state">Nenhum prato ativo neste menu para este dia.</div>`;
+      }
+
+      function renderCatalog() {
+        const categories = [...new Set(state.items.map((item) => item.category || "Sem categoria"))].sort((a, b) => a.localeCompare(b));
+        catalogMatrix.innerHTML = categories.map((category) => {
+          const items = state.items.filter((item) => (item.category || "Sem categoria") === category);
+          return `<section class="menu-category-block">
+            <div class="panel-title-row"><div><strong>${category}</strong><div class="helper-text">${items.length} pratos neste catálogo</div></div></div>
+            <div class="list-stack">${items.map((item) => {
+              const enabledToday = isEnabled(item, state.selectedMenuKey, state.selectedDay);
+              return `<article class="item-row">
+                <div class="item-row-main">
+                  <div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="meta">${item.station} · ${item.prep_minutes || 0} min · ${euro(item.price)}</div>
+                  </div>
+                  <span class="badge ${enabledToday ? "open" : "closed"}">${enabledToday ? "ativo hoje" : "desligado hoje"}</span>
+                </div>
+                <div class="meta-row"><span>${daySummary(item.menu_rules?.[state.selectedMenuKey])}</span></div>
+                <div class="toolbar-row">
+                  <button class="ghost-btn" data-action="toggle-day" data-item-id="${item.id}">${enabledToday ? "Desligar hoje" : "Ligar hoje"}</button>
+                  <button class="ghost-btn" data-action="enable-week" data-item-id="${item.id}">Todos os dias</button>
+                  <button class="ghost-btn" data-action="disable-week" data-item-id="${item.id}">Remover deste menu</button>
+                </div>
+              </article>`;
+            }).join("")}</div>
+          </section>`;
+        }).join("");
+
+        catalogMatrix.querySelectorAll("[data-action]").forEach((btn) => btn.addEventListener("click", async () => {
+          if (!ensureOperatorSelected()) return;
+          const item = state.items.find((row) => row.id === btn.dataset.itemId);
+          if (!item) return;
+          try {
+            if (btn.dataset.action === "toggle-day") {
+              await restaurantApi.updateMenuAvailability(state.selectedMenuKey, item.id, {
+                day: state.selectedDay,
+                enabled: !isEnabled(item, state.selectedMenuKey, state.selectedDay),
+              });
+            } else if (btn.dataset.action === "enable-week") {
+              await restaurantApi.updateMenuAvailability(state.selectedMenuKey, item.id, { days: [0,1,2,3,4,5,6] });
+            } else if (btn.dataset.action === "disable-week") {
+              await restaurantApi.updateMenuAvailability(state.selectedMenuKey, item.id, { days: [] });
+            }
+            toast("Menu atualizado.");
+            await refreshAll();
+          } catch (error) {
+            toast(error.message, true);
+          }
+        }));
+      }
+
+      async function bulkApply(scope, enabled) {
+        if (!ensureOperatorSelected()) return;
+        try {
+          for (const item of state.items) {
+            if (scope === "day") {
+              await restaurantApi.updateMenuAvailability(state.selectedMenuKey, item.id, { day: state.selectedDay, enabled });
+            } else {
+              await restaurantApi.updateMenuAvailability(state.selectedMenuKey, item.id, { days: enabled ? [0,1,2,3,4,5,6] : [] });
+            }
+          }
+          toast(enabled ? "Menu ativado." : "Menu limpo.");
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+
+      function currentProfile() {
+        return state.profiles.find((profile) => profile.id === state.selectedMenuKey) || null;
+      }
+
+      function isEnabled(item, menuKey, day) {
+        return item.active !== false && Array.isArray(item.menu_rules?.[menuKey]) && item.menu_rules[menuKey].includes(day);
+      }
+
+      function getEnabledItems(menuKey, day) {
+        return state.items.filter((item) => isEnabled(item, menuKey, day));
+      }
+
+      function daySummary(days = []) {
+        if (!Array.isArray(days) || !days.length) return "Sem dias ativos";
+        if (days.length === 7) return "Todos os dias";
+        return days.map((day) => DAY_LABELS[day]).join(", ");
+      }
+    </script>
   </body>
 </html>

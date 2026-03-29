@@ -10,12 +10,13 @@ import { Server } from "socket.io";
 
 import moloniRoutes from "./routes/moloni.js";
 import artigosRoutes from "./routes/artigos.js";
-import moloniAuthRoutes, { mountMoloniBrowserAuth } from "./routes/moloni.auth.routes.js";
+import moloniAuthRoutes, {
+  mountMoloniBrowserAuth,
+} from "./routes/moloni.auth.routes.js";
 import moloniCoreRoutes from "./routes/moloni.core.routes.js";
 import printingRoutes from "./routes/printing.routes.js";
 import restaurantRoutes from "./routes/restaurant.routes.js";
 import { printersService } from "./services/printers.service.js";
-
 dotenv.config();
 
 const PORT = Number(process.env.PORT || 10000);
@@ -42,7 +43,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true },
-  })
+  }),
 );
 
 app.use("/images", express.static(path.join(__dirname, "public", "imagens")));

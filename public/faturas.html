@@ -2,395 +2,76 @@
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <title>Faturas Emitidas</title>
-    <link rel="stylesheet" href="css/header.css" />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background-color: #f7f8fa;
-        color: #333;
-      }
-      h1 {
-        text-align: center;
-        color: #2c3e50;
-        font-size: x-large;
-        margin-bottom: 1.5rem;
-      }
-
-      form label {
-        display: block;
-        font-weight: 600;
-        color: #34495e;
-        margin-top: 1rem;
-        margin-bottom: 5%;
-      }
-
-      form input[type="file"] {
-        width: 100%;
-        padding: 0.4rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-      }
-
-      form button {
-        display: block;
-        width: 100%;
-        margin-top: 1.5rem;
-        padding: 0.8rem;
-        background: #2980b9;
-        border: none;
-        border-radius: 5px;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        transition: background 0.3s ease;
-        font-size: 1.1rem;
-        margin-bottom: 1.5rem;
-      }
-
-      form button:hover:not(:disabled) {
-        background: #1c5980;
-      }
-
-      button:disabled {
-        background: #7f8c8d;
-        cursor: not-allowed;
-      }
-      button:hover:not(:disabled) {
-        background: #1c5980;
-      }
-      #statusMessage {
-        text-align: center;
-        margin-bottom: 1rem;
-        font-weight: 600;
-        color: #27ae60;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      }
-      th,
-      td {
-        padding: 0.75rem 1rem;
-        text-align: left;
-      }
-      thead {
-        background: #2980b9;
-        color: white;
-      }
-      tbody tr:nth-child(even) {
-        background: #f4f6f8;
-      }
-      tbody tr:hover {
-        background: #d6eaff;
-      }
-      a.pdf-link {
-        text-decoration: none;
-        color: #2980b9;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-      }
-      a.pdf-link:hover {
-        text-decoration: underline;
-      }
-      a.pdf-link::before {
-        content: "📄";
-      }
-      @media (max-width: 600px) {
-        form {
-          flex-direction: column;
-          gap: 0.8rem;
-        }
-        label,
-        input[type="file"],
-        button {
-          flex: 1 1 100%;
-        }
-        th,
-        td {
-          font-size: 0.9rem;
-        }
-      }
-      #autoPdf {
-        text-align: center;
-      }
-      #faturaPdf {
-        text-align: center;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Faturas</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
   </head>
-
   <body>
     <header>
       <div class="logo-title">
-        <img src="" alt="Logo" class="logo" />
+        <div class="brand-chip">Restaurant OS</div>
       </div>
-
       <div class="links-container">
         <nav id="navLinks">
-          <a href="./takeway.html" class="protected">Takeway</a>
-          <a href="./login.html" class="protected"> Receção Bar </a>
-          <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
-          <a href="./cozinha-v2.html" class="protected"> Cozinha </a>
-          <a href="./faturas.html" class="protected active"> Ver Faturas</a>
-          <!-- Layout principal: 2 colunas
-          <a href="./guiasTransporte.html" class="protected"
-
-            >🚚 Guias de Transporte
-          </a>
- -->
-          <a href="./artigos.html" class="protected"> Gerir Pratos</a>
-          <a href="./menu.html" class="protected">Menu</a>
-          <a href="./gest_mesas.html" class="protected"> Gestão mesas</a>
+          <a href="./takeway.html" class="protected ">Takeway</a>
+          <a href="./login.html" class="protected ">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected ">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected ">Cozinha</a>
+          <a href="./faturas.html" class="protected active">Ver Faturas</a>
+          <a href="./artigos.html" class="protected ">Gerir Pratos</a>
+          <a href="./menu.html" class="protected ">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected ">Gestão Mesas</a>
         </nav>
       </div>
-
-      <div id="tokenDisplay" class="token-status">
-        ⚠️ Sistema não autenticado
-      </div>
+      <div id="tokenDisplay" class="token-status">Sistema operacional</div>
     </header>
-
-    <div style="padding: 20px">
-      <h1>Faturas Emitidas</h1>
-      <form id="formAutoPdf">
-        <label for="autoPdf">Seleciona o PDF do Auto para juntar:</label>
-        <input
-          type="file"
-          id="autoPdf"
-          name="autoPdf"
-          accept="application/pdf"
-          required
-        />
-        <label for="faturaPdf">Seleciona o PDF da Fatura:</label>
-        <input
-          type="file"
-          id="faturaPdf"
-          name="faturaPdf"
-          accept="application/pdf"
-          required
-        />
-        <button type="submit">Exportar PDF combinado</button>
-        <label for="periodStart">Data de início:</label>
-        <input type="date" id="periodStart" name="periodStart" required />
-
-        <label for="periodEnd">Data de fim:</label>
-        <input type="date" id="periodEnd" name="periodEnd" required />
-        <button id="gerarSaftBtn">📁 Gerar SAF-T</button>
-        <div
-          id="statusSaft"
-          style="text-align: center; margin-top: 10px; color: #27ae60"
-        ></div>
-      </form>
-
-      <div id="faturaContainer">A carregar...</div>
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+      <div class="info-banner"><strong>Faturas e fiscal</strong><div class="helper-text">Mantive o que já existia e dei-lhe forma. À esquerda tens o estado operacional. À direita, ferramentas fiscais e Moloni. Se a Moloni estiver offline, o demo não rebenta.</div></div>
+      <div class="page-actions"><button id="refreshBtn" class="ghost-btn">Atualizar</button><button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button></div>
+      <div class="wide-panel-grid">
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Mesas e sessões</strong><div class="helper-text">O que está aberto e o que já fechou.</div></div></div>
+          <div id="serviceBoard" class="list-stack"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Faturas Moloni</strong><div class="helper-text">Leitura resiliente: mostra se houver token, informa se não houver.</div></div></div>
+          <div id="moloniFaturas" class="table-scroll"><div class="empty-state">A carregar...</div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Ferramentas fiscais</strong><div class="helper-text">Combinar PDF e gerar SAF-T.</div></div></div>
+          <form id="formAutoPdf" class="form-stack">
+            <label>PDF do Auto<input type="file" id="autoPdf" name="autoPdf" accept="application/pdf" required /></label>
+            <label>PDF da Fatura<input type="file" id="faturaPdf" name="faturaPdf" accept="application/pdf" required /></label>
+            <button type="submit" class="primary-btn">Exportar PDF combinado</button>
+            <div class="form-grid-2">
+              <label>Data início<input type="date" id="periodStart" name="periodStart" required /></label>
+              <label>Data fim<input type="date" id="periodEnd" name="periodEnd" required /></label>
+            </div>
+            <button id="gerarSaftBtn" class="secondary-btn">Gerar SAF-T</button>
+            <div id="statusSaft" class="helper-text"></div>
+          </form>
+        </section>
+      </div>
     </div>
-    <script>
-      const form = document.getElementById("formAutoPdf");
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const fileAuto = document.getElementById("autoPdf");
-        const fileFatura = document.getElementById("faturaPdf");
-
-        if (fileAuto.files.length === 0) {
-          alert("Selecione o PDF do Auto");
-          return;
-        }
-        if (fileFatura.files.length === 0) {
-          alert("Selecione o PDF da fatura");
-          return;
-        }
-
-        const formData = new FormData();
-        formData.append("autoPdf", fileAuto.files[0]);
-        formData.append("faturaPdf", fileFatura.files[0]);
-
-        try {
-          const response = await fetch("/api/fatura-com-auto", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const text = await response.text();
-            throw new Error(
-              `Erro ao combinar PDFs: ${response.status} ${text}`
-            );
-          }
-
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `fatura_com_auto_${Date.now()}.pdf`; // nome genérico com timestamp
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        } catch (err) {
-          alert(err.message);
-        }
-      });
-
-      let faturas = [];
-      async function fetchFaturas() {
-        try {
-          const response = await fetch("/api/faturas");
-          const data = await response.json(); // use uma variável 'data'
-          faturas = Array.isArray(data) ? data : [];
-          if (faturas.length === 0) {
-            document.getElementById("faturaContainer").innerText =
-              "Nenhuma fatura encontrada.";
-            return;
-          }
-          // Ordenar pela data decrescente
-          faturas.sort((a, b) => new Date(b.date) - new Date(a.date));
-          const table = document.createElement("table");
-          table.innerHTML = `
-           <thead>
-        <tr>
-          <th>ID</th>
-          <th>Data</th>
-          <th>Número</th>
-          <th>Ilíquido</th>
-          <th>Impostos</th>
-          <th>Total Liq.</th>
-          <th>Dívida</th>
-             <th>Email</th>
-          <th>PDF</th>
-       
-        </tr>
-      </thead>
-      <tbody>
-        ${faturas
-          .map((f) => {
-            const dataFormatada = new Date(f.date).toLocaleDateString("pt-PT");
-
-            const formatarValor = (v) =>
-              v != null ? parseFloat(v).toFixed(2) + " €" : "-";
-
-            return `
-              <tr>
-                <td>${f.document_id}</td>
-                <td>${dataFormatada}</td>
-                <td>${f.document_number || "-"}</td>
-                <td>${formatarValor(f.net_value)}</td>
-                <td>${formatarValor(f.total_tax)}</td>
-                <td>${formatarValor(f.total_value)}</td>
-                <td>${formatarValor(f.total_due ?? f.total_balance)}</td>
-                <td>
-  <button class="btn btn-secondary" onclick="enviarFaturaEmail('${
-    f.document_id
-  }')">
-    📧 Enviar
-  </button>
-</td>
-                <td><a href="${f.pdfUrl}" target="_blank">📄 Abrir</a></td>
-              </tr>
-            `;
-          })
-          .join("")}
-      </tbody>
-    `;
-          document.getElementById("faturaContainer").innerHTML = "";
-          document.getElementById("faturaContainer").appendChild(table);
-        } catch (err) {
-          console.error("Erro ao obter faturas:", err);
-          document.getElementById("faturaContainer").innerText =
-            "Erro ao carregar faturas.";
-        }
-      }
-
-      fetchFaturas();
-
-      async function enviarFaturaEmail(documentId) {
-        const email = prompt("Digite o email do destinatário:");
-
-        if (!email) return;
-
-        try {
-          const response = await fetch("/api/enviar-fatura", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ document_id: documentId, email }),
-          });
-
-          if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`Erro ao enviar fatura: ${text}`);
-          }
-
-          alert("Fatura enviada com sucesso!");
-        } catch (err) {
-          alert(err.message);
-        }
-      }
+    <script type="module">
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import { mountOperatorShell, euro, toast } from "./js/restaurant-shell.js";
+      setTerminalId('terminal_main');
+      await mountOperatorShell({ title: 'Faturas', eyebrow: 'Operação + fiscal' });
+      const serviceBoardNode = document.getElementById('serviceBoard');
+      const moloniFaturasNode = document.getElementById('moloniFaturas');
+      document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+      document.getElementById('seedDemoBtn').addEventListener('click', async()=>{ await restaurantApi.seedDemo(); toast('Exemplo carregado.'); await refreshAll(); });
+      document.getElementById('formAutoPdf').addEventListener('submit', combinePdf);
+      document.getElementById('gerarSaftBtn').addEventListener('click', gerarSaft);
+      await refreshAll();
+      async function refreshAll() { const board = await restaurantApi.serviceBoard(); renderServiceBoard(board); await loadMoloniFaturas(); }
+      function renderServiceBoard(board) { const openCards = (board.open_tables || []).map((table)=>`<article class="timeline-row"><strong>${table.name}</strong><div class="meta">${table.session?.status || 'livre'} · ${table.metrics?.total_items || 0} itens · ${euro(table.metrics?.total || 0)}</div></article>`).join('') || `<div class="empty-state">Nenhuma mesa aberta.</div>`; const closedCards = (board.closed_sessions || []).slice(0,5).map((session)=>`<article class="timeline-row"><strong>${session.table_name}</strong><div class="meta">Fechada por ${session.operator_name} · ${session.item_count} itens · ${euro(session.total || 0)}</div></article>`).join('') || `<div class="empty-state">Ainda não existem sessões fechadas.</div>`; serviceBoardNode.innerHTML = `<div class="callout"><strong>Abertas</strong><div class="helper-text">O que ainda está em conta.</div></div>${openCards}<div class="callout" style="margin-top:8px;"><strong>Fechadas</strong><div class="helper-text">As últimas prontas para conferência.</div></div>${closedCards}`; }
+      async function loadMoloniFaturas() { try { const response = await fetch('/api/faturas'); const data = await response.json(); if (!response.ok) throw new Error(data?.detail || 'Falha a carregar faturas.'); const rows = Array.isArray(data) ? data : []; moloniFaturasNode.innerHTML = rows.length ? `<table><thead><tr><th>Número</th><th>Data</th><th>Cliente</th><th>Total</th><th>PDF</th></tr></thead><tbody>${rows.map((row)=>`<tr><td>${row.number || row.document_number || row.document_id}</td><td>${row.date || '-'}</td><td>${row.customer_name || row.entity_name || '-'}</td><td>${euro(row.net_value || row.total_value || row.total || 0)}</td><td>${row.pdfUrl ? `<a href="${row.pdfUrl}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '—'}</td></tr>`).join('')}</tbody></table>` : `<div class="empty-state">Sem faturas retornadas pela Moloni.</div>`; } catch (error) { moloniFaturasNode.innerHTML = `<div class="empty-state">Moloni indisponível para este teste local.<br>${error.message}</div>`; } }
+      async function combinePdf(event) { event.preventDefault(); const fileAuto = document.getElementById('autoPdf'); const fileFatura = document.getElementById('faturaPdf'); if (!fileAuto.files.length || !fileFatura.files.length) return toast('Seleciona os dois PDFs.', true); const formData = new FormData(); formData.append('autoPdf', fileAuto.files[0]); formData.append('faturaPdf', fileFatura.files[0]); try { const response = await fetch('/api/fatura-com-auto', { method: 'POST', body: formData }); if (!response.ok) throw new Error(await response.text()); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `fatura_com_auto_${Date.now()}.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); toast('PDF combinado exportado.'); } catch (err) { toast(err.message, true); } }
+      async function gerarSaft(event) { event.preventDefault(); const start = document.getElementById('periodStart').value; const end = document.getElementById('periodEnd').value; const status = document.getElementById('statusSaft'); status.textContent = 'A gerar...'; try { const response = await fetch('/api/gerar-saft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ period_start: start, period_end: end }) }); if (!response.ok) throw new Error(await response.text()); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SAFT_${start}_${end}.xml`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); status.textContent = 'SAF-T gerado com sucesso.'; } catch (error) { status.textContent = `Falha: ${error.message}`; } }
     </script>
-    <script>
-      const gerarSaftBtn = document.getElementById("gerarSaftBtn");
-      const statusSaft = document.getElementById("statusSaft");
-
-      gerarSaftBtn.addEventListener("click", async () => {
-        gerarSaftBtn.disabled = true;
-        statusSaft.innerText = "A gerar SAF-T, aguarde...";
-        const periodStart = document.getElementById("periodStart").value;
-        const periodEnd = document.getElementById("periodEnd").value;
-        try {
-          // Chamada ao endpoint que gera o SAF-T na Moloni
-          const response = await fetch("/api/gerar-saft", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              period_start: periodStart || null,
-              period_end: periodEnd || null,
-            }),
-          });
-          if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`Erro ao gerar SAF-T: ${text}`);
-          }
-
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-
-          // Criar link de download do SAF-T
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `SAFT_${new Date().toISOString().slice(0, 10)}.xml`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-
-          statusSaft.innerText = "✅ SAF-T gerado com sucesso!";
-        } catch (err) {
-          console.error(err);
-          statusSaft.innerText = `❌ ${err.message}`;
-        } finally {
-          gerarSaftBtn.disabled = false;
-        }
-      });
-    </script>
-    <script src="./js/header.js"></script>
   </body>
 </html>

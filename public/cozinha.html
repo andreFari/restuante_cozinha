@@ -2,12 +2,68 @@
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0; url=./cozinha-v2.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cozinha</title>
-    <script>window.location.replace("./cozinha-v2.html");</script>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
   </head>
   <body>
-    <p>A redirecionar para <a href="./cozinha-v2.html">./cozinha-v2.html</a>...</p>
+    <header>
+      <div class="logo-title">
+        <div class="brand-chip">Restaurant OS</div>
+      </div>
+      <div class="links-container">
+        <nav id="navLinks">
+          <a href="./takeway.html" class="protected ">Takeway</a>
+          <a href="./login.html" class="protected ">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected ">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected active">Cozinha</a>
+          <a href="./faturas.html" class="protected ">Ver Faturas</a>
+          <a href="./artigos.html" class="protected ">Gerir Pratos</a>
+          <a href="./menu.html" class="protected ">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected ">Gestão Mesas</a>
+        </nav>
+      </div>
+      <div id="tokenDisplay" class="token-status">Sistema operacional</div>
+    </header>
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+      <div class="info-banner"><strong>Painel de Cozinha</strong><div class="helper-text">Exemplo real do fluxo: mesa envia pedido, cozinha vê coluna certa, inicia, marca pronto, e quando entregam deixa de bloquear o fecho.</div></div>
+      <div class="page-actions">
+        <button id="refreshBtn" class="ghost-btn">Atualizar</button>
+        <button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button>
+        <button id="resetDemoBtn" class="ghost-btn">Limpar demo</button>
+        <span class="helper-text">Os cartões já trazem mesa, prato, operador, tempo alvo e atraso.</span>
+      </div>
+      <div class="kitchen-stats">
+        <div class="kpi"><div class="kpi-label">Itens na fila</div><div id="kpiTotal" class="kpi-value">0</div></div>
+        <div class="kpi"><div class="kpi-label">Pendentes</div><div id="kpiPending" class="kpi-value">0</div></div>
+        <div class="kpi"><div class="kpi-label">Atrasados</div><div id="kpiOverdue" class="kpi-value">0</div></div>
+      </div>
+      <div class="callout-list" style="margin-bottom:16px;">
+        <div class="callout"><strong>Novo</strong><div class="helper-text">Pedido acabou de cair. Primeiro toque deve ser iniciar.</div></div>
+        <div class="callout"><strong>Em preparação</strong><div class="helper-text">Já está a ser tratado. Pode ficar bloqueado se faltar algum elemento.</div></div>
+        <div class="callout"><strong>Pronto</strong><div class="helper-text">Sala ou takeaway pode levantar/entregar.</div></div>
+        <div class="callout"><strong>Entregue</strong><div class="helper-text">Deixa de bloquear a mesa e fecha o ciclo operacional.</div></div>
+      </div>
+      <div id="kanbanGrid" class="kanban-grid"></div>
+    </div>
+    <script type="module">
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import { mountOperatorShell, ensureOperatorSelected, toast, relativeMinutes } from "./js/restaurant-shell.js";
+      setTerminalId("terminal_kitchen");
+      const columnLabels = { new: "Novo", in_progress: "Em preparação", ready: "Pronto", delivered: "Entregue", blocked: "Bloqueado" };
+      await mountOperatorShell({ title: "Cozinha", eyebrow: "Produção" });
+      await refreshBoard();
+      document.getElementById("refreshBtn").addEventListener("click", refreshBoard);
+      document.getElementById("seedDemoBtn").addEventListener("click", async()=>{ try { const result = await restaurantApi.seedDemo(); toast(result?.message || "Exemplo carregado."); await refreshBoard(); } catch (error) { toast(error.message, true); } });
+      document.getElementById("resetDemoBtn").addEventListener("click", async()=>{ try { const result = await restaurantApi.resetDemo(); toast(result?.message || "Demo limpa."); await refreshBoard(); } catch (error) { toast(error.message, true); } });
+      document.addEventListener("restaurant:operator-changed", refreshBoard);
+      setInterval(refreshBoard, 30000);
+      async function refreshBoard() { const data = await restaurantApi.kitchenBoard(); document.getElementById("kpiTotal").textContent = String(data.totals.total || 0); document.getElementById("kpiPending").textContent = String(data.totals.pending || 0); document.getElementById("kpiOverdue").textContent = String(data.totals.overdue || 0); const grid = document.getElementById("kanbanGrid"); grid.innerHTML = Object.entries(columnLabels).map(([status, label]) => { const items = data.columns?.[status] || []; return `<section class="kanban-column"><div class="kanban-header"><strong>${label}</strong><span class="badge">${items.length}</span></div><div class="kanban-list">${items.length ? items.map(renderKitchenCard).join("") : `<div class="empty-state">Sem itens.</div>`}</div></section>`; }).join(""); grid.querySelectorAll("button[data-next-status]").forEach((btn)=>btn.addEventListener("click", async()=>{ if (!ensureOperatorSelected()) return; try { await restaurantApi.kitchenStatus(btn.dataset.itemId, btn.dataset.nextStatus); toast("Estado atualizado."); await refreshBoard(); } catch (e) { toast(e.message, true); } })); }
+      function renderKitchenCard(item) { const overdueBadge = item.overdue_by_minutes > 0 ? `<span class="badge overdue">+${item.overdue_by_minutes} min</span>` : ""; return `<article class="kitchen-card"><div class="kitchen-card-head"><div><div class="kitchen-card-title">${item.name}</div><div class="meta">${item.table_name} · ${item.quantity}x · ${item.station}</div></div>${overdueBadge}</div><div class="meta-row"><span>Meta: ${item.prep_minutes || 0} min</span><span>Na fila: ${relativeMinutes(item.sent_to_kitchen_at)}</span><span>Enviado por: ${item.sent_by || "—"}</span></div>${item.note ? `<div style="margin-top:10px;">Nota: ${item.note}</div>` : ""}<div class="kitchen-actions">${renderStatusActions(item)}</div></article>`; }
+      function renderStatusActions(item) { const actions = []; if (item.status === "new") { actions.push(button(item.id, "in_progress", "Iniciar")); actions.push(button(item.id, "blocked", "Bloquear")); } if (item.status === "in_progress") { actions.push(button(item.id, "ready", "Marcar pronto")); actions.push(button(item.id, "blocked", "Bloquear")); } if (item.status === "ready") actions.push(button(item.id, "delivered", "Entregue")); if (item.status === "blocked") actions.push(button(item.id, "in_progress", "Retomar")); return actions.join(""); }
+      function button(itemId, status, label) { return `<button class="status-btn" data-item-id="${itemId}" data-next-status="${status}">${label}</button>`; }
+    </script>
   </body>
 </html>

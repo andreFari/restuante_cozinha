@@ -1,3 +1,4 @@
+
 const TERMINAL_KEY = "restaurant_terminal_id";
 const OPERATOR_KEY = "restaurant_operator_id";
 
@@ -11,6 +12,10 @@ export function getTerminalId() {
   return fallback;
 }
 
+export function setTerminalId(terminalId) {
+  localStorage.setItem(TERMINAL_KEY, terminalId);
+}
+
 export function getOperatorId() {
   return localStorage.getItem(OPERATOR_KEY) || "";
 }
@@ -22,14 +27,21 @@ export function setOperatorId(operatorId) {
 async function request(url, options = {}) {
   const response = await fetch(url, {
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
     ...options,
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: text };
+    }
+  }
   if (!response.ok) {
     throw new Error(data?.detail || data?.error || `HTTP ${response.status}`);
   }
@@ -169,5 +181,51 @@ export const restaurantApi = {
         terminal_id: getTerminalId(),
       }),
     });
+  },
+  listMenuItems() {
+    return request(`/api/restaurant/menu-items`);
+  },
+
+  listMenuProfiles() {
+    return request(`/api/restaurant/menu-profiles`);
+  },
+  getMenuConfig(menuKey, day) {
+    const params = new URLSearchParams();
+    if (menuKey) params.set("menu_key", menuKey);
+    if (day !== undefined && day !== null) params.set("day", String(day));
+    return request(`/api/restaurant/menu-config?${params.toString()}`);
+  },
+  updateMenuAvailability(menuKey, menuItemId, payload) {
+    return request(`/api/restaurant/menu-config/${encodeURIComponent(menuKey)}/items/${encodeURIComponent(menuItemId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ...payload, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
+  createMenuItem(payload) {
+    return request(`/api/restaurant/menu-items`, {
+      method: "POST",
+      body: JSON.stringify({ ...payload, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
+  updateMenuItem(menuItemId, payload) {
+    return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ...payload, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
+  archiveMenuItem(menuItemId) {
+    return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
+  serviceBoard() {
+    return request(`/api/restaurant/service-board`);
+  },
+  seedDemo() {
+    return request(`/api/restaurant/demo/seed`, { method: "POST" });
+  },
+  resetDemo() {
+    return request(`/api/restaurant/demo/reset`, { method: "POST" });
   },
 };

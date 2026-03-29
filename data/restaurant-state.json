@@ -1,0 +1,1178 @@
+{
+  "meta": {
+    "version": 3,
+    "created_at": "2026-03-29T09:45:26.099Z",
+    "updated_at": "2026-03-29T09:46:06.107Z"
+  },
+  "restaurants": [
+    {
+      "id": "rest_1",
+      "name": "Demo Restaurant",
+      "currency": "EUR",
+      "timezone": "Europe/Lisbon"
+    }
+  ],
+  "operators": [
+    {
+      "id": "op_ana",
+      "name": "Ana",
+      "pin": "1111",
+      "role": "sala",
+      "active": true
+    },
+    {
+      "id": "op_rui",
+      "name": "Rui",
+      "pin": "2222",
+      "role": "caixa",
+      "active": true
+    },
+    {
+      "id": "op_joao",
+      "name": "João",
+      "pin": "3333",
+      "role": "cozinha",
+      "active": true
+    },
+    {
+      "id": "op_maria",
+      "name": "Maria",
+      "pin": "4444",
+      "role": "gerente",
+      "active": true
+    }
+  ],
+  "terminals": [
+    {
+      "id": "terminal_main",
+      "name": "Terminal Principal",
+      "current_operator_id": "op_ana",
+      "updated_at": "2026-03-29T09:45:26.099Z"
+    },
+    {
+      "id": "terminal_bar",
+      "name": "Receção Bar",
+      "current_operator_id": "op_rui",
+      "updated_at": "2026-03-29T09:45:26.099Z"
+    },
+    {
+      "id": "terminal_takeaway",
+      "name": "Takeaway",
+      "current_operator_id": "op_rui",
+      "updated_at": "2026-03-29T09:45:26.099Z"
+    },
+    {
+      "id": "terminal_kitchen",
+      "name": "Painel Cozinha",
+      "current_operator_id": "op_joao",
+      "updated_at": "2026-03-29T09:45:26.099Z"
+    }
+  ],
+  "menu_profiles": [
+    {
+      "active": true,
+      "id": "sala",
+      "name": "Restaurante interior",
+      "description": "Menu servido dentro do restaurante.",
+      "terminal_id": "terminal_main"
+    },
+    {
+      "active": true,
+      "id": "esplanada",
+      "name": "Fora do restaurante",
+      "description": "Menu de exterior / esplanada.",
+      "terminal_id": "terminal_main"
+    },
+    {
+      "active": true,
+      "id": "takeaway",
+      "name": "Takeaway",
+      "description": "Menu para levar.",
+      "terminal_id": "terminal_takeaway"
+    },
+    {
+      "active": true,
+      "id": "bar",
+      "name": "Bar",
+      "description": "Menu de bar, bebidas e snacks.",
+      "terminal_id": "terminal_bar"
+    }
+  ],
+  "menu_items": [
+    {
+      "id": "mi_bife",
+      "name": "Bife da Casa",
+      "category": "Pratos",
+      "station": "grelha",
+      "prep_minutes": 16,
+      "price": 12.5,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          4,
+          5,
+          6
+        ],
+        "bar": []
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway"
+      ]
+    },
+    {
+      "id": "mi_feijoada",
+      "name": "Feijoada",
+      "category": "Pratos",
+      "station": "fogao",
+      "prep_minutes": 18,
+      "price": 15,
+      "menu_rules": {
+        "sala": [
+          0,
+          6
+        ],
+        "esplanada": [
+          0,
+          6
+        ],
+        "takeaway": [],
+        "bar": []
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada"
+      ]
+    },
+    {
+      "id": "mi_hamburger",
+      "name": "Hambúrguer da Casa",
+      "category": "Pratos",
+      "station": "grelha",
+      "prep_minutes": 14,
+      "price": 9.5,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": []
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway"
+      ]
+    },
+    {
+      "id": "mi_sopa",
+      "name": "Sopa do Dia",
+      "category": "Entradas",
+      "station": "fogao",
+      "prep_minutes": 4,
+      "price": 2.5,
+      "menu_rules": {
+        "sala": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "esplanada": [],
+        "takeaway": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "bar": []
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "takeaway"
+      ]
+    },
+    {
+      "id": "mi_salada",
+      "name": "Salada Mista",
+      "category": "Acompanhamentos",
+      "station": "empratamento",
+      "prep_minutes": 3,
+      "price": 3,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": []
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway"
+      ]
+    },
+    {
+      "id": "mi_batata",
+      "name": "Batata Frita",
+      "category": "Extras",
+      "station": "fritos",
+      "prep_minutes": 6,
+      "price": 3,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    },
+    {
+      "id": "mi_cola",
+      "name": "Coca-Cola",
+      "category": "Bebidas",
+      "station": "bar",
+      "prep_minutes": 1,
+      "price": 2,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    },
+    {
+      "id": "mi_cafe",
+      "name": "Café",
+      "category": "Bebidas",
+      "station": "bar",
+      "prep_minutes": 1,
+      "price": 1.1,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    },
+    {
+      "id": "mi_pudim",
+      "name": "Pudim",
+      "category": "Sobremesas",
+      "station": "sobremesas",
+      "prep_minutes": 2,
+      "price": 3.5,
+      "menu_rules": {
+        "sala": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "esplanada": [
+          5,
+          6
+        ],
+        "takeaway": [
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "sala",
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    },
+    {
+      "id": "mi_prego",
+      "name": "Prego no Pão",
+      "category": "Snacks",
+      "station": "grelha",
+      "prep_minutes": 10,
+      "price": 6.5,
+      "menu_rules": {
+        "sala": [],
+        "esplanada": [
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    },
+    {
+      "id": "mi_tosta",
+      "name": "Tosta Mista",
+      "category": "Snacks",
+      "station": "chapa",
+      "prep_minutes": 7,
+      "price": 4.5,
+      "menu_rules": {
+        "sala": [],
+        "esplanada": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "takeaway": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "bar": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "active": true,
+      "channels": [
+        "esplanada",
+        "takeaway",
+        "bar"
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "id": "t_1",
+      "restaurant_id": "rest_1",
+      "number": 1,
+      "name": "Mesa 1",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_2",
+      "restaurant_id": "rest_1",
+      "number": 2,
+      "name": "Mesa 2",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_3",
+      "restaurant_id": "rest_1",
+      "number": 3,
+      "name": "Mesa 3",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_4",
+      "restaurant_id": "rest_1",
+      "number": 4,
+      "name": "Mesa 4",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_5",
+      "restaurant_id": "rest_1",
+      "number": 5,
+      "name": "Mesa 5",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_6",
+      "restaurant_id": "rest_1",
+      "number": 6,
+      "name": "Mesa 6",
+      "zone": "Sala A",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_7",
+      "restaurant_id": "rest_1",
+      "number": 7,
+      "name": "Mesa 7",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_8",
+      "restaurant_id": "rest_1",
+      "number": 8,
+      "name": "Mesa 8",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_9",
+      "restaurant_id": "rest_1",
+      "number": 9,
+      "name": "Mesa 9",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_10",
+      "restaurant_id": "rest_1",
+      "number": 10,
+      "name": "Mesa 10",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_11",
+      "restaurant_id": "rest_1",
+      "number": 11,
+      "name": "Mesa 11",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_12",
+      "restaurant_id": "rest_1",
+      "number": 12,
+      "name": "Mesa 12",
+      "zone": "Sala B",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_e_1",
+      "restaurant_id": "rest_1",
+      "number": 21,
+      "name": "Esplanada 1",
+      "zone": "Esplanada",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_e_2",
+      "restaurant_id": "rest_1",
+      "number": 22,
+      "name": "Esplanada 2",
+      "zone": "Esplanada",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_e_3",
+      "restaurant_id": "rest_1",
+      "number": 23,
+      "name": "Esplanada 3",
+      "zone": "Esplanada",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_e_4",
+      "restaurant_id": "rest_1",
+      "number": 24,
+      "name": "Esplanada 4",
+      "zone": "Esplanada",
+      "capacity": 4,
+      "active": true
+    },
+    {
+      "id": "t_b_1",
+      "restaurant_id": "rest_1",
+      "number": 101,
+      "name": "Bar 1",
+      "zone": "Bar",
+      "capacity": 2,
+      "active": true
+    },
+    {
+      "id": "t_b_2",
+      "restaurant_id": "rest_1",
+      "number": 102,
+      "name": "Bar 2",
+      "zone": "Bar",
+      "capacity": 2,
+      "active": true
+    },
+    {
+      "id": "t_t_1",
+      "restaurant_id": "rest_1",
+      "number": 201,
+      "name": "Takeaway 1",
+      "zone": "Takeaway",
+      "capacity": 1,
+      "active": true
+    },
+    {
+      "id": "t_t_2",
+      "restaurant_id": "rest_1",
+      "number": 202,
+      "name": "Takeaway 2",
+      "zone": "Takeaway",
+      "capacity": 1,
+      "active": true
+    },
+    {
+      "id": "t_t_3",
+      "restaurant_id": "rest_1",
+      "number": 203,
+      "name": "Takeaway 3",
+      "zone": "Takeaway",
+      "capacity": 1,
+      "active": true
+    }
+  ],
+  "table_sessions": [
+    {
+      "id": "sess_1774777526099_us68e3bx",
+      "restaurant_id": "rest_1",
+      "table_id": "t_1",
+      "table_name": "Mesa 1",
+      "status": "sent",
+      "operator_id": "op_ana",
+      "note": "",
+      "opened_at": "2026-03-29T09:07:26.099Z",
+      "updated_at": "2026-03-29T09:45:56.567Z",
+      "closed_at": null
+    },
+    {
+      "id": "sess_1774777526099_3nhh7gt7",
+      "restaurant_id": "rest_1",
+      "table_id": "t_3",
+      "table_name": "Mesa 3",
+      "status": "ready_partial",
+      "operator_id": "op_rui",
+      "note": "",
+      "opened_at": "2026-03-29T09:18:26.099Z",
+      "updated_at": "2026-03-29T09:46:06.107Z",
+      "closed_at": null
+    },
+    {
+      "id": "sess_1774777526100_f3z6ofoe",
+      "restaurant_id": "rest_1",
+      "table_id": "t_t_1",
+      "table_name": "Takeaway 1",
+      "status": "sent",
+      "operator_id": "op_rui",
+      "note": "Cliente takeaway Pedro",
+      "opened_at": "2026-03-29T09:33:26.100Z",
+      "updated_at": "2026-03-29T09:34:26.100Z",
+      "closed_at": null
+    },
+    {
+      "id": "sess_1774777526100_1z4wogc5",
+      "restaurant_id": "rest_1",
+      "table_id": "t_b_1",
+      "table_name": "Bar 1",
+      "status": "open",
+      "operator_id": "op_ana",
+      "note": "",
+      "opened_at": "2026-03-29T09:36:26.100Z",
+      "updated_at": "2026-03-29T09:37:26.100Z",
+      "closed_at": null
+    },
+    {
+      "id": "sess_1774777526100_iz7k8txn",
+      "restaurant_id": "rest_1",
+      "table_id": "t_2",
+      "table_name": "Mesa 2",
+      "status": "closed",
+      "operator_id": "op_ana",
+      "note": "",
+      "opened_at": "2026-03-29T08:25:26.100Z",
+      "updated_at": "2026-03-29T08:26:26.100Z",
+      "closed_at": "2026-03-29T08:26:26.100Z"
+    }
+  ],
+  "order_items": [
+    {
+      "id": "oi_1774777526100_ohdmkq8s",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "menu_item_id": "mi_bife",
+      "name": "Bife da Casa",
+      "station": "grelha",
+      "quantity": 2,
+      "unit_price": 12.5,
+      "note": "Um mal passado",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:24:26.100Z",
+      "updated_at": "2026-03-29T09:24:26.100Z"
+    },
+    {
+      "id": "oi_1774777526100_069ap2o8",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "menu_item_id": "mi_cola",
+      "name": "Coca-Cola",
+      "station": "bar",
+      "quantity": 2,
+      "unit_price": 2,
+      "note": "",
+      "status": "delivered",
+      "created_at": "2026-03-29T09:27:26.100Z",
+      "updated_at": "2026-03-29T09:45:56.567Z"
+    },
+    {
+      "id": "oi_1774777526100_8b9t0nuv",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "menu_item_id": "mi_feijoada",
+      "name": "Feijoada",
+      "station": "fogao",
+      "quantity": 1,
+      "unit_price": 15,
+      "note": "",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:21:26.100Z",
+      "updated_at": "2026-03-29T09:45:52.373Z"
+    },
+    {
+      "id": "oi_1774777526100_qh4tdn0p",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "menu_item_id": "mi_pudim",
+      "name": "Pudim",
+      "station": "sobremesas",
+      "quantity": 2,
+      "unit_price": 3.5,
+      "note": "Aguardar mesa principal",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:35:26.100Z",
+      "updated_at": "2026-03-29T09:46:06.107Z"
+    },
+    {
+      "id": "oi_1774777526100_6qto61n3",
+      "table_session_id": "sess_1774777526100_f3z6ofoe",
+      "menu_item_id": "mi_prego",
+      "name": "Prego no Pão",
+      "station": "grelha",
+      "quantity": 1,
+      "unit_price": 6.5,
+      "note": "Sem mostarda",
+      "status": "ready",
+      "created_at": "2026-03-29T09:37:26.100Z",
+      "updated_at": "2026-03-29T09:37:26.100Z"
+    },
+    {
+      "id": "oi_1774777526100_int96ms4",
+      "table_session_id": "sess_1774777526100_1z4wogc5",
+      "menu_item_id": "mi_cafe",
+      "name": "Café",
+      "station": "bar",
+      "quantity": 2,
+      "unit_price": 1.1,
+      "note": "",
+      "status": "draft",
+      "created_at": "2026-03-29T09:42:26.100Z",
+      "updated_at": "2026-03-29T09:42:26.100Z"
+    },
+    {
+      "id": "oi_1774777526100_ydfato82",
+      "table_session_id": "sess_1774777526100_iz7k8txn",
+      "menu_item_id": "mi_cola",
+      "name": "Coca-Cola",
+      "station": "bar",
+      "quantity": 3,
+      "unit_price": 2,
+      "note": "",
+      "status": "delivered",
+      "created_at": "2026-03-29T08:35:26.100Z",
+      "updated_at": "2026-03-29T08:35:26.100Z"
+    },
+    {
+      "id": "oi_1774777526100_fskgoy8o",
+      "table_session_id": "sess_1774777526100_iz7k8txn",
+      "menu_item_id": "mi_bife",
+      "name": "Bife da Casa",
+      "station": "grelha",
+      "quantity": 1,
+      "unit_price": 12.5,
+      "note": "",
+      "status": "delivered",
+      "created_at": "2026-03-29T08:37:26.100Z",
+      "updated_at": "2026-03-29T08:37:26.100Z"
+    }
+  ],
+  "kitchen_items": [
+    {
+      "id": "kit_1774777526100_nzrvt3hr",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "order_item_id": "oi_1774777526100_ohdmkq8s",
+      "menu_item_id": "mi_bife",
+      "name": "Bife da Casa",
+      "station": "grelha",
+      "quantity": 2,
+      "note": "Um mal passado",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:25:26.100Z",
+      "sent_to_kitchen_at": "2026-03-29T09:25:26.100Z",
+      "updated_at": "2026-03-29T09:25:26.100Z",
+      "sent_by_operator_id": "op_ana"
+    },
+    {
+      "id": "kit_1774777526100_93p5sggc",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "order_item_id": "oi_1774777526100_069ap2o8",
+      "menu_item_id": "mi_cola",
+      "name": "Coca-Cola",
+      "station": "bar",
+      "quantity": 2,
+      "note": "",
+      "status": "delivered",
+      "created_at": "2026-03-29T09:28:26.100Z",
+      "sent_to_kitchen_at": "2026-03-29T09:28:26.100Z",
+      "updated_at": "2026-03-29T09:45:56.567Z",
+      "sent_by_operator_id": "op_ana"
+    },
+    {
+      "id": "kit_1774777526100_p8onhoh0",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "order_item_id": "oi_1774777526100_8b9t0nuv",
+      "menu_item_id": "mi_feijoada",
+      "name": "Feijoada",
+      "station": "fogao",
+      "quantity": 1,
+      "note": "",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:21:26.100Z",
+      "sent_to_kitchen_at": "2026-03-29T09:21:26.100Z",
+      "updated_at": "2026-03-29T09:45:52.373Z",
+      "sent_by_operator_id": "op_rui"
+    },
+    {
+      "id": "kit_1774777526100_igw7szwl",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "order_item_id": "oi_1774777526100_qh4tdn0p",
+      "menu_item_id": "mi_pudim",
+      "name": "Pudim",
+      "station": "sobremesas",
+      "quantity": 2,
+      "note": "Aguardar mesa principal",
+      "status": "in_progress",
+      "created_at": "2026-03-29T09:36:26.100Z",
+      "sent_to_kitchen_at": "2026-03-29T09:36:26.100Z",
+      "updated_at": "2026-03-29T09:46:06.107Z",
+      "sent_by_operator_id": "op_rui"
+    },
+    {
+      "id": "kit_1774777526100_ab8u8mt2",
+      "table_session_id": "sess_1774777526100_f3z6ofoe",
+      "order_item_id": "oi_1774777526100_6qto61n3",
+      "menu_item_id": "mi_prego",
+      "name": "Prego no Pão",
+      "station": "grelha",
+      "quantity": 1,
+      "note": "Sem mostarda",
+      "status": "ready",
+      "created_at": "2026-03-29T09:37:26.100Z",
+      "sent_to_kitchen_at": "2026-03-29T09:37:26.100Z",
+      "updated_at": "2026-03-29T09:37:26.100Z",
+      "sent_by_operator_id": "op_rui"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_1774777526100_yfigiox0",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "actor_operator_id": "op_ana",
+      "terminal_id": "terminal_main",
+      "action_type": "table_opened",
+      "entity_type": "table_session",
+      "entity_id": "sess_1774777526099_us68e3bx",
+      "payload": {
+        "table_name": "Mesa 1"
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_nu1uh21a",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "actor_operator_id": "op_ana",
+      "terminal_id": "terminal_main",
+      "action_type": "order_sent_to_kitchen",
+      "entity_type": "table_session",
+      "entity_id": "sess_1774777526099_us68e3bx",
+      "payload": {
+        "items_count": 2
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_cgeg1m92",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_rui",
+      "terminal_id": "terminal_main",
+      "action_type": "table_opened",
+      "entity_type": "table_session",
+      "entity_id": "sess_1774777526099_3nhh7gt7",
+      "payload": {
+        "table_name": "Mesa 3"
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_jbe0yqqb",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_main",
+      "action_type": "kitchen_blocked",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_ab8u8mt2",
+      "payload": {
+        "name": "Pudim",
+        "quantity": 2
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_9r35plgp",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526100_f3z6ofoe",
+      "actor_operator_id": "op_rui",
+      "terminal_id": "terminal_main",
+      "action_type": "table_opened",
+      "entity_type": "table_session",
+      "entity_id": "sess_1774777526100_f3z6ofoe",
+      "payload": {
+        "table_name": "Takeaway 1"
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_oquugvn4",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526100_f3z6ofoe",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_main",
+      "action_type": "kitchen_ready",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_ab8u8mt2",
+      "payload": {
+        "name": "Prego no Pão",
+        "quantity": 1
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777526100_7b6u2y6q",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526100_iz7k8txn",
+      "actor_operator_id": "op_ana",
+      "terminal_id": "terminal_main",
+      "action_type": "table_closed",
+      "entity_type": "table_session",
+      "entity_id": "sess_1774777526100_iz7k8txn",
+      "payload": {
+        "table_name": "Mesa 2"
+      },
+      "created_at": "2026-03-29T09:45:26.100Z"
+    },
+    {
+      "id": "evt_1774777552373_4drgibcl",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_kitchen",
+      "action_type": "kitchen_in_progress",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_p8onhoh0",
+      "payload": {
+        "name": "Feijoada",
+        "quantity": 1
+      },
+      "created_at": "2026-03-29T09:45:52.373Z"
+    },
+    {
+      "id": "evt_1774777556568_fg4pd28f",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_us68e3bx",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_kitchen",
+      "action_type": "kitchen_delivered",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_93p5sggc",
+      "payload": {
+        "name": "Coca-Cola",
+        "quantity": 2
+      },
+      "created_at": "2026-03-29T09:45:56.568Z"
+    },
+    {
+      "id": "evt_1774777559553_05f07i64",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_kitchen",
+      "action_type": "kitchen_in_progress",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_igw7szwl",
+      "payload": {
+        "name": "Pudim",
+        "quantity": 2
+      },
+      "created_at": "2026-03-29T09:45:59.553Z"
+    },
+    {
+      "id": "evt_1774777564548_w2ssidmc",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_kitchen",
+      "action_type": "kitchen_blocked",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_igw7szwl",
+      "payload": {
+        "name": "Pudim",
+        "quantity": 2
+      },
+      "created_at": "2026-03-29T09:46:04.548Z"
+    },
+    {
+      "id": "evt_1774777566107_bann5vsb",
+      "restaurant_id": "rest_1",
+      "table_session_id": "sess_1774777526099_3nhh7gt7",
+      "actor_operator_id": "op_joao",
+      "terminal_id": "terminal_kitchen",
+      "action_type": "kitchen_in_progress",
+      "entity_type": "kitchen_item",
+      "entity_id": "kit_1774777526100_igw7szwl",
+      "payload": {
+        "name": "Pudim",
+        "quantity": 2
+      },
+      "created_at": "2026-03-29T09:46:06.107Z"
+    }
+  ]
+}
