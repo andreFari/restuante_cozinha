@@ -46,6 +46,34 @@ app.use(
   }),
 );
 
+const protectedPages = new Set([
+  "/rececaoBar.html",
+  "/rececaoCozi.html",
+  "/takeway.html",
+  "/cozinha.html",
+  "/faturas.html",
+  "/artigos.html",
+  "/menu.html",
+  "/gest_mesas.html",
+  "/trabalhadores.html",
+]);
+const adminOnlyPages = new Set(["/menu.html", "/gest_mesas.html", "/trabalhadores.html"]);
+
+app.use((req, res, next) => {
+  if (!protectedPages.has(req.path)) return next();
+
+  const auth = req.session?.restaurantAuth || null;
+  if (!auth?.user_id) {
+    return res.redirect("/login.html");
+  }
+
+  if (adminOnlyPages.has(req.path) && auth.role !== "admin") {
+    return res.redirect("/rececaoCozi.html");
+  }
+
+  return next();
+});
+
 app.use("/images", express.static(path.join(__dirname, "public", "imagens")));
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, "public")));

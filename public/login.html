@@ -3,105 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Receção Bar</title>
+    <title>Login Restaurante</title>
     <link rel="stylesheet" href="./css/header.css" />
     <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
   </head>
   <body>
     <header>
-      <div class="logo-title">
-        <div class="brand-chip">Restaurant OS</div>
-      </div>
-      <div class="links-container">
-        <nav id="navLinks">
-          <a href="./takeway.html" class="protected ">Takeway</a>
-          <a href="./login.html" class="protected active">Receção Bar</a>
-          <a href="./rececaoCozi.html" class="protected ">Receção Cozinha</a>
-          <a href="./cozinha.html" class="protected ">Cozinha</a>
-          <a href="./faturas.html" class="protected ">Ver Faturas</a>
-          <a href="./artigos.html" class="protected ">Gerir Pratos</a>
-          <a href="./menu.html" class="protected ">Gestão Menu</a>
-          <a href="./gest_mesas.html" class="protected ">Gestão Mesas</a>
-        </nav>
-      </div>
-      <div id="tokenDisplay" class="token-status">Sistema operacional</div>
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
+      <div id="tokenDisplay" class="token-status">Autenticação local</div>
     </header>
-    <div class="page-shell">
-      <div id="operatorShell"></div>
-      <div class="info-banner">
-        <strong>Receção Bar</strong>
-        <div class="helper-text">Mesmo layout da cozinha/sala, mas focado em bebidas, cafés, snacks e mesas de balcão. Nada de ecrãs velhos misturados.</div>
-      </div>
-      <div class="page-actions">
-        <input id="searchInput" type="search" placeholder="Pesquisar mesa de bar ou esplanada" style="min-width: 280px;" />
-        <button id="refreshBtn" class="ghost-btn">Atualizar</button>
-        <button id="openTableBtn" class="primary-btn">Abrir mesa</button>
-        <button id="historyBtn" class="ghost-btn">Ver histórico</button>
-        <button id="sendKitchenBtn" class="secondary-btn">Enviar produção</button>
-        <button id="closeTableBtn" class="ghost-btn">Fechar mesa</button>
-        <button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button>
-      </div>
-      <div class="wide-panel-grid">
+    <main class="page-shell" style="max-width:880px; margin:0 auto;">
+      <div class="wide-panel-grid" style="grid-template-columns:1.1fr .9fr; align-items:start;">
         <section class="panel">
-          <div class="panel-title-row"><div><strong>Mesas de bar</strong><div class="helper-text">Bar e esplanada num só fluxo.</div></div></div>
-          <div class="kpi-row">
-            <div class="kpi"><div class="kpi-label">Mesas em uso</div><div class="kpi-value" id="kpiOpen">0</div></div>
-            <div class="kpi"><div class="kpi-label">Itens de bar</div><div class="kpi-value" id="kpiItems">0</div></div>
-            <div class="kpi"><div class="kpi-label">Total aberto</div><div class="kpi-value" id="kpiValue">€0</div></div>
+          <div class="shell-eyebrow">Acesso ao restaurante</div>
+          <h1 class="shell-title">Entrar no sistema</h1>
+          <div class="helper-text" style="margin-bottom:16px;">Admin vê tudo. Trabalhador não vê gestão de menus nem gestão de mesas.</div>
+          <form id="loginForm" class="form-stack">
+            <label>Email<input id="email" type="email" required placeholder="admin@rest.local" /></label>
+            <label>Password<input id="password" type="password" required placeholder="••••••••" /></label>
+            <button class="primary-btn" type="submit">Entrar</button>
+            <div id="loginError" class="helper-text" style="color:#b91c1c;"></div>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Credenciais de teste</strong><div class="helper-text">Passwords em texto simples apenas para ambiente local.</div></div></div>
+          <div class="list-stack">
+            <article class="timeline-row"><strong>Admin</strong><div class="meta">admin@rest.local · admin123</div></article>
+            <article class="timeline-row"><strong>Trabalhador</strong><div class="meta">worker@rest.local · worker123</div></article>
           </div>
-          <div id="tablesList" class="list-stack"></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title-row"><div><strong>Conta atual</strong><div class="helper-text">Bebidas, cafés e snacks lançados.</div></div><span id="selectedTableBadge" class="badge">Sem seleção</span></div>
-          <div id="tableSummary" class="meta" style="margin-bottom:12px;">Nenhuma mesa selecionada.</div>
-          <div id="orderItems" class="list-stack"></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title-row"><div><strong>Adicionar consumos</strong><div class="helper-text">Só artigos ativos no menu de bar para hoje.</div></div></div>
-          <div id="menuGrid" class="menu-grid"></div>
+          <div class="callout" style="margin-top:12px;">
+            <strong>Primeiro passo</strong>
+            <div class="helper-text">Depois de entrares como admin, usa “Carregar exemplo” para popular a BD se ainda estiver vazia.</div>
+          </div>
         </section>
       </div>
-    </div>
-    <div id="historyModal" class="modal-backdrop"><div class="modal-card"><div class="panel-title-row"><div><strong>Histórico da mesa</strong></div><button id="closeHistoryModal" class="ghost-icon-btn">×</button></div><div id="historyTimeline" class="list-stack"></div></div></div>
+    </main>
     <script type="module">
-      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
-      import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from "./js/restaurant-shell.js";
-      setTerminalId("terminal_bar");
-      const MENU_KEY = "bar";
-      const TODAY = new Date().getDay();
-      function itemAvailableForMenu(item) { return item && item.active !== false && Array.isArray(item.menu_rules?.[MENU_KEY]) && item.menu_rules[MENU_KEY].includes(TODAY); }
-      function findPreferredTable(tables) { return tables.find((table)=>table.session) || tables[0] || null; }
-
-      const state = { bootstrap: null, selectedTableId: null };
-      const tablesList = document.getElementById("tablesList");
-      const orderItems = document.getElementById("orderItems");
-      const menuGrid = document.getElementById("menuGrid");
-      const selectedTableBadge = document.getElementById("selectedTableBadge");
-      const tableSummary = document.getElementById("tableSummary");
-      const searchInput = document.getElementById("searchInput");
-      const historyModal = document.getElementById("historyModal");
-      const historyTimeline = document.getElementById("historyTimeline");
-      await mountOperatorShell({ title: "Receção Bar", eyebrow: "Bar e esplanada" });
-      await refreshAll();
-      document.getElementById("refreshBtn").addEventListener("click", refreshAll);
-      document.getElementById("openTableBtn").addEventListener("click", async () => action((id) => restaurantApi.openTable(id), "Mesa aberta."));
-      document.getElementById("sendKitchenBtn").addEventListener("click", async () => action((id) => restaurantApi.sendToKitchen(id), "Consumos enviados."));
-      document.getElementById("closeTableBtn").addEventListener("click", async () => action((id) => restaurantApi.closeTable(id), "Mesa fechada."));
-      document.getElementById("historyBtn").addEventListener("click", openHistory);
-      document.getElementById("closeHistoryModal").addEventListener("click", () => historyModal.classList.remove("show"));
-      document.getElementById("seedDemoBtn").addEventListener("click", async () => { try { const result = await restaurantApi.seedDemo(); toast(result?.message || "Exemplo carregado."); await refreshAll(true); } catch (error) { toast(error.message, true); } });
-      searchInput.addEventListener("input", renderTables);
-      document.addEventListener("restaurant:operator-changed", refreshAll);
-      setInterval(refreshAll, 30000);
-      function barTables(rows) { return rows.filter((t) => ["Bar", "Esplanada"].includes(t.zone)); }
-      function barItems(items) { return items.filter((item) => itemAvailableForMenu(item)); }
-      async function action(fn, ok) { if (!ensureOperatorSelected()) return; if (!state.selectedTableId) return toast("Seleciona uma mesa.", true); try { await fn(state.selectedTableId); toast(ok); await refreshAll(); } catch (e) { toast(e.message, true); } }
-      async function refreshAll(forcePreferredSelection = false) { state.bootstrap = await restaurantApi.bootstrap(); const tables = barTables(state.bootstrap.tables || []); const preferred = findPreferredTable(tables); if (forcePreferredSelection && preferred) state.selectedTableId = preferred.id; if (!state.selectedTableId && preferred) state.selectedTableId = preferred.id; if (state.selectedTableId && !tables.some((t) => t.id === state.selectedTableId)) state.selectedTableId = preferred?.id || null; renderTables(); renderMenu(); await renderSelectedTable(); renderKpis(); }
-      function renderKpis() { const tables = barTables(state.bootstrap?.tables || []).filter((t) => t.session); document.getElementById("kpiOpen").textContent = String(tables.length); document.getElementById("kpiItems").textContent = String(tables.reduce((s,t)=>s+Number(t.metrics?.total_items||0),0)); document.getElementById("kpiValue").textContent = euro(tables.reduce((s,t)=>s+Number(t.metrics?.total||0),0)); }
-      function renderTables() { const term = (searchInput.value||"").toLowerCase(); const tables = barTables(state.bootstrap?.tables || []).filter((table) => !term || [table.name, table.zone, table.session?.status].some((v)=>String(v||"").toLowerCase().includes(term))); tablesList.innerHTML = tables.length ? tables.map((table) => `<article class="table-card ${state.selectedTableId===table.id?"is-active":""}" data-table-id="${table.id}"><div class="table-card-head"><strong>${table.name}</strong><span class="badge ${table.session?.status || "free"}">${table.session?.status || "livre"}</span></div><div class="meta">${table.zone} · ${table.capacity} lugares</div><div class="meta-row"><span>${table.metrics?.total_items||0} itens</span><span>${table.metrics?.pending_kitchen||0} pendentes</span><span>${euro(table.metrics?.total||0)}</span></div></article>`).join("") : `<div class="empty-state">Sem mesas de bar para mostrar.</div>`; tablesList.querySelectorAll(".table-card").forEach((card)=>card.addEventListener("click", async()=>{ state.selectedTableId = card.dataset.tableId; renderTables(); await renderSelectedTable(); })); }
-      function renderMenu() { const items = barItems(state.bootstrap?.menu_items || []); menuGrid.innerHTML = items.map((item) => `<button class="menu-card" data-menu-item-id="${item.id}"><div class="menu-card-name">${item.name}</div><div class="meta">${item.category} · ${item.station} · ${item.prep_minutes||0} min</div><div class="menu-card-price">${euro(item.price)}</div></button>`).join(""); menuGrid.querySelectorAll(".menu-card").forEach((btn)=>btn.addEventListener("click", async()=>{ if (!ensureOperatorSelected()) return; if (!state.selectedTableId) return toast("Seleciona uma mesa.", true); try { const table = barTables(state.bootstrap?.tables || []).find((row)=>row.id===state.selectedTableId); if (!table?.session) await restaurantApi.openTable(state.selectedTableId); await restaurantApi.addItem(state.selectedTableId, btn.dataset.menuItemId, 1, ""); toast("Consumo adicionado."); await refreshAll(); } catch (e) { toast(e.message, true); } })); }
-      async function renderSelectedTable() { if (!state.selectedTableId) { selectedTableBadge.textContent = "Sem seleção"; tableSummary.textContent = "Nenhuma mesa selecionada."; orderItems.innerHTML = ""; return; } const details = await restaurantApi.getTable(state.selectedTableId); const session = details.session; selectedTableBadge.textContent = details.table?.name || "Mesa"; selectedTableBadge.className = `badge ${session?.status || ""}`; tableSummary.textContent = session ? `${session.status} · aberta há ${relativeMinutes(session.opened_at)} · total ${euro(details.totals?.total||0)}` : "Mesa livre."; orderItems.innerHTML = (details.order_items || []).length ? details.order_items.map((item)=>`<article class="item-row"><div class="item-row-main"><div><div class="item-name">${item.name}</div><div class="meta">${item.station} · ${item.status}</div></div><div><strong>${euro(item.unit_price*item.quantity)}</strong></div></div><div class="item-controls"><div class="qty-stepper"><button data-action="minus" data-item-id="${item.id}" ${item.quantity<=1?"disabled":""}>−</button><span>${item.quantity}</span><button data-action="plus" data-item-id="${item.id}">+</button></div><button class="ghost-btn" data-action="remove" data-item-id="${item.id}">Remover</button></div></article>`).join("") : `<div class="empty-state">Sem consumos lançados.</div>`; orderItems.querySelectorAll("button[data-action]").forEach((btn)=>btn.addEventListener("click", async()=>{ if (!ensureOperatorSelected()) return; const row = details.order_items.find((i)=>i.id===btn.dataset.itemId); if (!row) return; try { if (btn.dataset.action==="remove") await restaurantApi.removeItem(state.selectedTableId, row.id); else if (btn.dataset.action==="plus") await restaurantApi.updateItemQuantity(state.selectedTableId, row.id, Number(row.quantity)+1); else await restaurantApi.updateItemQuantity(state.selectedTableId, row.id, Math.max(1, Number(row.quantity)-1)); await refreshAll(); } catch (e) { toast(e.message, true); } })); }
-      async function openHistory() { if (!state.selectedTableId) return toast("Seleciona uma mesa.", true); const events = await restaurantApi.getHistory(state.selectedTableId); historyTimeline.innerHTML = events.length ? events.map((event)=>`<article class="timeline-row"><div class="timeline-row-head"><strong>${event.actor_name}</strong><span class="meta">${new Date(event.created_at).toLocaleTimeString("pt-PT", {hour:"2-digit", minute:"2-digit"})}</span></div><div class="meta">${event.action_type}</div></article>`).join("") : `<div class="empty-state">Sem histórico.</div>`; historyModal.classList.add("show"); }
+      import { restaurantApi, clearOperatorId } from './js/restaurant-api.js';
+      const form = document.getElementById('loginForm');
+      const errorNode = document.getElementById('loginError');
+      clearOperatorId();
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorNode.textContent = '';
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        try {
+          const result = await restaurantApi.login(email, password);
+          window.location.replace(result?.is_admin ? '/rececaoCozi.html' : '/rececaoCozi.html');
+        } catch (error) {
+          errorNode.textContent = error.message || 'Falha no login.';
+        }
+      });
     </script>
   </body>
 </html>

@@ -2,341 +2,90 @@
 <html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <title>Gerir Categorias - Moloni</title>
-    <link rel="stylesheet" href="css/header.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gerir Categorias</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background-color: #f7f8fa;
-        color: #333;
-      }
-      h1 {
-        margin-bottom: 10px;
-        margin-top: 10px;
-        text-align: center;
-      }
-      a {
-        color: #007bff;
-        text-decoration: none;
-      }
-      a:hover {
-        text-decoration: underline;
-      }
-
-      .top-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-      button {
-        padding: 8px 12px;
-        border: none;
-        background-color: #007bff;
-        color: #fff;
-        border-radius: 5px;
-        cursor: pointer;
-        margin-top: 10px;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-      }
-      th,
-      td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #eee;
-        text-align: center; /* <-- adiciona isso */
-      }
-      th {
-        background: #f1f3f5;
-      }
-      tr:hover {
-        background-color: #f9fafb;
-      }
-
-      .delete-btn {
-        background: none;
-        border: none;
-        color: #d9534f;
-        cursor: pointer;
-      }
-
-      .edit-btn {
-        background: none;
-        border: none;
-        color: #007bff;
-        cursor: pointer;
-        margin-right: 5px;
-      }
-
-      .message {
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-        display: none;
-      }
-      .success {
-        background: #d4edda;
-        color: #155724;
-      }
-      .error {
-        background: #f8d7da;
-        color: #721c24;
-      }
-
-      /* Modal */
-      .modal {
-        display: none; /* modal começa escondido */
-        position: fixed;
-        z-index: 999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-
-        /* centralização: use flexbox no container, mas aqui sem display flex */
-        justify-content: center;
-        align-items: center;
-      }
-      .modal-content {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        width: 400px;
-        position: relative;
-        box-sizing: border-box;
-      }
-      .close {
-        position: absolute;
-        right: 10px;
-        top: 10px;
-        font-size: 18px;
-        cursor: pointer;
-      }
-      form label {
-        margin-top: 10px;
-        display: block;
-      }
-      form input,
-      form select {
-        width: 100%;
-        padding: 8px;
-        margin-top: 5px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
-      }
+      .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+      .card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:20px;background:#fff;padding:16px}
+      .card input{min-height:44px;border:1px solid #dbe3ef;border-radius:14px;padding:0 12px;font:inherit}
+      .actions{display:flex;gap:10px;flex-wrap:wrap}
     </style>
   </head>
   <body>
-    <div style="padding: 20px">
-      <header>
-        <div class="logo-title">
-          <img src="" alt="Logo" class="logo" />
+    <header>
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
+      <div class="links-container"><nav id="navLinks"><a href="./artigos.html" class="protected active">Voltar aos pratos</a></nav></div>
+      <div id="tokenDisplay" class="token-status">Categorias</div>
+    </header>
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+      <section class="panel">
+        <div class="toolbar">
+          <div>
+            <div class="shell-eyebrow">CATÁLOGO BASE</div>
+            <h1 class="shell-title" style="margin:0">Gerir categorias</h1>
+          </div>
+          <button id="newBtn" class="primary-btn">Nova categoria</button>
         </div>
-
-        <div class="links-container">
-          <nav id="navLinks">
-            <a href="./login.html" class="protected"> Receção Bar </a>
-            <a href="./rececaoCozi.html" class="protected"> Receção Cozinha </a>
-            <a href="./cozinha-v2.html" class="protected"> Cozinha </a>
-            <a href="./faturas.html" class="protected">📄 Ver Faturas</a>
-            <!-- Layout principal: 2 colunas
-          <a href="./guiasTransporte.html" class="protected"
-
-            >🚚 Guias de Transporte
-          </a>
- -->
-            <a href="./artigos.html" class="protected active">🍽️ Gerir Pratos</a>
-            <a href="./menu.html" class="protected">📋 Menu</a>
-          </nav>
-        </div>
-
-        <div id="tokenDisplay" class="token-status">
-          ⚠️ Sistema não autenticado
-        </div>
-      </header>
-      <div>
-        <h1>Gestão de Categorias</h1>
-
-        <div class="message success" id="msgSuccess"></div>
-        <div class="message error" id="msgError"></div>
-
-        <div class="top-bar">
-          <div></div>
-          <button id="openModalBtn">➕ Nova Categoria</button>
-        </div>
-
-        <table id="categoryTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+        <div id="grid" class="grid"></div>
+      </section>
     </div>
-    <!-- Modal -->
-    <div id="categoryModal" class="modal">
-      <div class="modal-content">
-        <span class="close" id="closeModal">&times;</span>
-        <h2 id="modalTitle">➕ Nova Categoria</h2>
-        <form id="categoryForm">
-          <input type="hidden" id="category_id" />
-          <label>Nome *</label>
-          <input type="text" id="name" required />
-
-          <label for="description">Descrição</label>
-          <input
-            type="text"
-            id="description"
-            placeholder="Insira a descrição"
-          />
-
-          <button type="submit">Guardar</button>
-        </form>
-      </div>
-    </div>
-
-    <script>
-      let categorias = [];
-
-      function showMessage(type, text) {
-        const msg =
-          type === "success"
-            ? document.getElementById("msgSuccess")
-            : document.getElementById("msgError");
-        msg.textContent = text;
-        msg.style.display = "block";
-        setTimeout(() => (msg.style.display = "none"), 3000);
-      }
-
-      function renderTable(data) {
-        const tbody = document.querySelector("#categoryTable tbody");
-        tbody.innerHTML = "";
-        data.forEach((cat) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-          <td>${cat.category_id}</td>
-          <td>${cat.name}</td>
-        
-          <td>
-            <button class="edit-btn" onclick="openEdit(${cat.category_id})">✏️</button>
-            <button class="delete-btn" onclick="deleteCategory(${cat.category_id})">🗑️</button>
-          </td>
-        `;
-          tbody.appendChild(row);
-        });
-      }
-
-      async function fetchCategorias() {
-        const res = await fetch("/artigo/categorias");
-        categorias = await res.json();
-        renderTable(categorias);
-      }
-
-      async function deleteCategory(id) {
-        if (!confirm("Tens a certeza que queres eliminar esta categoria?"))
-          return;
+    <script type="module">
+      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
+      import { mountOperatorShell, toast } from "./js/restaurant-shell.js";
+      setTerminalId("terminal_main");
+      await mountOperatorShell({ title: "Gerir Categorias", eyebrow: "Catálogo base" });
+      const grid = document.getElementById("grid");
+      document.getElementById("newBtn").addEventListener("click", async () => {
+        const name = prompt("Nome da categoria:");
+        if (!name) return;
         try {
-          const res = await fetch(`/artigo/categorias/${id}`, {
-            method: "DELETE",
-          });
-          if (!res.ok) throw new Error();
-          showMessage("success", "Categoria eliminada!");
-          fetchCategorias();
-        } catch {
-          showMessage("error", "Erro ao eliminar categoria.");
-        }
-      }
-
-      document.getElementById("openModalBtn").onclick = () => {
-        document.getElementById("modalTitle").textContent = "➕ Nova Categoria";
-        document.getElementById("categoryForm").reset();
-        document.getElementById("category_id").value = "";
-        modal.style.display = "flex";
-      };
-
-      function openEdit(id) {
-        const cat = categorias.find((c) => c.category_id === id);
-        if (!cat) return;
-        document.getElementById("modalTitle").textContent =
-          "✏️ Editar Categoria";
-        document.getElementById("category_id").value = cat.category_id;
-        document.getElementById("name").value = cat.name;
-        document.getElementById("parent_id").value = cat.parent_id || 0;
-        document.getElementById("description").value = cat.description || "";
-        modal.style.display = "flex";
-      }
-
-      document
-        .getElementById("categoryForm")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const descriptionValue = document.getElementById("description").value;
-          const id = document.getElementById("category_id").value;
-
-          const body = {
-            name: document.getElementById("name").value,
-            parent_id: 0,
-            description: descriptionValue,
-          };
+          await restaurantApi.createCategory({ name });
+          toast("Categoria criada.");
+          await refresh();
+        } catch (error) { toast(error.message, true); }
+      });
+      await refresh();
+      async function refresh() {
+        const rows = await restaurantApi.listCategories();
+        grid.innerHTML = rows.length ? rows.map((row) => `
+          <article class="card" data-id="${row.id}">
+            <input value="${escapeHtml(row.name)}" data-field="name" />
+            <div class="helper-text">${row.items_count || 0} artigo(s)</div>
+            <div class="actions">
+              <button class="primary-btn" data-action="save">Guardar</button>
+              <button class="ghost-btn" data-action="delete">Apagar</button>
+            </div>
+          </article>`).join("") : `<div class="empty-state">Sem categorias.</div>`;
+        grid.querySelectorAll("[data-action='save']").forEach((btn) => btn.addEventListener("click", async () => {
+          const card = btn.closest("[data-id]");
           try {
-            const url = id ? `/artigo/categorias/${id}` : "/artigo/categorias";
-            const method = id ? "PUT" : "POST";
-
-            console.log("URL:", url, "Method:", method);
-            const res = await fetch(url, {
-              method,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            });
-            console.log("Resposta do fetch:", res);
-            if (!res.ok) throw new Error();
-            showMessage(
-              "success",
-              id ? "Categoria atualizada!" : "Categoria criada!"
-            );
-            closeModal();
-            fetchCategorias();
-          } catch {
-            showMessage("error", "Erro ao guardar categoria.");
-          }
-        });
-
-      const modal = document.getElementById("categoryModal");
-      document.getElementById("closeModal").onclick = () =>
-        (modal.style.display = "none");
-      window.onclick = (e) => {
-        if (e.target == modal) modal.style.display = "none";
-      };
-      function closeModal() {
-        modal.style.display = "none";
+            await restaurantApi.updateCategory(card.dataset.id, { name: card.querySelector("[data-field='name']").value.trim() });
+            toast("Categoria atualizada.");
+            await refresh();
+          } catch (error) { toast(error.message, true); }
+        }));
+        grid.querySelectorAll("[data-action='delete']").forEach((btn) => btn.addEventListener("click", async () => {
+          const card = btn.closest("[data-id]");
+          if (!confirm("Apagar categoria?")) return;
+          try {
+            await restaurantApi.deleteCategory(card.dataset.id);
+            toast("Categoria apagada.");
+            await refresh();
+          } catch (error) { toast(error.message, true); }
+        }));
       }
-
-      fetchCategorias();
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
     </script>
-    <script src="./js/header.js"></script>
   </body>
 </html>

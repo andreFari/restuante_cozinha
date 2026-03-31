@@ -1,5 +1,45 @@
 import { restaurantApi, getOperatorId, setOperatorId } from "./restaurant-api.js";
 
+const OPERATOR_BROADCAST = "restaurant-active-operator";
+
+function getOperatorBroadcast() {
+  try {
+    if (!window.__restaurantOperatorChannel) {
+      window.__restaurantOperatorChannel = new BroadcastChannel(OPERATOR_BROADCAST);
+    }
+    return window.__restaurantOperatorChannel;
+  } catch {
+    return null;
+  }
+}
+
+function announceOperatorChange(operator) {
+  const channel = getOperatorBroadcast();
+  if (channel) {
+    try { channel.postMessage(operator); } catch {}
+  }
+}
+
+function resolveActiveOperator(operators = [], terminalContext = null) {
+  const localOperatorId = getOperatorId();
+  const fromLocal = operators.find((op) => op.id === localOperatorId) || null;
+  if (fromLocal) return fromLocal;
+  const fromTerminal = terminalContext?.operator?.id
+    ? operators.find((op) => op.id === terminalContext.operator.id) || terminalContext.operator
+    : null;
+  return fromTerminal || null;
+}
+
+function updateOperatorUi(root, operator) {
+  const nameNode = root.querySelector("#operatorCurrentName");
+  const switcherBtn = root.querySelector("#operatorSwitcherBtn");
+  if (nameNode) nameNode.textContent = operator?.name || "Selecionar pessoa";
+  if (switcherBtn) switcherBtn.classList.toggle("is-active", Boolean(operator?.id));
+  root.querySelectorAll(".operator-card").forEach((node) => {
+    node.classList.toggle("selected", node.dataset.operatorId === operator?.id);
+  });
+}
+
 export async function mountOperatorShell({
   rootSelector = "#operatorShell",
   title = "POS",
@@ -8,14 +48,43 @@ export async function mountOperatorShell({
   const root = document.querySelector(rootSelector);
   if (!root) return;
 
+  const auth = await restaurantApi.getAuthSession().catch(() => ({ authenticated: false }));
+  if (!auth?.authenticated) {
+    window.location.replace("/login.html");
+    return;
+  }
+
+  if (auth.is_admin) {
+    setOperatorId(auth.user.id);
+    root.innerHTML = `
+      <div class="shell-topbar">
+        <div>
+          <div class="shell-eyebrow">${eyebrow}</div>
+          <h1 class="shell-title">${title}</h1>
+        </div>
+        <div class="operator-pill-wrap">
+          <label class="operator-pill-label">Sessão atual</label>
+          <div class="operator-pill is-active">
+            <span class="operator-pill-dot"></span>
+            <span>${auth.user.name} · Admin</span>
+          </div>
+        </div>
+      </div>
+      <div class="callout" style="margin-bottom:16px;">
+        <strong>Modo administrador</strong>
+        <div class="helper-text">Sem seletor de trabalhador. As ações ficam ligadas à tua conta de admin.</div>
+      </div>
+    `;
+    return;
+  }
+
   const [operators, context] = await Promise.all([
     restaurantApi.listOperators(),
     restaurantApi.getOperatorContext(),
   ]);
 
-  if (context?.operator?.id) {
-    setOperatorId(context.operator.id);
-  }
+  const activeOperator = resolveActiveOperator(operators, context);
+  if (activeOperator?.id) setOperatorId(activeOperator.id);
 
   root.innerHTML = `
     <div class="shell-topbar">
@@ -25,22 +94,22 @@ export async function mountOperatorShell({
       </div>
       <div class="operator-pill-wrap">
         <label class="operator-pill-label">Pessoa ativa</label>
-        <button id="operatorSwitcherBtn" class="operator-pill ${getOperatorId() ? "is-active" : ""}">
+        <button id="operatorSwitcherBtn" class="operator-pill ${activeOperator?.id ? "is-active" : ""}">
           <span class="operator-pill-dot"></span>
-          <span id="operatorCurrentName">${context?.operator?.name || "Selecionar pessoa"}</span>
+          <span id="operatorCurrentName">${activeOperator?.name || "Selecionar pessoa"}</span>
         </button>
       </div>
     </div>
     <div id="operatorPanel" class="operator-panel hidden">
       <div class="operator-panel-head">
-        <strong>Quem está a usar este posto?</strong>
+        <strong>Quem está a usar o sistema?</strong>
         <button id="operatorPanelClose" class="ghost-icon-btn">×</button>
       </div>
       <div class="operator-grid">
         ${operators
           .map(
             (op) => `
-          <button class="operator-card ${context?.operator?.id === op.id ? "selected" : ""}" data-operator-id="${op.id}" data-operator-name="${op.name}">
+          <button class="operator-card ${activeOperator?.id === op.id ? "selected" : ""}" data-operator-id="${op.id}" data-operator-name="${op.name}">
             <span class="operator-card-name">${op.name}</span>
             <span class="operator-card-role">${op.role}</span>
           </button>`
@@ -59,7 +128,7 @@ export async function mountOperatorShell({
   const closeBtn = root.querySelector("#operatorPanelClose");
   const confirmBtn = root.querySelector("#operatorConfirmBtn");
   const pinInput = root.querySelector("#operatorPinInput");
-  let selectedOperatorId = context?.operator?.id || getOperatorId();
+  let selectedOperatorId = activeOperator?.id || "";
 
   switcherBtn?.addEventListener("click", () => panel.classList.toggle("hidden"));
   closeBtn?.addEventListener("click", () => panel.classList.add("hidden"));
@@ -80,23 +149,39 @@ export async function mountOperatorShell({
     try {
       const result = await restaurantApi.selectOperator(selectedOperatorId, pinInput.value.trim());
       setOperatorId(result.operator.id);
-      const nameNode = root.querySelector("#operatorCurrentName");
-      if (nameNode) nameNode.textContent = result.operator.name;
-      switcherBtn?.classList.add("is-active");
+      updateOperatorUi(root, result.operator);
       panel?.classList.add("hidden");
       if (pinInput) pinInput.value = "";
-      toast(`Operador ativo: ${result.operator.name}`);
+      announceOperatorChange(result.operator);
+      toast(`Pessoa ativa: ${result.operator.name}`);
       document.dispatchEvent(new CustomEvent("restaurant:operator-changed", { detail: result.operator }));
     } catch (error) {
       toast(error.message || "Não foi possível trocar de pessoa.", true);
     }
+  });
+
+  const channel = getOperatorBroadcast();
+  if (channel) {
+    channel.onmessage = (event) => {
+      const incoming = event.data;
+      if (!incoming?.id) return;
+      setOperatorId(incoming.id);
+      updateOperatorUi(root, incoming);
+    };
+  }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key !== "restaurant_operator_id") return;
+    const incomingId = event.newValue || "";
+    const incoming = operators.find((op) => op.id === incomingId) || null;
+    updateOperatorUi(root, incoming);
   });
 }
 
 export function ensureOperatorSelected() {
   const operatorId = getOperatorId();
   if (!operatorId) {
-    toast("Seleciona primeiro a pessoa ativa neste posto.", true);
+    toast("Seleciona primeiro a pessoa ativa no sistema.", true);
     return false;
   }
   return true;

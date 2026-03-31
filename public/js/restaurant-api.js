@@ -1,4 +1,3 @@
-
 const TERMINAL_KEY = "restaurant_terminal_id";
 const OPERATOR_KEY = "restaurant_operator_id";
 
@@ -24,10 +23,15 @@ export function setOperatorId(operatorId) {
   localStorage.setItem(OPERATOR_KEY, operatorId);
 }
 
+export function clearOperatorId() {
+  localStorage.removeItem(OPERATOR_KEY);
+}
+
 async function request(url, options = {}) {
   const response = await fetch(url, {
+    credentials: "same-origin",
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...((options.body && !(options.body instanceof FormData)) ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -49,6 +53,19 @@ async function request(url, options = {}) {
 }
 
 export const restaurantApi = {
+  login(email, password) {
+    return request(`/api/restaurant/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  },
+  getAuthSession() {
+    return request(`/api/restaurant/auth/me`);
+  },
+  logout() {
+    clearOperatorId();
+    return request(`/api/restaurant/auth/logout`, { method: "POST" });
+  },
   bootstrap() {
     return request(`/api/restaurant/bootstrap?terminal_id=${encodeURIComponent(getTerminalId())}`);
   },
@@ -75,6 +92,21 @@ export const restaurantApi = {
         operator_id: operatorId,
         pin,
       }),
+    });
+  },
+  listWorkers() {
+    return request(`/api/restaurant/workers`);
+  },
+  createWorker(payload) {
+    return request(`/api/restaurant/workers`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  updateWorker(workerId, payload) {
+    return request(`/api/restaurant/workers/${encodeURIComponent(workerId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
   },
   openTable(tableId, note = "") {
@@ -110,6 +142,16 @@ export const restaurantApi = {
       }),
     });
   },
+  updateOrderItemStatus(tableId, orderItemId, status) {
+    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/items/${encodeURIComponent(orderItemId)}/status`, {
+      method: "POST",
+      body: JSON.stringify({
+        status,
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
   removeItem(tableId, orderItemId) {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/items/${encodeURIComponent(orderItemId)}`, {
       method: "DELETE",
@@ -132,6 +174,29 @@ export const restaurantApi = {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/close`, {
       method: "POST",
       body: JSON.stringify({
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  checkoutPreview(tableId) {
+    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/checkout-preview`);
+  },
+  checkoutTable(tableId, payload) {
+    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/checkout`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload,
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  transferToTakeaway(tableId, payload = {}) {
+    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/transfer-to-takeaway`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload,
         operator_id: getOperatorId(),
         terminal_id: getTerminalId(),
       }),
@@ -185,7 +250,6 @@ export const restaurantApi = {
   listMenuItems() {
     return request(`/api/restaurant/menu-items`);
   },
-
   listMenuProfiles() {
     return request(`/api/restaurant/menu-profiles`);
   },
@@ -199,6 +263,34 @@ export const restaurantApi = {
     return request(`/api/restaurant/menu-config/${encodeURIComponent(menuKey)}/items/${encodeURIComponent(menuItemId)}`, {
       method: "PATCH",
       body: JSON.stringify({ ...payload, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
+  listCategories() {
+    return request(`/api/restaurant/categories`);
+  },
+  createCategory(payload) {
+    return request(`/api/restaurant/categories`, {
+      method: "POST",
+      body: JSON.stringify({ ...payload }),
+    });
+  },
+  updateCategory(categoryId, payload) {
+    return request(`/api/restaurant/categories/${encodeURIComponent(categoryId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ...payload }),
+    });
+  },
+  deleteCategory(categoryId) {
+    return request(`/api/restaurant/categories/${encodeURIComponent(categoryId)}`, {
+      method: "DELETE",
+    });
+  },
+  uploadMenuImage(file) {
+    const form = new FormData();
+    form.append("image", file);
+    return request(`/api/restaurant/uploads/menu-image`, {
+      method: "POST",
+      body: form,
     });
   },
   createMenuItem(payload) {
@@ -219,8 +311,18 @@ export const restaurantApi = {
       body: JSON.stringify({ operator_id: getOperatorId(), terminal_id: getTerminalId() }),
     });
   },
+
+  reorderMenuItem(menuItemId, direction) {
+    return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ direction }),
+    });
+  },
   serviceBoard() {
     return request(`/api/restaurant/service-board`);
+  },
+  listLocalInvoices() {
+    return request(`/api/restaurant/invoices/local`);
   },
   seedDemo() {
     return request(`/api/restaurant/demo/seed`, { method: "POST" });

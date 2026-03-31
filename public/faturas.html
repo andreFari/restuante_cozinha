@@ -6,72 +6,96 @@
     <title>Faturas</title>
     <link rel="stylesheet" href="./css/header.css" />
     <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
+    <style>
+      .page-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+      .invoice-table{width:100%;border-collapse:collapse}
+      .invoice-table th,.invoice-table td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+      .invoice-table th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+      .invoice-card{display:grid;gap:10px;padding:14px;border:1px solid #dbe3ef;border-radius:18px;background:#fff}
+      .tiny{font-size:13px;color:#64748b}
+      @media (max-width:1000px){.page-grid{grid-template-columns:1fr}}
+    </style>
   </head>
   <body>
     <header>
-      <div class="logo-title">
-        <div class="brand-chip">Restaurant OS</div>
-      </div>
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
       <div class="links-container">
         <nav id="navLinks">
-          <a href="./takeway.html" class="protected ">Takeway</a>
-          <a href="./login.html" class="protected ">Receção Bar</a>
-          <a href="./rececaoCozi.html" class="protected ">Receção Cozinha</a>
-          <a href="./cozinha.html" class="protected ">Cozinha</a>
+          <a href="./takeway.html" class="protected">Takeway</a>
+          <a href="./rececaoBar.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
           <a href="./faturas.html" class="protected active">Ver Faturas</a>
-          <a href="./artigos.html" class="protected ">Gerir Pratos</a>
-          <a href="./menu.html" class="protected ">Gestão Menu</a>
-          <a href="./gest_mesas.html" class="protected ">Gestão Mesas</a>
+          <a href="./artigos.html" class="protected">Gerir Pratos</a>
+          <a href="./menu.html" class="protected">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
         </nav>
       </div>
-      <div id="tokenDisplay" class="token-status">Sistema operacional</div>
+      <div id="tokenDisplay" class="token-status">Faturação local</div>
     </header>
+
     <div class="page-shell">
       <div id="operatorShell"></div>
-      <div class="info-banner"><strong>Faturas e fiscal</strong><div class="helper-text">Mantive o que já existia e dei-lhe forma. À esquerda tens o estado operacional. À direita, ferramentas fiscais e Moloni. Se a Moloni estiver offline, o demo não rebenta.</div></div>
-      <div class="page-actions"><button id="refreshBtn" class="ghost-btn">Atualizar</button><button id="seedDemoBtn" class="ghost-btn">Carregar exemplo</button></div>
-      <div class="wide-panel-grid">
+      <div class="page-actions"><button id="refreshBtn" class="ghost-btn">Atualizar</button></div>
+      <div class="page-grid">
         <section class="panel">
-          <div class="panel-title-row"><div><strong>Mesas e sessões</strong><div class="helper-text">O que está aberto e o que já fechou.</div></div></div>
+          <div class="panel-title-row"><div><strong>Faturas geradas</strong><div class="helper-text">Checkout local, método de pagamento e envio por email.</div></div></div>
+          <div class="table-scroll" id="localInvoicesBox"><div class="empty-state">A carregar...</div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title-row"><div><strong>Resumo operacional</strong><div class="helper-text">Sessões abertas e sessões fechadas recentemente.</div></div></div>
           <div id="serviceBoard" class="list-stack"></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title-row"><div><strong>Faturas Moloni</strong><div class="helper-text">Leitura resiliente: mostra se houver token, informa se não houver.</div></div></div>
-          <div id="moloniFaturas" class="table-scroll"><div class="empty-state">A carregar...</div></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title-row"><div><strong>Ferramentas fiscais</strong><div class="helper-text">Combinar PDF e gerar SAF-T.</div></div></div>
-          <form id="formAutoPdf" class="form-stack">
-            <label>PDF do Auto<input type="file" id="autoPdf" name="autoPdf" accept="application/pdf" required /></label>
-            <label>PDF da Fatura<input type="file" id="faturaPdf" name="faturaPdf" accept="application/pdf" required /></label>
-            <button type="submit" class="primary-btn">Exportar PDF combinado</button>
-            <div class="form-grid-2">
-              <label>Data início<input type="date" id="periodStart" name="periodStart" required /></label>
-              <label>Data fim<input type="date" id="periodEnd" name="periodEnd" required /></label>
-            </div>
-            <button id="gerarSaftBtn" class="secondary-btn">Gerar SAF-T</button>
-            <div id="statusSaft" class="helper-text"></div>
-          </form>
         </section>
       </div>
     </div>
+
     <script type="module">
-      import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
-      import { mountOperatorShell, euro, toast } from "./js/restaurant-shell.js";
+      import { restaurantApi, setTerminalId } from './js/restaurant-api.js';
+      import { mountOperatorShell, euro, toast } from './js/restaurant-shell.js';
       setTerminalId('terminal_main');
-      await mountOperatorShell({ title: 'Faturas', eyebrow: 'Operação + fiscal' });
+      await mountOperatorShell({ title: 'Faturas', eyebrow: 'Operação + checkout' });
       const serviceBoardNode = document.getElementById('serviceBoard');
-      const moloniFaturasNode = document.getElementById('moloniFaturas');
+      const invoicesBox = document.getElementById('localInvoicesBox');
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
-      document.getElementById('seedDemoBtn').addEventListener('click', async()=>{ await restaurantApi.seedDemo(); toast('Exemplo carregado.'); await refreshAll(); });
-      document.getElementById('formAutoPdf').addEventListener('submit', combinePdf);
-      document.getElementById('gerarSaftBtn').addEventListener('click', gerarSaft);
       await refreshAll();
-      async function refreshAll() { const board = await restaurantApi.serviceBoard(); renderServiceBoard(board); await loadMoloniFaturas(); }
-      function renderServiceBoard(board) { const openCards = (board.open_tables || []).map((table)=>`<article class="timeline-row"><strong>${table.name}</strong><div class="meta">${table.session?.status || 'livre'} · ${table.metrics?.total_items || 0} itens · ${euro(table.metrics?.total || 0)}</div></article>`).join('') || `<div class="empty-state">Nenhuma mesa aberta.</div>`; const closedCards = (board.closed_sessions || []).slice(0,5).map((session)=>`<article class="timeline-row"><strong>${session.table_name}</strong><div class="meta">Fechada por ${session.operator_name} · ${session.item_count} itens · ${euro(session.total || 0)}</div></article>`).join('') || `<div class="empty-state">Ainda não existem sessões fechadas.</div>`; serviceBoardNode.innerHTML = `<div class="callout"><strong>Abertas</strong><div class="helper-text">O que ainda está em conta.</div></div>${openCards}<div class="callout" style="margin-top:8px;"><strong>Fechadas</strong><div class="helper-text">As últimas prontas para conferência.</div></div>${closedCards}`; }
-      async function loadMoloniFaturas() { try { const response = await fetch('/api/faturas'); const data = await response.json(); if (!response.ok) throw new Error(data?.detail || 'Falha a carregar faturas.'); const rows = Array.isArray(data) ? data : []; moloniFaturasNode.innerHTML = rows.length ? `<table><thead><tr><th>Número</th><th>Data</th><th>Cliente</th><th>Total</th><th>PDF</th></tr></thead><tbody>${rows.map((row)=>`<tr><td>${row.number || row.document_number || row.document_id}</td><td>${row.date || '-'}</td><td>${row.customer_name || row.entity_name || '-'}</td><td>${euro(row.net_value || row.total_value || row.total || 0)}</td><td>${row.pdfUrl ? `<a href="${row.pdfUrl}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '—'}</td></tr>`).join('')}</tbody></table>` : `<div class="empty-state">Sem faturas retornadas pela Moloni.</div>`; } catch (error) { moloniFaturasNode.innerHTML = `<div class="empty-state">Moloni indisponível para este teste local.<br>${error.message}</div>`; } }
-      async function combinePdf(event) { event.preventDefault(); const fileAuto = document.getElementById('autoPdf'); const fileFatura = document.getElementById('faturaPdf'); if (!fileAuto.files.length || !fileFatura.files.length) return toast('Seleciona os dois PDFs.', true); const formData = new FormData(); formData.append('autoPdf', fileAuto.files[0]); formData.append('faturaPdf', fileFatura.files[0]); try { const response = await fetch('/api/fatura-com-auto', { method: 'POST', body: formData }); if (!response.ok) throw new Error(await response.text()); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `fatura_com_auto_${Date.now()}.pdf`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); toast('PDF combinado exportado.'); } catch (err) { toast(err.message, true); } }
-      async function gerarSaft(event) { event.preventDefault(); const start = document.getElementById('periodStart').value; const end = document.getElementById('periodEnd').value; const status = document.getElementById('statusSaft'); status.textContent = 'A gerar...'; try { const response = await fetch('/api/gerar-saft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ period_start: start, period_end: end }) }); if (!response.ok) throw new Error(await response.text()); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SAFT_${start}_${end}.xml`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); status.textContent = 'SAF-T gerado com sucesso.'; } catch (error) { status.textContent = `Falha: ${error.message}`; } }
+
+      async function refreshAll() {
+        const [board, invoices] = await Promise.all([restaurantApi.serviceBoard(), restaurantApi.listLocalInvoices()]);
+        renderServiceBoard(board);
+        renderInvoices(invoices || []);
+      }
+
+      function renderServiceBoard(board) {
+        const openCards = (board.open_tables || []).map((table) => `<article class="invoice-card"><strong>${table.name}</strong><div class="tiny">${table.session?.status || 'livre'} · ${table.metrics?.total_items || 0} itens · ${euro(table.metrics?.total || 0)}</div></article>`).join('') || `<div class="empty-state">Nenhuma mesa/slot aberto.</div>`;
+        const closedCards = (board.closed_sessions || []).slice(0, 8).map((session) => `<article class="invoice-card"><strong>${session.table_name}</strong><div class="tiny">Fechada por ${session.operator_name || '—'} · ${session.item_count || 0} itens · ${euro(session.total || 0)}</div></article>`).join('') || `<div class="empty-state">Sem sessões fechadas.</div>`;
+        serviceBoardNode.innerHTML = `<div class="callout"><strong>Abertas</strong><div class="helper-text">O que ainda está em conta.</div></div>${openCards}<div class="callout" style="margin-top:10px"><strong>Fechadas</strong><div class="helper-text">Últimas sessões processadas.</div></div>${closedCards}`;
+      }
+
+      function renderInvoices(rows) {
+        if (!rows.length) {
+          invoicesBox.innerHTML = `<div class="empty-state">Ainda não existem faturas locais.</div>`;
+          return;
+        }
+        invoicesBox.innerHTML = `
+          <table class="invoice-table">
+            <thead>
+              <tr><th>Número</th><th>Data</th><th>Mesa/slot</th><th>Pagamento</th><th>Total</th><th>Email</th><th>Ficheiro</th></tr>
+            </thead>
+            <tbody>
+              ${rows.map((row) => `
+                <tr>
+                  <td><strong>${row.number}</strong><div class="tiny">${row.customer_name || 'Consumidor final'}</div></td>
+                  <td>${new Date(row.created_at).toLocaleString('pt-PT')}</td>
+                  <td>${row.table_name || '—'}</td>
+                  <td>${row.payment_type || '—'}</td>
+                  <td>${euro(row.total || 0)}</td>
+                  <td>${row.customer_email ? `${row.customer_email}<div class="tiny">${row.emailed_at ? 'Enviada' : 'Não enviada'}</div>` : '—'}</td>
+                  <td>${row.file_path ? `<a href="${row.file_path}" target="_blank" rel="noopener">Abrir</a>` : '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+      }
     </script>
   </body>
 </html>

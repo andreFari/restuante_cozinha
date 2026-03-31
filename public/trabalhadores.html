@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão de Trabalhadores</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
+    <style>
+      .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+      .filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+      .filters input,.filters select{min-height:46px;border:1px solid #dbe3ef;border-radius:14px;padding:0 14px;background:#fff;font:inherit}
+      .workers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+      .worker-card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:22px;background:#fff;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.05)}
+      .worker-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+      .worker-name{font-size:22px;font-weight:800;line-height:1.1}
+      .worker-meta{font-size:14px;color:#5b6b82}
+      .chip-row{display:flex;gap:8px;flex-wrap:wrap}
+      .soft-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+      .soft-badge.ok{background:#e7faf1;color:#0f766e}
+      .soft-badge.off{background:#eef2f7;color:#64748b}
+      .soft-badge.role{background:#eef5ff;color:#2457d6}
+      .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
+      .modal-backdrop.show{display:flex}
+      .modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
+      .modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+      .modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+      .field-stack{display:grid;gap:14px}
+      .field-stack label{display:grid;gap:8px;font-weight:700;color:#243247}
+      .field-stack input,.field-stack select{width:100%;border:1px solid #d7dfeb;border-radius:16px;padding:13px 14px;font:inherit;background:#fff}
+      .check-pill{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #d7dfeb;border-radius:16px;background:#fbfcfe;font-weight:600;color:#243247}
+      .modal-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+      .empty-box{padding:28px;border:1px dashed #d7dfeb;border-radius:20px;text-align:center;color:#64748b;background:#fff}
+      @media (max-width: 860px){.modal-grid{grid-template-columns:1fr}}
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
+      <div class="links-container">
+        <nav id="navLinks">
+          <a href="./rececaoBar.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">Ver Faturas</a>
+          <a href="./artigos.html" class="protected">Gerir Pratos</a>
+          <a href="./menu.html" class="protected">Gestão Menu</a>
+          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
+          <a href="./trabalhadores.html" class="protected active">Trabalhadores</a>
+        </nav>
+      </div>
+      <div id="tokenDisplay" class="token-status">Admin</div>
+    </header>
+
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+
+      <section class="panel">
+        <div class="toolbar">
+          <div>
+            <div class="shell-eyebrow">UTILIZADORES</div>
+            <h1 class="shell-title" style="margin:0">Trabalhadores</h1>
+            <div class="helper-text">Listagem em cartões. Criar e editar só em popup.</div>
+          </div>
+          <div class="chip-row">
+            <button id="refreshBtn" class="ghost-btn">Atualizar</button>
+            <button id="newWorkerBtn" class="primary-btn">Novo trabalhador</button>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Pesquisar por nome, email ou perfil" style="min-width:280px;flex:1" />
+          <select id="roleFilter">
+            <option value="">Todos os perfis</option>
+            <option value="employee">employee</option>
+            <option value="manager">manager</option>
+            <option value="kitchen">kitchen</option>
+            <option value="bar">bar</option>
+            <option value="admin">admin</option>
+          </select>
+          <select id="activeFilter">
+            <option value="">Todos</option>
+            <option value="active">Ativos</option>
+            <option value="inactive">Inativos</option>
+          </select>
+        </div>
+
+        <div id="summaryLine" class="helper-text" style="margin-bottom:16px">A carregar utilizadores...</div>
+        <div id="workersGrid" class="workers-grid"></div>
+      </section>
+    </div>
+
+    <div id="workerModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">TRABALHADOR</div>
+            <h2 id="modalTitle" style="margin:0">Novo trabalhador</h2>
+            <div class="helper-text">Criar e editar utilizadores operacionais.</div>
+          </div>
+          <button id="closeModalBtn" class="ghost-btn" type="button">Fechar</button>
+        </div>
+
+        <form id="workerForm">
+          <input type="hidden" id="workerId" />
+          <div class="modal-grid">
+            <div class="field-stack">
+              <label>Nome
+                <input id="workerName" required />
+              </label>
+              <label>Email
+                <input id="workerEmail" type="email" required />
+              </label>
+            </div>
+            <div class="field-stack">
+              <label>Password
+                <input id="workerPassword" type="text" placeholder="Obrigatória ao criar" />
+              </label>
+              <label>Perfil
+                <select id="workerRole">
+                  <option value="employee">employee</option>
+                  <option value="manager">manager</option>
+                  <option value="kitchen">kitchen</option>
+                  <option value="bar">bar</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <label class="check-pill"><input id="workerActive" type="checkbox" checked /> Ativo</label>
+          </div>
+
+          <div class="modal-actions">
+            <div class="chip-row">
+              <button type="submit" class="primary-btn">Guardar</button>
+            </div>
+            <div class="chip-row">
+              <button type="button" id="resetBtn" class="ghost-btn">Limpar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module">
+      import { restaurantApi } from './js/restaurant-api.js';
+      import { mountOperatorShell, toast } from './js/restaurant-shell.js';
+
+      const state = { rows: [], selectedId: null };
+      const grid = document.getElementById('workersGrid');
+      const searchInput = document.getElementById('searchInput');
+      const roleFilter = document.getElementById('roleFilter');
+      const activeFilter = document.getElementById('activeFilter');
+      const modal = document.getElementById('workerModal');
+      const form = document.getElementById('workerForm');
+      const summaryLine = document.getElementById('summaryLine');
+      const modalTitle = document.getElementById('modalTitle');
+
+      await mountOperatorShell({ title: 'Trabalhadores', eyebrow: 'Administração' });
+      await refreshAll();
+
+      document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+      document.getElementById('newWorkerBtn').addEventListener('click', () => openModal());
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('resetBtn').addEventListener('click', () => openModal(state.selectedId));
+      searchInput.addEventListener('input', renderGrid);
+      roleFilter.addEventListener('change', renderGrid);
+      activeFilter.addEventListener('change', renderGrid);
+      modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+      document.addEventListener('restaurant:operator-changed', refreshAll);
+      form.addEventListener('submit', onSave);
+
+      async function refreshAll() {
+        state.rows = await restaurantApi.listWorkers();
+        renderGrid();
+      }
+
+      function filteredRows() {
+        const term = searchInput.value.trim().toLowerCase();
+        const role = roleFilter.value;
+        const active = activeFilter.value;
+        return state.rows.filter((worker) => {
+          const matchesTerm = !term || [worker.name, worker.email, worker.role].some((value) => String(value || '').toLowerCase().includes(term));
+          const matchesRole = !role || worker.role === role;
+          const matchesActive = !active || (active === 'active' ? worker.active !== false : worker.active === false);
+          return matchesTerm && matchesRole && matchesActive;
+        });
+      }
+
+      function renderGrid() {
+        const rows = filteredRows();
+        summaryLine.textContent = `${rows.length} utilizador(es) visíveis de ${state.rows.length}.`;
+        if (!rows.length) {
+          grid.innerHTML = `<div class="empty-box">Sem utilizadores para mostrar com estes filtros.</div>`;
+          return;
+        }
+
+        grid.innerHTML = rows.map((worker) => `
+          <article class="worker-card">
+            <div class="worker-head">
+              <div>
+                <div class="worker-name">${escapeHtml(worker.name)}</div>
+                <div class="worker-meta">${escapeHtml(worker.email)}</div>
+              </div>
+              <button class="ghost-btn" data-edit-id="${worker.id}">Editar</button>
+            </div>
+            <div class="chip-row">
+              <span class="soft-badge role">${escapeHtml(worker.role || 'employee')}</span>
+              <span class="soft-badge ${worker.active === false ? 'off' : 'ok'}">${worker.active === false ? 'inativo' : 'ativo'}</span>
+            </div>
+          </article>
+        `).join('');
+
+        grid.querySelectorAll('[data-edit-id]').forEach((btn) => btn.addEventListener('click', () => openModal(btn.dataset.editId)));
+      }
+
+      function openModal(workerId = null) {
+        state.selectedId = workerId;
+        const worker = state.rows.find((row) => row.id === workerId) || null;
+        modalTitle.textContent = worker ? `Editar: ${worker.name}` : 'Novo trabalhador';
+        document.getElementById('workerId').value = worker?.id || '';
+        document.getElementById('workerName').value = worker?.name || '';
+        document.getElementById('workerEmail').value = worker?.email || '';
+        document.getElementById('workerPassword').value = '';
+        document.getElementById('workerRole').value = worker?.role || 'employee';
+        document.getElementById('workerActive').checked = worker?.active !== false;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeModal() {
+        state.selectedId = null;
+        form.reset();
+        document.getElementById('workerRole').value = 'employee';
+        document.getElementById('workerActive').checked = true;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      async function onSave(event) {
+        event.preventDefault();
+        const workerId = document.getElementById('workerId').value;
+        const payload = {
+          name: document.getElementById('workerName').value.trim(),
+          email: document.getElementById('workerEmail').value.trim(),
+          password: document.getElementById('workerPassword').value,
+          role: document.getElementById('workerRole').value,
+          active: document.getElementById('workerActive').checked,
+        };
+
+        try {
+          if (workerId) {
+            await restaurantApi.updateWorker(workerId, payload);
+            toast('Utilizador atualizado.');
+          } else {
+            await restaurantApi.createWorker(payload);
+            toast('Utilizador criado.');
+          }
+          closeModal();
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      }
+    </script>
+  </body>
+</html>

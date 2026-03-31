@@ -6,182 +6,368 @@
     <title>Gestão de Mesas</title>
     <link rel="stylesheet" href="./css/header.css" />
     <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
+    <style>
+      .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+      .filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+      .filters input,.filters select{min-height:46px;border:1px solid #dbe3ef;border-radius:14px;padding:0 14px;background:#fff;font:inherit}
+      .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+      .table-card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:22px;background:#fff;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.05)}
+      .table-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      .table-name{font-size:22px;font-weight:800;line-height:1.1}
+      .table-meta{font-size:14px;color:#5b6b82}
+      .soft-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+      .soft-badge.free{background:#eef5ff;color:#2457d6}
+      .soft-badge.busy{background:#fff7ed;color:#c2410c}
+      .soft-badge.off{background:#eef2f7;color:#64748b}
+      .soft-badge.zone{background:#e7faf1;color:#0f766e}
+      .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
+      .modal-backdrop.show{display:flex}
+      .modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
+      .modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+      .modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+      .field-stack{display:grid;gap:14px}
+      .field-stack label{display:grid;gap:8px;font-weight:700;color:#243247}
+      .field-stack input,.field-stack select{width:100%;border:1px solid #d7dfeb;border-radius:16px;padding:13px 14px;font:inherit;background:#fff}
+      .check-pill{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #d7dfeb;border-radius:16px;background:#fbfcfe;font-weight:600;color:#243247}
+      .modal-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+      .chip-row{display:flex;gap:10px;flex-wrap:wrap}
+      .zones-list{display:grid;gap:10px;margin-top:18px}
+      .zone-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}
+      .tiny{font-size:13px;color:#64748b}
+      .empty-box{padding:28px;border:1px dashed #d7dfeb;border-radius:20px;text-align:center;color:#64748b;background:#fff}
+      @media (max-width: 860px){.modal-grid{grid-template-columns:1fr}}
+    </style>
   </head>
   <body>
     <header>
-      <div class="logo-title">
-        <div class="brand-chip">Restaurant OS</div>
-      </div>
-
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
       <div class="links-container">
         <nav id="navLinks">
           <a href="./takeway.html" class="protected">Takeway</a>
-          <a href="./login.html" class="protected">Receção Bar</a>
+          <a href="./rececaoBar.html" class="protected">Receção Bar</a>
           <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
-          <a href="./cozinha-v2.html" class="protected">Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
           <a href="./faturas.html" class="protected">Ver Faturas</a>
           <a href="./artigos.html" class="protected">Gerir Pratos</a>
           <a href="./menu.html" class="protected">Gestão Menu</a>
           <a href="./gest_mesas.html" class="protected active">Gestão Mesas</a>
+          <a href="./trabalhadores.html" class="protected">Trabalhadores</a>
         </nav>
       </div>
-
-      <div id="tokenDisplay" class="token-status">Sistema operacional</div>
+      <div id="tokenDisplay" class="token-status">Configuração de sala</div>
     </header>
+
     <div class="page-shell">
       <div id="operatorShell"></div>
-      <div class="layout-3col tables-admin-layout">
-        <section class="panel">
-          <div class="panel-title-row">
-            <div>
-              <strong>Mesas configuradas</strong>
-              <div class="helper-text">Aqui geres criação, edição e ocultação de mesas.</div>
-            </div>
-            <button id="refreshBtn" class="ghost-btn">Atualizar</button>
-          </div>
-          <div id="tablesAdminList" class="list-stack"></div>
-        </section>
 
-        <section class="panel">
-          <div class="panel-title-row">
-            <div>
-              <strong>Editar mesa</strong>
-              <div class="helper-text">Seleciona uma mesa à esquerda para editar.</div>
-            </div>
-            <span id="manageBadge" class="badge">Novo</span>
+      <section class="panel">
+        <div class="toolbar">
+          <div>
+            <div class="shell-eyebrow">MESAS</div>
+            <h1 class="shell-title" style="margin:0">Gestão de Mesas</h1>
+            <div class="helper-text">Zona em dropdown e edição só em popup.</div>
           </div>
-          <form id="tableForm" class="form-stack">
-            <label>Número<input id="tableNumber" type="number" min="1" required /></label>
-            <label>Nome<input id="tableName" type="text" required /></label>
-            <label>Zona<input id="tableZone" type="text" placeholder="Sala A, Esplanada..." /></label>
-            <label>Capacidade<input id="tableCapacity" type="number" min="1" value="4" /></label>
-            <label class="switch-row"><input id="tableActive" type="checkbox" checked />Ativa</label>
-            <div class="toolbar-row">
+          <div class="chip-row">
+            <button id="manageZonesBtn" class="ghost-btn">Gerir zonas</button>
+            <button id="refreshBtn" class="ghost-btn">Atualizar</button>
+            <button id="newTableBtn" class="primary-btn">Nova mesa</button>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Pesquisar por nome, número ou zona" style="min-width:280px;flex:1" />
+          <select id="zoneFilter"><option value="">Todas as zonas</option></select>
+          <select id="statusFilter">
+            <option value="">Todos os estados</option>
+            <option value="free">Livres</option>
+            <option value="busy">Em uso</option>
+            <option value="off">Ocultas</option>
+          </select>
+        </div>
+
+        <div id="summaryLine" class="helper-text" style="margin-bottom:16px">A carregar mesas...</div>
+        <div id="tablesGrid" class="tables-grid"></div>
+      </section>
+    </div>
+
+    <div id="tableModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">MESA</div>
+            <h2 id="modalTitle" style="margin:0">Nova mesa</h2>
+            <div class="helper-text">A zona é escolhida de uma lista central.</div>
+          </div>
+          <button id="closeModalBtn" class="ghost-btn" type="button">Fechar</button>
+        </div>
+
+        <form id="tableForm">
+          <div class="modal-grid">
+            <div class="field-stack">
+              <label>Número
+                <input id="tableNumber" type="number" min="1" required />
+              </label>
+              <label>Nome
+                <input id="tableName" type="text" required />
+              </label>
+            </div>
+            <div class="field-stack">
+              <label>Zona
+                <select id="tableZone"></select>
+              </label>
+              <label>Capacidade
+                <input id="tableCapacity" type="number" min="1" value="4" />
+              </label>
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <label class="check-pill"><input id="tableActive" type="checkbox" checked /> Ativa</label>
+          </div>
+          <div class="modal-actions">
+            <div class="chip-row">
               <button type="submit" class="primary-btn">Guardar</button>
-              <button type="button" id="resetBtn" class="ghost-btn">Nova mesa</button>
               <button type="button" id="archiveBtn" class="ghost-btn">Ocultar</button>
             </div>
-          </form>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title-row">
-            <div>
-              <strong>Regras</strong>
-              <div class="helper-text">Isto separa gestão estrutural da operação do dia-a-dia.</div>
+            <div class="chip-row">
+              <button type="button" id="resetBtn" class="ghost-btn">Limpar</button>
             </div>
           </div>
-          <div class="list-stack">
-            <article class="timeline-row"><strong>Receção Cozinha</strong><div class="meta">Abrir mesas, registar artigos, enviar cozinha, fechar mesa.</div></article>
-            <article class="timeline-row"><strong>Gestão de Mesas</strong><div class="meta">Criar, editar, desativar e organizar a planta da casa.</div></article>
-            <article class="timeline-row"><strong>Proteção</strong><div class="meta">Não deixa ocultar uma mesa que esteja aberta.</div></article>
+        </form>
+      </div>
+    </div>
+
+    <div id="zonesModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">ZONAS</div>
+            <h2 style="margin:0">Gerir zonas</h2>
+            <div class="tiny">Nesta passagem é catálogo local de front-end. IDs reais na BD ainda precisam de backend.</div>
           </div>
-        </section>
+          <button id="closeZonesModalBtn" class="ghost-btn" type="button">Fechar</button>
+        </div>
+
+        <div class="modal-grid">
+          <div class="field-stack">
+            <label>Nova zona
+              <input id="newZoneInput" type="text" placeholder="Sala, Esplanada, Bar, Takeaway..." />
+            </label>
+            <div class="chip-row">
+              <button id="addZoneBtn" class="primary-btn" type="button">Adicionar zona</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="zonesList" class="zones-list"></div>
       </div>
     </div>
 
     <script type="module">
-      import { restaurantApi } from "./js/restaurant-api.js";
-      import { mountOperatorShell, ensureOperatorSelected, toast } from "./js/restaurant-shell.js";
+      import { restaurantApi } from './js/restaurant-api.js';
+      import { mountOperatorShell, ensureOperatorSelected, toast } from './js/restaurant-shell.js';
 
-      const state = { selectedTableId: null, rows: [] };
-      const listNode = document.getElementById("tablesAdminList");
-      const form = document.getElementById("tableForm");
-      const badge = document.getElementById("manageBadge");
-      const numberInput = document.getElementById("tableNumber");
-      const nameInput = document.getElementById("tableName");
-      const zoneInput = document.getElementById("tableZone");
-      const capacityInput = document.getElementById("tableCapacity");
-      const activeInput = document.getElementById("tableActive");
+      const ZONES_KEY = 'restaurant_zone_catalog';
+      const DEFAULT_ZONES = ['Sala', 'Esplanada', 'Bar', 'Takeaway'];
+      const state = { rows: [], selectedTableId: null, zones: [] };
 
-      await mountOperatorShell({ title: "Gestão de Mesas", eyebrow: "Configuração de sala" });
+      const grid = document.getElementById('tablesGrid');
+      const searchInput = document.getElementById('searchInput');
+      const zoneFilter = document.getElementById('zoneFilter');
+      const statusFilter = document.getElementById('statusFilter');
+      const summaryLine = document.getElementById('summaryLine');
+      const modal = document.getElementById('tableModal');
+      const zonesModal = document.getElementById('zonesModal');
+      const form = document.getElementById('tableForm');
+      const modalTitle = document.getElementById('modalTitle');
+      const tableZone = document.getElementById('tableZone');
+      const zonesList = document.getElementById('zonesList');
+
+      await mountOperatorShell({ title: 'Gestão de Mesas', eyebrow: 'Configuração de sala' });
+      hydrateZones();
       await refreshTables();
-      document.getElementById("refreshBtn").addEventListener("click", refreshTables);
-      document.getElementById("resetBtn").addEventListener("click", resetForm);
-      document.getElementById("archiveBtn").addEventListener("click", archiveCurrent);
-      document.addEventListener("restaurant:operator-changed", refreshTables);
 
-      form.addEventListener("submit", async (event) => {
+      document.getElementById('refreshBtn').addEventListener('click', refreshTables);
+      document.getElementById('newTableBtn').addEventListener('click', () => openModal());
+      document.getElementById('manageZonesBtn').addEventListener('click', openZonesModal);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('closeZonesModalBtn').addEventListener('click', () => zonesModal.classList.remove('show'));
+      document.getElementById('resetBtn').addEventListener('click', () => openModal(state.selectedTableId));
+      document.getElementById('archiveBtn').addEventListener('click', archiveCurrent);
+      document.getElementById('addZoneBtn').addEventListener('click', addZone);
+      searchInput.addEventListener('input', renderGrid);
+      zoneFilter.addEventListener('change', renderGrid);
+      statusFilter.addEventListener('change', renderGrid);
+      modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+      zonesModal.addEventListener('click', (event) => { if (event.target === zonesModal) zonesModal.classList.remove('show'); });
+      document.addEventListener('restaurant:operator-changed', refreshTables);
+
+      form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!ensureOperatorSelected()) return;
         const payload = {
-          number: Number(numberInput.value),
-          name: nameInput.value.trim(),
-          zone: zoneInput.value.trim(),
-          capacity: Number(capacityInput.value || 4),
-          active: activeInput.checked,
+          number: Number(document.getElementById('tableNumber').value),
+          name: document.getElementById('tableName').value.trim(),
+          zone: tableZone.value,
+          capacity: Number(document.getElementById('tableCapacity').value || 4),
+          active: document.getElementById('tableActive').checked,
         };
         try {
           if (state.selectedTableId) {
             await restaurantApi.updateTable(state.selectedTableId, payload);
-            toast("Mesa atualizada.");
+            toast('Mesa atualizada.');
           } else {
             await restaurantApi.createTable(payload);
-            toast("Mesa criada.");
+            toast('Mesa criada.');
           }
-          resetForm();
+          closeModal();
           await refreshTables();
         } catch (error) {
           toast(error.message, true);
         }
       });
 
-      async function refreshTables() {
-        state.rows = await restaurantApi.listTableDefinitions();
-        renderList();
+      function hydrateZones() {
+        const stored = JSON.parse(localStorage.getItem(ZONES_KEY) || '[]').filter(Boolean);
+        state.zones = [...new Set([...DEFAULT_ZONES, ...stored])].sort((a, b) => a.localeCompare(b, 'pt'));
+        tableZone.innerHTML = state.zones.map((zone) => `<option value="${escapeHtml(zone)}">${escapeHtml(zone)}</option>`).join('');
+        zoneFilter.innerHTML = `<option value="">Todas as zonas</option>` + state.zones.map((zone) => `<option value="${escapeHtml(zone)}">${escapeHtml(zone)}</option>`).join('');
       }
 
-      function renderList() {
-        listNode.innerHTML = state.rows.length
-          ? state.rows.map((table) => `
-              <article class="table-card ${state.selectedTableId === table.id ? "is-active" : ""}" data-table-id="${table.id}">
-                <div class="table-card-head">
-                  <strong>${table.name}</strong>
-                  <span class="badge ${table.active ? "open" : "closed"}">${table.active ? "ativa" : "oculta"}</span>
-                </div>
-                <div class="meta">Mesa ${table.number} · ${table.zone} · ${table.capacity} lugares</div>
-                <div class="meta-row">
-                  <span>${table.has_active_session ? "em uso" : "livre"}</span>
-                  <span>${table.id}</span>
-                </div>
-              </article>`).join("")
-          : `<div class="helper-text">Ainda não existem mesas.</div>`;
-        listNode.querySelectorAll(".table-card").forEach((node) => {
-          node.addEventListener("click", () => {
-            const table = state.rows.find((row) => row.id === node.dataset.tableId);
-            if (!table) return;
-            state.selectedTableId = table.id;
-            badge.textContent = table.name;
-            numberInput.value = table.number;
-            nameInput.value = table.name;
-            zoneInput.value = table.zone || "";
-            capacityInput.value = table.capacity || 4;
-            activeInput.checked = table.active !== false;
-            renderList();
-          });
+      async function refreshTables() {
+        state.rows = await restaurantApi.listTableDefinitions();
+        hydrateZones();
+        renderGrid();
+      }
+
+      function filteredRows() {
+        const term = searchInput.value.trim().toLowerCase();
+        const zone = zoneFilter.value;
+        const status = statusFilter.value;
+        return state.rows.filter((table) => {
+          const tableStatus = table.active === false ? 'off' : (table.has_active_session ? 'busy' : 'free');
+          const matchesTerm = !term || [table.name, table.number, table.zone].some((value) => String(value || '').toLowerCase().includes(term));
+          const matchesZone = !zone || table.zone === zone;
+          const matchesStatus = !status || tableStatus === status;
+          return matchesTerm && matchesZone && matchesStatus;
         });
+      }
+
+      function renderGrid() {
+        const rows = filteredRows();
+        summaryLine.textContent = `${rows.length} mesa(s) visíveis de ${state.rows.length}.`;
+        if (!rows.length) {
+          grid.innerHTML = `<div class="empty-box">Sem mesas para mostrar com estes filtros.</div>`;
+          return;
+        }
+
+        grid.innerHTML = rows.map((table) => {
+          const statusClass = table.active === false ? 'off' : (table.has_active_session ? 'busy' : 'free');
+          const statusText = table.active === false ? 'oculta' : (table.has_active_session ? 'em uso' : 'livre');
+          return `
+            <article class="table-card">
+              <div class="table-head">
+                <div>
+                  <div class="table-name">${escapeHtml(table.name)}</div>
+                  <div class="table-meta">Mesa ${Number(table.number)} · ${Number(table.capacity || 0)} lugares</div>
+                </div>
+                <button class="ghost-btn" data-edit-id="${table.id}">Editar</button>
+              </div>
+              <div class="chip-row">
+                <span class="soft-badge zone">${escapeHtml(table.zone || 'Sem zona')}</span>
+                <span class="soft-badge ${statusClass}">${statusText}</span>
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        grid.querySelectorAll('[data-edit-id]').forEach((btn) => btn.addEventListener('click', () => openModal(btn.dataset.editId)));
+      }
+
+      function openModal(tableId = null) {
+        state.selectedTableId = tableId;
+        const table = state.rows.find((row) => row.id === tableId) || null;
+        modalTitle.textContent = table ? `Editar: ${table.name}` : 'Nova mesa';
+        document.getElementById('tableNumber').value = table?.number ?? '';
+        document.getElementById('tableName').value = table?.name ?? '';
+        document.getElementById('tableCapacity').value = table?.capacity ?? 4;
+        document.getElementById('tableActive').checked = table?.active !== false;
+        tableZone.value = table?.zone && state.zones.includes(table.zone) ? table.zone : (state.zones[0] || 'Sala');
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeModal() {
+        state.selectedTableId = null;
+        form.reset();
+        document.getElementById('tableCapacity').value = 4;
+        document.getElementById('tableActive').checked = true;
+        tableZone.value = state.zones[0] || 'Sala';
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
       }
 
       async function archiveCurrent() {
         if (!ensureOperatorSelected()) return;
-        if (!state.selectedTableId) return toast("Seleciona uma mesa para ocultar.", true);
+        if (!state.selectedTableId) return toast('Seleciona uma mesa primeiro.', true);
         try {
           await restaurantApi.archiveTable(state.selectedTableId);
-          toast("Mesa ocultada.");
-          resetForm();
+          toast('Mesa ocultada.');
+          closeModal();
           await refreshTables();
         } catch (error) {
           toast(error.message, true);
         }
       }
 
-      function resetForm() {
-        state.selectedTableId = null;
-        badge.textContent = "Novo";
-        form.reset();
-        capacityInput.value = 4;
-        activeInput.checked = true;
-        renderList();
+      function openZonesModal() {
+        renderZonesList();
+        zonesModal.classList.add('show');
+      }
+
+      function renderZonesList() {
+        zonesList.innerHTML = state.zones.map((zone) => `
+          <div class="zone-row">
+            <div>
+              <strong>${escapeHtml(zone)}</strong>
+              <div class="tiny">Catálogo local usado pelos dropdowns desta UI.</div>
+            </div>
+            <button class="ghost-btn" data-remove-zone="${escapeHtml(zone)}">Remover</button>
+          </div>
+        `).join('') || `<div class="empty-box">Sem zonas registadas.</div>`;
+        zonesList.querySelectorAll('[data-remove-zone]').forEach((btn) => btn.addEventListener('click', () => removeZone(btn.dataset.removeZone)));
+      }
+
+      function addZone() {
+        const input = document.getElementById('newZoneInput');
+        const value = input.value.trim();
+        if (!value) return toast('Escreve o nome da zona.', true);
+        if (state.zones.includes(value)) return toast('Essa zona já existe.', true);
+        state.zones.push(value);
+        saveZones();
+        hydrateZones();
+        renderZonesList();
+        input.value = '';
+        toast('Zona adicionada.');
+      }
+
+      function removeZone(zone) {
+        state.zones = state.zones.filter((item) => item !== zone);
+        saveZones();
+        hydrateZones();
+        renderZonesList();
+      }
+
+      function saveZones() {
+        localStorage.setItem(ZONES_KEY, JSON.stringify(state.zones.filter((zone) => !DEFAULT_ZONES.includes(zone))));
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
       }
     </script>
   </body>
