@@ -3473,7 +3473,13 @@ export class RestaurantStore {
       const actor = await ensureCustomerActor(client);
       let session = await getActiveSessionRow(client, table.id);
       if (!session) {
-        await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [table.id, actor.id, String(customer_name || '').trim() || null, Math.max(1, Number(customer_count || 1)), 'self_service_customer']);
+        await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [
+          table.id,
+          actor.id,
+          Math.max(1, Number(customer_count || 1)),
+          String(customer_name || '').trim() || null,
+          'self_service_customer',
+        ]);
         session = await getActiveSessionRow(client, table.id);
       }
       if (!session) throw makeError('Não foi possível iniciar a sessão.', 500, 'session_open_failed');
