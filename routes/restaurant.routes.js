@@ -260,7 +260,8 @@ router.delete("/tables/manage/:tableId", asyncHandler(async (req, res) => {
 }));
 
 router.get("/tables/:tableId", asyncHandler(async (req, res) => {
-  res.json(await restaurantStore.getTableDetails(req.params.tableId));
+  const includeHistory = String(req.query.include_history || "").trim() === "1";
+  res.json(await restaurantStore.getTableDetails(req.params.tableId, { includeHistory }));
 }));
 
 router.get("/tables/:tableId/history", asyncHandler(async (req, res) => {
@@ -332,6 +333,7 @@ router.post("/tables/:tableId/send-to-kitchen", asyncHandler(async (req, res) =>
     table_id: req.params.tableId,
     operator_id: req.body.operator_id,
     terminal_id: req.body.terminal_id || "terminal_main",
+    items: Array.isArray(req.body.items) ? req.body.items : [],
   });
   res.json(result);
 }));

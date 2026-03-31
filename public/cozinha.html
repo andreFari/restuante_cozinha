@@ -40,6 +40,7 @@
         <div class="kpi"><div class="kpi-label">Pendentes</div><div id="kpiPending" class="kpi-value">0</div></div>
         <div class="kpi"><div class="kpi-label">Atrasados</div><div id="kpiOverdue" class="kpi-value">0</div></div>
       </div>
+      <div id="kitchenAlerts" class="alerts-stack" style="display:none"></div>
       <div class="callout-list" style="margin-bottom:16px;">
         <div class="callout"><strong>Novo</strong><div class="helper-text">Pedido acabou de cair. Primeiro toque deve ser iniciar.</div></div>
         <div class="callout"><strong>Em preparação</strong><div class="helper-text">Já está a ser tratado. Item já está em tratamento.</div></div>
@@ -60,10 +61,80 @@
       document.getElementById("resetDemoBtn").addEventListener("click", async()=>{ try { const result = await restaurantApi.resetDemo(); toast(result?.message || "Demo limpa."); await refreshBoard(); } catch (error) { toast(error.message, true); } });
       document.addEventListener("restaurant:operator-changed", refreshBoard);
       setInterval(refreshBoard, 30000);
-      async function refreshBoard() { const data = await restaurantApi.kitchenBoard(); document.getElementById("kpiTotal").textContent = String(data.totals.total || 0); document.getElementById("kpiPending").textContent = String(data.totals.pending || 0); document.getElementById("kpiOverdue").textContent = String(data.totals.overdue || 0); const grid = document.getElementById("kanbanGrid"); grid.innerHTML = Object.entries(columnLabels).map(([status, label]) => { const items = data.columns?.[status] || []; return `<section class="kanban-column"><div class="kanban-header"><strong>${label}</strong><span class="badge">${items.length}</span></div><div class="kanban-list">${items.length ? items.map(renderKitchenCard).join("") : `<div class="empty-state">Sem itens.</div>`}</div></section>`; }).join(""); grid.querySelectorAll("button[data-next-status]").forEach((btn)=>btn.addEventListener("click", async()=>{ if (!ensureOperatorSelected()) return; try { await restaurantApi.kitchenStatus(btn.dataset.itemId, btn.dataset.nextStatus); toast("Estado atualizado."); await refreshBoard(); } catch (e) { toast(e.message, true); } })); }
-      function renderKitchenCard(item) { const overdueBadge = item.overdue_by_minutes > 0 ? `<span class="badge overdue">+${item.overdue_by_minutes} min</span>` : ""; return `<article class="kitchen-card"><div class="kitchen-card-head"><div><div class="kitchen-card-title">${item.name}</div><div class="meta">${item.table_name} · ${item.quantity}x · ${item.station}</div></div>${overdueBadge}</div><div class="meta-row"><span>Meta: ${item.prep_minutes || 0} min</span><span>Na fila: ${relativeMinutes(item.sent_to_kitchen_at)}</span><span>Enviado por: ${item.sent_by || item.operator_name || "—"}</span></div>${item.note ? `<div style="margin-top:10px;">Nota: ${item.note}</div>` : ""}<div class="kitchen-actions">${renderStatusActions(item)}</div></article>`; }
-      function renderStatusActions(item) { const actions = []; if (item.status === "new") { actions.push(button(item.id, "in_progress", "Iniciar")); } if (item.status === "in_progress") { actions.push(button(item.id, "ready", "Marcar pronto")); } if (item.status === "ready") actions.push(button(item.id, "delivered", "Entregue")); return actions.join(""); }
-      function button(itemId, status, label) { return `<button class="status-btn" data-item-id="${itemId}" data-next-status="${status}">${label}</button>`; }
+
+      async function refreshBoard() {
+        const data = await restaurantApi.kitchenBoard();
+        document.getElementById("kpiTotal").textContent = String(data.totals.total || 0);
+        document.getElementById("kpiPending").textContent = String(data.totals.pending || 0);
+        document.getElementById("kpiOverdue").textContent = String(data.totals.overdue || 0);
+
+        const alertsBox = document.getElementById("kitchenAlerts");
+        const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+        alertsBox.style.display = alerts.length ? "grid" : "none";
+        alertsBox.innerHTML = alerts.map((alert) => `<div class="alert-pill">${escapeHtml(alert.message || "")}</div>`).join("");
+
+        const grid = document.getElementById("kanbanGrid");
+        grid.innerHTML = Object.entries(columnLabels).map(([status, label]) => {
+          const items = data.columns?.[status] || [];
+          return `<section class="kanban-column"><div class="kanban-header"><strong>${label}</strong><span class="badge">${items.length}</span></div><div class="kanban-list">${items.length ? items.map(renderKitchenCard).join("") : `<div class="empty-state">Sem itens.</div>`}</div></section>`;
+        }).join("");
+
+        grid.querySelectorAll("button[data-next-status]").forEach((btn)=>btn.addEventListener("click", async()=>{
+          if (!ensureOperatorSelected()) return;
+          try {
+            await restaurantApi.kitchenStatus(btn.dataset.itemId, btn.dataset.nextStatus);
+            toast("Estado atualizado.");
+            await refreshBoard();
+          } catch (e) {
+            toast(e.message, true);
+          }
+        }));
+      }
+
+      function renderKitchenCard(item) {
+        const overdueBadge = item.overdue_by_minutes > 0 ? `<span class="badge overdue">+${item.overdue_by_minutes} min</span>` : "";
+        return `<article class="kitchen-card">
+          <div class="kitchen-card-head">
+            <div>
+              <div class="kitchen-card-title">${escapeHtml(item.name)}</div>
+              <div class="meta">${escapeHtml(item.table_name || "—")} · ${Number(item.quantity || 0)}x · ${escapeHtml(item.station || "cozinha")}</div>
+            </div>
+            ${overdueBadge}
+          </div>
+          <div class="meta-row">
+            <span>Meta: ${Number(item.prep_minutes || 0)} min</span>
+            <span>Na fila: ${relativeMinutes(item.sent_to_kitchen_at)}</span>
+            <span>Enviado por: ${escapeHtml(item.sent_by || item.operator_name || "—")}</span>
+          </div>
+          ${item.note ? `<div style="margin-top:10px;">Nota: ${escapeHtml(item.note)}</div>` : ""}
+          <div class="kitchen-actions">${renderStatusActions(item)}</div>
+        </article>`;
+      }
+
+      function renderStatusActions(item) {
+        const actions = [];
+        if (item.status === "new") {
+          actions.push(button(item.id, "in_progress", "Iniciar"));
+          actions.push(button(item.id, "cancelled", "Cancelar", "ghost-btn tone-danger"));
+        } else if (item.status === "in_progress") {
+          actions.push(button(item.id, "new", "Voltar novo", "ghost-btn"));
+          actions.push(button(item.id, "ready", "Marcar pronto"));
+          actions.push(button(item.id, "cancelled", "Cancelar", "ghost-btn tone-danger"));
+        } else if (item.status === "ready") {
+          actions.push(button(item.id, "in_progress", "Voltar prep.", "ghost-btn"));
+          actions.push(button(item.id, "delivered", "Entregue"));
+          actions.push(button(item.id, "cancelled", "Cancelar", "ghost-btn tone-danger"));
+        } else if (item.status === "delivered") {
+          actions.push(button(item.id, "ready", "Voltar pronto", "ghost-btn"));
+        }
+        return actions.join("");
+      }
+
+      function button(itemId, status, label, className = "status-btn") {
+        return `<button class="${className}" data-item-id="${itemId}" data-next-status="${status}">${label}</button>`;
+      }
+
+      function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
     </script>
   </body>
 </html>

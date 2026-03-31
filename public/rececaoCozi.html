@@ -47,7 +47,7 @@
       .checkout-summary .big{font-size:24px;font-weight:800}
       .pending-list{display:grid;gap:8px;margin-top:10px}
       .pending-pill{padding:10px 12px;border-radius:14px;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;font-size:14px}
-      @media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
+      .send-kitchen-list{display:grid;gap:12px;margin-top:16px}.send-kitchen-row{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}.send-kitchen-row textarea{min-height:82px;border:1px solid #dbe3ef;border-radius:14px;padding:12px;font:inherit;resize:vertical}.tone-danger{background:#fff1f2 !important;color:#9f1239 !important;border:1px solid #fecdd3 !important}.tone-success{background:#e7faf1 !important;color:#0f766e !important;border:1px solid #bbf7d0 !important}.tone-dark{background:#162033 !important;color:#fff !important}.alerts-stack{display:grid;gap:8px;margin-bottom:14px}.alert-pill{padding:10px 12px;border-radius:14px;background:#fff8e8;color:#8a5a12;border:1px solid #f6d58c;font-size:14px}@media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
     </style>
   </head>
   <body>
@@ -94,6 +94,7 @@
             <button id="sendKitchenBtn" class="secondary-btn">Enviar cozinha</button>
             <button id="transferTakeawayBtn" class="ghost-btn">Enviar para takeaway</button>
             <button id="checkoutBtn" class="ghost-btn">Pagamento / checkout</button>
+            <button id="closeEmptyBtn" class="ghost-btn tone-danger">Fechar mesa vazia</button>
           </div>
           <div class="flow-section"><h3>Cozinha</h3><div class="helper-text">Só artigos com fluxo cozinha entram aqui e seguem para o painel da cozinha.</div><div id="kitchenItems" class="flow-row"></div></div>
           <div class="flow-section"><h3>Bar / serviço</h3><div class="helper-text">Não vai para cozinha. Ficas aqui a marcar preparado ou entregue dentro da mesa.</div><div id="serviceItems" class="flow-row"></div></div>
@@ -110,6 +111,17 @@
           <select id="catalogFlowFilter"><option value="">Todos os fluxos</option><option value="cozinha">Cozinha</option><option value="bar">Bar / serviço</option></select>
         </div>
         <div id="catalogGrid" class="catalog-grid"></div>
+      </div>
+    </div>
+
+    <div id="sendKitchenModal" class="modal-backdrop">
+      <div class="modal-card small-modal">
+        <div class="row-between"><div><strong>Enviar cozinha</strong><div class="helper-text">Seleciona só os pratos que queres enviar agora e escreve notas por item.</div></div><button id="closeSendKitchenModal" class="ghost-btn">Fechar</button></div>
+        <div id="sendKitchenList" class="send-kitchen-list"></div>
+        <div class="row-between" style="margin-top:16px">
+          <div class="helper-text">Os itens não selecionados ficam em rascunho na mesa.</div>
+          <button id="confirmSendKitchenBtn" class="secondary-btn tone-success">Confirmar envio</button>
+        </div>
       </div>
     </div>
 
@@ -188,6 +200,8 @@
       const catalogSearch = document.getElementById('catalogSearch');
       const catalogCategoryFilter = document.getElementById('catalogCategoryFilter');
       const catalogFlowFilter = document.getElementById('catalogFlowFilter');
+      const sendKitchenModal = document.getElementById('sendKitchenModal');
+      const sendKitchenList = document.getElementById('sendKitchenList');
       const historyModal = document.getElementById('historyModal');
       const historyTimeline = document.getElementById('historyTimeline');
       const checkoutModal = document.getElementById('checkoutModal');
@@ -207,10 +221,13 @@
       await refreshAll();
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
       document.getElementById('openTableBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.openTable(id), 'Mesa aberta.'));
-      document.getElementById('sendKitchenBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.sendToKitchen(id), 'Enviar cozinha concluído.'));
+      document.getElementById('sendKitchenBtn').addEventListener('click', openSendKitchenModal);
+      document.getElementById('confirmSendKitchenBtn').addEventListener('click', confirmSendKitchen);
+      document.getElementById('closeSendKitchenModal').addEventListener('click', () => sendKitchenModal.classList.remove('show'));
       document.getElementById('historyBtn').addEventListener('click', openHistory);
       document.getElementById('addArticleBtn').addEventListener('click', openCatalogModal);
       document.getElementById('checkoutBtn').addEventListener('click', openCheckoutModal);
+      document.getElementById('closeEmptyBtn').addEventListener('click', closeEmptyTable);
       document.getElementById('closeCatalogModal').addEventListener('click', () => catalogModal.classList.remove('show'));
       document.getElementById('closeHistoryModal').addEventListener('click', () => historyModal.classList.remove('show'));
       document.getElementById('closeCheckoutModal').addEventListener('click', () => checkoutModal.classList.remove('show'));
@@ -373,6 +390,8 @@
                   <div class="row-between"><div class="item-name">${escapeHtml(item.name)}</div><span class="soft-badge ${flow === 'bar' ? 'bar' : 'cozinha'}">${flow === 'bar' ? 'bar / serviço' : 'cozinha'}</span></div>
                   <div class="item-meta">${escapeHtml(item.category || 'Sem categoria')} · ${Number(item.quantity || 0)}x · ${euro((item.unit_price || 0) * (item.quantity || 0))}</div>
                   <div class="item-meta">Estado: <span class="status-badge ${uiStatus(item.raw_status)}">${statusLabel(item.raw_status)}</span></div>
+                  <div class="item-meta">Produção: ${Number(item.prep_minutes || 0)} min</div>
+                  ${item.note ? `<div class="item-meta">Nota: ${escapeHtml(item.note)}</div>` : ``}
                 </div>
                 <div class="item-actions">${renderActionButtons(item, isKitchen)}</div>
               </div>
@@ -383,10 +402,13 @@
       function renderActionButtons(item, isKitchen) {
         const raw = item.raw_status || 'rascunho';
         if (raw === 'rascunho') {
-          return `<div class="qty-stepper"><button data-action="minus" data-item-id="${item.id}" ${item.quantity <= 1 ? 'disabled' : ''}>−</button><span>${item.quantity}</span><button data-action="plus" data-item-id="${item.id}">+</button></div><button class="ghost-btn" data-action="remove" data-item-id="${item.id}">Remover</button>${!isKitchen ? `<button class="secondary-btn" data-action="ready" data-item-id="${item.id}">Preparado</button><button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>` : ``}`;
+          return `<div class="qty-stepper"><button data-action="minus" data-item-id="${item.id}" ${item.quantity <= 1 ? 'disabled' : ''}>−</button><span>${item.quantity}</span><button data-action="plus" data-item-id="${item.id}">+</button></div><button class="ghost-btn tone-danger" data-action="remove" data-item-id="${item.id}">Remover</button>${!isKitchen ? `<button class="secondary-btn tone-success" data-action="ready" data-item-id="${item.id}">Preparado</button><button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>` : ``}`;
+        }
+        if (isKitchen && ['enviado', 'em_preparo', 'pronto'].includes(raw)) {
+          return `<button class="ghost-btn tone-danger" data-action="cancel_kitchen" data-item-id="${item.id}">Cancelar cozinha</button>`;
         }
         if (!isKitchen && ['enviado', 'em_preparo', 'pronto'].includes(raw)) {
-          return raw === 'pronto' ? `<button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>` : `<button class="secondary-btn" data-action="ready" data-item-id="${item.id}">Marcar preparado</button><button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>`;
+          return raw === 'pronto' ? `<button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>` : `<button class="secondary-btn tone-success" data-action="ready" data-item-id="${item.id}">Marcar preparado</button><button class="ghost-btn" data-action="delivered" data-item-id="${item.id}">Entregue</button>`;
         }
         return ``;
       }
@@ -401,9 +423,64 @@
             else if (action === 'minus') await restaurantApi.updateItemQuantity(state.selectedTableId, itemId, Math.max(1, Number(row.quantity) - 1));
             else if (action === 'ready') await restaurantApi.updateOrderItemStatus(state.selectedTableId, itemId, 'ready');
             else if (action === 'delivered') await restaurantApi.updateOrderItemStatus(state.selectedTableId, itemId, 'delivered');
+            else if (action === 'cancel_kitchen') await restaurantApi.updateOrderItemStatus(state.selectedTableId, itemId, 'cancelled');
             await refreshAll();
           } catch (error) { toast(error.message, true); }
         }));
+      }
+
+      function getDraftKitchenItems() {
+        return (state.details?.order_items || []).filter((item) => (item.flow || item.station) === 'cozinha' && item.raw_status === 'rascunho');
+      }
+
+      function openSendKitchenModal() {
+        if (!ensureOperatorSelected()) return;
+        if (!state.selectedTableId) return toast('Seleciona mesa primeiro.', true);
+        const items = getDraftKitchenItems();
+        if (!items.length) return toast('Não existem itens de cozinha em rascunho.', true);
+        sendKitchenList.innerHTML = items.map((item) => `
+          <label class="send-kitchen-row">
+            <input type="checkbox" data-send-check value="${item.id}" checked />
+            <div>
+              <div class="row-between"><strong>${escapeHtml(item.name)}</strong><span class="meta">${Number(item.quantity || 0)}x · ${Number(item.prep_minutes || 0)} min</span></div>
+              <textarea data-send-note="${item.id}" placeholder="Nota: mais arroz, sem cebola...">${escapeHtml(item.note || '')}</textarea>
+            </div>
+          </label>
+        `).join('');
+        sendKitchenModal.classList.add('show');
+      }
+
+      async function confirmSendKitchen() {
+        const items = getDraftKitchenItems();
+        const payload = items
+          .filter((item) => sendKitchenList.querySelector(`[data-send-check][value="${item.id}"]`)?.checked)
+          .map((item) => ({
+            order_item_id: item.id,
+            note: sendKitchenList.querySelector(`[data-send-note="${item.id}"]`)?.value || '',
+          }));
+        if (!payload.length) return toast('Seleciona pelo menos um item.', true);
+        try {
+          await restaurantApi.sendToKitchen(state.selectedTableId, payload);
+          sendKitchenModal.classList.remove('show');
+          toast('Enviar cozinha concluído.');
+          await refreshAll();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+
+      async function closeEmptyTable() {
+        if (!ensureOperatorSelected()) return;
+        if (!state.selectedTableId) return toast('Seleciona mesa primeiro.', true);
+        if ((state.details?.order_items || []).length) return toast('Só podes fechar mesa vazia.', true);
+        try {
+          await restaurantApi.closeTable(state.selectedTableId);
+          toast('Mesa fechada.');
+          state.selectedTableId = null;
+          await refreshAll(true);
+        } catch (error) {
+          toast(error.message, true);
+        }
       }
 
       async function openHistory() {
@@ -495,8 +572,8 @@
       }
     
 
-      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'Em preparo'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; default: return raw || '—'; } }
-      function uiStatus(raw) { switch (raw) { case 'rascunho': return 'draft'; case 'enviado': return 'new'; case 'em_preparo': return 'in_progress'; case 'pronto': return 'ready'; case 'entregue': return 'delivered'; default: return 'draft'; } }
+      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'Em preparo'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; case 'cancelado': return 'Cancelado'; default: return raw || '—'; } }
+      function uiStatus(raw) { switch (raw) { case 'rascunho': return 'draft'; case 'enviado': return 'new'; case 'em_preparo': return 'in_progress'; case 'pronto': return 'ready'; case 'entregue': return 'delivered'; case 'cancelado': return 'draft'; default: return 'draft'; } }
       function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
     </script>
   </body>

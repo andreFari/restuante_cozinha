@@ -161,12 +161,13 @@ export const restaurantApi = {
       }),
     });
   },
-  sendToKitchen(tableId) {
+  sendToKitchen(tableId, items = []) {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/send-to-kitchen`, {
       method: "POST",
       body: JSON.stringify({
         operator_id: getOperatorId(),
         terminal_id: getTerminalId(),
+        items: Array.isArray(items) ? items : [],
       }),
     });
   },

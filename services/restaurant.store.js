@@ -311,6 +311,8 @@ function mapKitchenStatusToDb(status) {
       return 'pronto';
     case 'delivered':
       return 'entregue';
+    case 'cancelled':
+      return 'cancelado';
     default:
       return null;
   }
@@ -333,16 +335,22 @@ function mapHistoryActionLabel(actionType, payload = {}) {
       return `removeu ${qtyText}${name}`.trim();
     case 'order_sent_to_kitchen':
       return `enviou ${payload?.items_count || 0} item(ns) para a cozinha`;
+    case 'kitchen_new':
+      return `devolveu ${name} para novo`;
     case 'kitchen_in_progress':
-      return `iniciou ${name}`;
+      return `marcou ${name} em preparação`;
     case 'kitchen_ready':
       return `marcou ${name} como pronto`;
     case 'kitchen_delivered':
       return `marcou ${name} como entregue`;
+    case 'kitchen_cancelled':
+      return `cancelou ${qtyText}${name}`.trim();
     case 'service_ready':
       return `marcou ${name} como preparado`;
     case 'service_delivered':
       return `marcou ${name} como entregue`;
+    case 'item_cancelled':
+      return `cancelou ${qtyText}${name}`.trim();
     case 'table_closed':
       return `fechou a mesa`;
     default:
@@ -482,6 +490,43 @@ async function getSessionItems(client, sessionId) {
     unit_price: parseMoney(row.unit_price),
     prep_minutes: Number(row.prep_minutes || 0),
   }));
+}
+
+async function ensureItemPriceForLocal(client, menuItemId, localId) {
+  if (!menuItemId || !localId) return;
+  const existing = await client.query(
+    `select id
+       from artigo_precos
+      where artigo_id = $1
+        and local_id = $2
+        and ativo = true
+      limit 1`,
+    [menuItemId, localId]
+  );
+  if (existing.rows[0]) return;
+
+  const fallback = await client.query(
+    `select preco_sem_iva, taxa_iva
+       from artigo_precos
+      where artigo_id = $1
+        and ativo = true
+      order by case when local_id = $2 then 0 else 1 end, updated_at desc nulls last, created_at desc nulls last
+      limit 1`,
+    [menuItemId, localId]
+  );
+  const row = fallback.rows[0];
+  if (!row) return;
+
+  await client.query(
+    `insert into artigo_precos (artigo_id, local_id, preco_sem_iva, taxa_iva, ativo)
+     values ($1, $2, $3, $4, true)
+     on conflict (artigo_id, local_id)
+     do update set preco_sem_iva = excluded.preco_sem_iva,
+                   taxa_iva = excluded.taxa_iva,
+                   ativo = true,
+                   updated_at = now()`,
+    [menuItemId, localId, row.preco_sem_iva, row.taxa_iva]
+  );
 }
 
 async function getLatestSessionPedidos(client, sessionId) {
@@ -714,7 +759,7 @@ async function listTablesDetailedDb(client) {
               coalesce(sum(case when pi.estado = 'pronto' then 1 else 0 end), 0) as ready_items,
               coalesce(sum(case when pi.estado = 'rascunho' then 1 else 0 end), 0) as draft_items
          from pedidos p
-         left join pedido_itens pi on pi.pedido_id = p.id
+         left join pedido_itens pi on pi.pedido_id = p.id and pi.estado <> 'cancelado'
         where p.sessao_id = any($1::text[])
         group by p.sessao_id`,
       [sessionIds]
@@ -835,6 +880,31 @@ async function buildKitchenBoardDb(client) {
     };
   });
 
+  const alertsRes = await client.query(
+    `select al.id,
+            al.action_type,
+            al.created_at,
+            coalesce(u.name, '—') as actor_name,
+            al.payload
+       from audit_log al
+       left join app_users u on u.id = al.actor_user_id
+      where al.action_type in ('kitchen_cancelled', 'order_sent_to_kitchen')
+        and al.created_at >= now() - interval '8 hours'
+      order by al.created_at desc
+      limit 12`
+  );
+
+  const alerts = alertsRes.rows.map((row) => ({
+    id: row.id,
+    type: row.action_type,
+    created_at: row.created_at,
+    actor_name: row.actor_name,
+    message:
+      row.action_type === 'kitchen_cancelled'
+        ? `${row.actor_name || '—'} cancelou ${row.payload?.quantity || 0}x ${row.payload?.name || 'item'}`
+        : `${row.actor_name || '—'} enviou ${row.payload?.items_count || 0} item(ns) para a cozinha`,
+  }));
+
   return {
     columns: {
       new: cards.filter((card) => card.status === 'new'),
@@ -848,6 +918,7 @@ async function buildKitchenBoardDb(client) {
       pending: cards.filter((card) => ['new', 'in_progress'].includes(card.status)).length,
       overdue: cards.filter((card) => card.overdue_by_minutes > 0).length,
     },
+    alerts,
   };
 }
 
@@ -1079,6 +1150,12 @@ export class RestaurantStore {
           local_nome: table.local_nome,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1135,6 +1212,12 @@ export class RestaurantStore {
           local_nome: updated.local_nome,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1159,19 +1242,20 @@ export class RestaurantStore {
     });
   }
 
-  async getTableDetails(table_id) {
+  async getTableDetails(table_id, options = {}) {
+    const includeHistory = options?.includeHistory === true;
     return withClient(async (client) => {
       const table = await getTableRow(client, table_id);
       if (!table) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
 
       const session = await getActiveSessionRow(client, table_id);
       const orderItems = session ? await getSessionItems(client, session.id) : [];
-      const kitchenItems = orderItems.filter((item) => ['enviado', 'em_preparo', 'pronto', 'entregue'].includes(item.estado));
-      const total = orderItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0);
-      const history = session ? await this.getHistory(table_id, client, session.id) : [];
+      const visibleOrderItems = orderItems.filter((item) => item.estado !== 'cancelado');
+      const kitchenItems = visibleOrderItems.filter((item) => ['enviado', 'em_preparo', 'pronto', 'entregue'].includes(item.estado));
+      const total = visibleOrderItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0);
 
       invalidateCache('tables', 'bootstrap', 'serviceBoard');
-      return {
+      const response = {
         table: {
           id: table.id,
           restaurant_id: 'local_db',
@@ -1197,7 +1281,7 @@ export class RestaurantStore {
               closed_at: session.fechada_em,
             }
           : null,
-        order_items: orderItems.map((item) => ({
+        order_items: visibleOrderItems.map((item) => ({
           id: item.id,
           table_session_id: session?.id || null,
           menu_item_id: item.menu_item_id,
@@ -1208,6 +1292,7 @@ export class RestaurantStore {
           image_url: item.imagem_url || null,
           imagem_url: item.imagem_url || null,
           quantity: item.quantity,
+          prep_minutes: Number(item.prep_minutes || 0),
           unit_price: item.unit_price,
           note: item.note || '',
           status: mapDbItemStatusToKitchen(item.estado === 'rascunho' ? 'enviado' : item.estado),
@@ -1229,12 +1314,17 @@ export class RestaurantStore {
           sent_to_kitchen_at: item.enviado_cozinha_em,
           updated_at: item.updated_at,
         })),
-        history,
         totals: {
           total,
-          total_items: orderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+          total_items: visibleOrderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1316,6 +1406,12 @@ export class RestaurantStore {
           closed_at: null,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1325,6 +1421,7 @@ export class RestaurantStore {
       if (!session) throw makeError('A mesa não está aberta.', 409, 'table_not_open');
 
       const pedidoId = await getOrCreateDraftPedido(client, session.id, operator_id);
+      await ensureItemPriceForLocal(client, menu_item_id, session.local_id);
       const inserted = await client.query(
         `select adicionar_item_pedido($1, $2, $3, $4) as id`,
         [pedidoId, menu_item_id, Math.max(1, Number(quantity || 1)), note || null]
@@ -1378,6 +1475,12 @@ export class RestaurantStore {
           updated_at: item.updated_at,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1443,6 +1546,12 @@ export class RestaurantStore {
           updated_at: item.updated_at,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -1485,13 +1594,13 @@ export class RestaurantStore {
     });
   }
 
-  async sendTableToKitchen({ table_id, operator_id, terminal_id = 'terminal_main' }) {
+  async sendTableToKitchen({ table_id, operator_id, terminal_id = 'terminal_main', items = [] }) {
     return withTransaction(async (client) => {
       const session = await getActiveSessionRow(client, table_id);
       if (!session) throw makeError('Mesa não aberta.', 409, 'table_not_open');
 
       const draftKitchenItems = await client.query(
-        `select pi.id, pi.pedido_id
+        `select pi.id, pi.pedido_id, pi.nome_snapshot as name, pi.quantidade as quantity, pi.observacao as note
            from pedido_itens pi
            join pedidos p on p.id = pi.pedido_id
           where p.sessao_id = $1
@@ -1505,16 +1614,39 @@ export class RestaurantStore {
         throw makeError('Não existem itens de cozinha em rascunho para enviar.', 409, 'no_draft_kitchen_items');
       }
 
-      const itemIds = draftKitchenItems.rows.map((row) => row.id);
+      const selectedItems = Array.isArray(items) && items.length
+        ? draftKitchenItems.rows.filter((row) => items.some((candidate) => String(candidate?.order_item_id || candidate?.id) === String(row.id)))
+        : draftKitchenItems.rows;
+
+      if (!selectedItems.length) {
+        throw makeError('Seleciona pelo menos um item para enviar.', 400, 'no_items_selected');
+      }
+
+      const noteMap = new Map((Array.isArray(items) ? items : []).map((entry) => [String(entry?.order_item_id || entry?.id), String(entry?.note || '')]));
+      for (const item of selectedItems) {
+        if (noteMap.has(String(item.id))) {
+          await client.query(
+            `update pedido_itens
+                set observacao = $2,
+                    updated_at = now()
+              where id = $1`,
+            [item.id, noteMap.get(String(item.id)) || null]
+          );
+        }
+      }
+
+      const itemIds = selectedItems.map((row) => row.id);
       await client.query(
         `update pedido_itens
-            set estado = 'enviado'::public.item_estado
+            set estado = 'enviado'::public.item_estado,
+                enviado_cozinha_em = coalesce(enviado_cozinha_em, now()),
+                updated_at = now()
           where id = any($1::text[])
             and estado = 'rascunho'`,
         [itemIds]
       );
 
-      const pedidoIds = [...new Set(draftKitchenItems.rows.map((row) => row.pedido_id))];
+      const pedidoIds = [...new Set(selectedItems.map((row) => row.pedido_id))];
       if (pedidoIds.length) {
         await client.query(
           `update pedidos
@@ -1534,9 +1666,12 @@ export class RestaurantStore {
         payload: {
           table_session_id: session.id,
           items_count: itemIds.length,
+          item_ids: itemIds,
+          item_names: selectedItems.map((item) => item.name),
         },
       });
 
+      invalidateCache('tables', 'kitchen', 'serviceBoard', 'history', 'bootstrap');
       return {
         session_id: session.id,
         sent_items: itemIds.length,
@@ -1555,6 +1690,7 @@ export class RestaurantStore {
         ['in_progress', 'em_preparo'],
         ['ready', 'pronto'],
         ['delivered', 'entregue'],
+        ['cancelled', 'cancelado'],
       ]);
       const dbStatus = statusMap.get(String(status || '').trim());
       if (!dbStatus) throw makeError('Estado inválido para o item.', 400, 'invalid_order_item_status');
@@ -1569,6 +1705,7 @@ export class RestaurantStore {
           where pi.id = $1
             and p.id = pi.pedido_id
             and p.sessao_id = $2
+            and (pi.estado <> 'entregue' or $3::public.item_estado = 'entregue')
         returning pi.id,
                   pi.artigo_id as menu_item_id,
                   pi.nome_snapshot as name,
@@ -1584,7 +1721,13 @@ export class RestaurantStore {
 
       if (!result.rows[0]) throw makeError('Item não encontrado na mesa selecionada.', 404, 'order_item_not_found');
       const item = result.rows[0];
-      const actionType = dbStatus === 'pronto' ? 'service_ready' : dbStatus === 'entregue' ? 'service_delivered' : 'item_status_changed';
+      const isKitchenItem = String(item.station || '').toLowerCase() === 'cozinha';
+      let actionType = 'item_status_changed';
+      if (dbStatus === 'cancelado') actionType = isKitchenItem ? 'kitchen_cancelled' : 'item_cancelled';
+      else if (dbStatus === 'enviado') actionType = isKitchenItem ? 'kitchen_new' : 'item_status_changed';
+      else if (dbStatus === 'em_preparo') actionType = isKitchenItem ? 'kitchen_in_progress' : 'item_status_changed';
+      else if (dbStatus === 'pronto') actionType = isKitchenItem ? 'kitchen_ready' : 'service_ready';
+      else if (dbStatus === 'entregue') actionType = isKitchenItem ? 'kitchen_delivered' : 'service_delivered';
       await insertAuditLog(client, {
         actor_user_id: operator_id,
         terminal_id,
@@ -1617,6 +1760,12 @@ export class RestaurantStore {
           updated_at: item.updated_at,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -2030,7 +2179,20 @@ export class RestaurantStore {
       const session = await getActiveSessionRow(client, table_id);
       if (!session) throw makeError('Mesa não aberta.', 409, 'table_not_open');
 
-      await client.query(`select fechar_sessao($1, $2)`, [session.id, operator_id]);
+      try {
+        await client.query(`select fechar_sessao($1, $2)`, [session.id, operator_id]);
+      } catch (error) {
+        const totals = await computeSessionTotals(client, session.id);
+        if (totals.items.some((item) => item.estado !== 'cancelado')) throw error;
+        await client.query(
+          `update mesa_sessoes
+              set estado = 'fechado',
+                  fechada_em = now(),
+                  updated_at = now()
+            where id = $1`,
+          [session.id]
+        );
+      }
       await insertAuditLog(client, {
         actor_user_id: operator_id,
         terminal_id,
@@ -2060,6 +2222,12 @@ export class RestaurantStore {
           closed_at: closed.fechada_em,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -2137,6 +2305,12 @@ export class RestaurantStore {
           updated_at: item.updated_at,
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 
@@ -2485,7 +2659,7 @@ export class RestaurantStore {
              join mesas m on m.id = s.mesa_id
              left join app_users u on u.id = coalesce(s.fechada_por_id, s.aberta_por_id, s.criada_por_user_id)
              left join pedidos p on p.sessao_id = s.id
-             left join pedido_itens pi on pi.pedido_id = p.id
+             left join pedido_itens pi on pi.pedido_id = p.id and pi.estado <> 'cancelado'
             where s.fechada_em is not null
             group by s.id, m.id, m.nome, m.codigo, s.fechada_em, s.aberta_em, u.name
             order by coalesce(s.fechada_em, s.aberta_em) desc
@@ -2717,6 +2891,12 @@ export class RestaurantStore {
           worker: { email: 'worker@rest.local', password: 'worker123' },
         },
       };
+
+      if (includeHistory) {
+        response.history = session ? await this.getHistory(table_id, client, session.id) : [];
+      }
+
+      return response;
     });
   }
 }
