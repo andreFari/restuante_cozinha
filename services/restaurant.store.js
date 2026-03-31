@@ -1,4 +1,5 @@
 import fs from 'fs';
+import crypto from 'crypto';
 import path from 'path';
 import { Resend } from 'resend';
 import { query, withClient, withTransaction } from '../src/db.js';
@@ -11,6 +12,7 @@ const MENU_PROFILE_DEFS = [
 ];
 const DAY_SET = [0, 1, 2, 3, 4, 5, 6];
 const KITCHEN_STATUSES = ['new', 'in_progress', 'ready', 'delivered'];
+const WIFI_SECURITY_SET = new Set(['WPA', 'WEP', 'nopass']);
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const PUBLIC_INVOICES_DIR = path.join(process.cwd(), 'public', 'invoices');
@@ -139,6 +141,359 @@ async function ensureCheckoutSchema(client) {
   await client.query(`alter table public.faturas add column if not exists cliente_email text`);
   await client.query(`alter table public.faturas add column if not exists enviada_por_email_em timestamptz`);
   await client.query(`alter table public.faturas add column if not exists checkout_origem text`);
+}
+
+
+
+async function ensureQrSchema(client) {
+  await client.query(`create table if not exists public.mesa_qr_tokens (
+    id text primary key default fn_uuid(),
+    mesa_id text not null references public.mesas(id) on delete cascade,
+    token text not null unique,
+    is_active boolean not null default true,
+    created_by_user_id text null references public.app_users(id),
+    metadata_json jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    revoked_at timestamptz null
+  )`);
+  await client.query(`alter table public.mesa_qr_tokens add column if not exists is_active boolean not null default true`);
+  await client.query(`alter table public.mesa_qr_tokens add column if not exists created_by_user_id text null references public.app_users(id)`);
+  await client.query(`alter table public.mesa_qr_tokens add column if not exists metadata_json jsonb not null default '{}'::jsonb`);
+  await client.query(`alter table public.mesa_qr_tokens add column if not exists created_at timestamptz not null default now()`);
+  await client.query(`alter table public.mesa_qr_tokens add column if not exists revoked_at timestamptz null`);
+  await client.query(`update public.mesa_qr_tokens set is_active = true where is_active is null`);
+  await client.query(`create index if not exists idx_mesa_qr_tokens_table_active on public.mesa_qr_tokens(mesa_id, is_active, created_at desc)`);
+  await client.query(`create table if not exists public.restaurant_admin_settings (
+    key text primary key,
+    value_json jsonb not null default '{}'::jsonb,
+    updated_at timestamptz not null default now(),
+    updated_by_user_id text null references public.app_users(id)
+  )`);
+}
+
+function normalizeWifiSecurity(value) {
+  const normalized = String(value || 'WPA').trim().toUpperCase();
+  if (normalized === 'OPEN') return 'nopass';
+  return WIFI_SECURITY_SET.has(normalized) ? normalized : 'WPA';
+}
+
+function escapeWifiValue(value) {
+  return String(value || '').replace(/([\\;,:"])/g, '\\$1');
+}
+
+function buildWifiPayload({ ssid = '', password = '', security = 'WPA', hidden = false }) {
+  const safeSsid = String(ssid || '').trim();
+  if (!safeSsid) return '';
+  const safeSecurity = normalizeWifiSecurity(security);
+  const safePassword = String(password || '');
+  const hiddenFlag = hidden ? 'true' : 'false';
+  if (safeSecurity === 'nopass') {
+    return `WIFI:T:nopass;S:${escapeWifiValue(safeSsid)};H:${hiddenFlag};;`;
+  }
+  return `WIFI:T:${safeSecurity};S:${escapeWifiValue(safeSsid)};P:${escapeWifiValue(safePassword)};H:${hiddenFlag};;`;
+}
+
+function buildQrImageUrl(payload, size = 320) {
+  const value = String(payload || '').trim();
+  if (!value) return null;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${Number(size || 320)}x${Number(size || 320)}&data=${encodeURIComponent(value)}`;
+}
+
+function defaultQrAdminSettings() {
+  return {
+    restaurant_name: process.env.RESTAURANT_NAME || 'Restaurant OS',
+    logo_url: process.env.RESTAURANT_LOGO_URL || '',
+    wifi_ssid: process.env.RESTAURANT_WIFI_SSID || '',
+    wifi_password: process.env.RESTAURANT_WIFI_PASSWORD || '',
+    wifi_security: normalizeWifiSecurity(process.env.RESTAURANT_WIFI_SECURITY || 'WPA'),
+    wifi_hidden: false,
+    wifi_label: process.env.RESTAURANT_WIFI_LABEL || 'Wi-Fi clientes',
+    print_note: 'Leia o QR da mesa na app do cliente para pedir. Use o QR Wi-Fi para entrar na internet.',
+  };
+}
+
+async function getAdminSettingJson(client, key) {
+  await ensureQrSchema(client);
+  const result = await client.query(`select value_json from public.restaurant_admin_settings where key = $1 limit 1`, [key]);
+  return result.rows[0]?.value_json || null;
+}
+
+async function setAdminSettingJson(client, key, value, updatedByUserId = null) {
+  await ensureQrSchema(client);
+  await client.query(
+    `insert into public.restaurant_admin_settings (key, value_json, updated_at, updated_by_user_id)
+     values ($1, $2::jsonb, now(), $3)
+     on conflict (key)
+     do update set value_json = excluded.value_json,
+                   updated_at = now(),
+                   updated_by_user_id = excluded.updated_by_user_id`,
+    [key, JSON.stringify(value || {}), updatedByUserId]
+  );
+}
+
+async function getQrAdminSettings(client) {
+  const stored = await getAdminSettingJson(client, 'table_qr_settings');
+  return {
+    ...defaultQrAdminSettings(),
+    ...(stored || {}),
+    wifi_security: normalizeWifiSecurity(stored?.wifi_security || defaultQrAdminSettings().wifi_security),
+    wifi_hidden: stored?.wifi_hidden === true,
+  };
+}
+
+async function getActiveMesaQrToken(client, tableId) {
+  await ensureQrSchema(client);
+  const result = await client.query(
+    `select id, mesa_id, token, is_active, created_at, revoked_at
+       from public.mesa_qr_tokens
+      where mesa_id = $1
+        and is_active = true
+      order by created_at desc
+      limit 1`,
+    [tableId]
+  );
+  return result.rows[0] || null;
+}
+
+async function createMesaQrToken(client, tableId, createdByUserId = null, reason = 'generated') {
+  await ensureQrSchema(client);
+  const token = crypto.randomBytes(18).toString('hex');
+  const result = await client.query(
+    `insert into public.mesa_qr_tokens (mesa_id, token, is_active, created_by_user_id, metadata_json)
+     values ($1, $2, true, $3, $4::jsonb)
+     returning id, mesa_id, token, is_active, created_at, revoked_at`,
+    [tableId, token, createdByUserId, JSON.stringify({ reason })]
+  );
+  return result.rows[0];
+}
+
+async function getOrCreateMesaQrToken(client, tableId, createdByUserId = null) {
+  const existing = await getActiveMesaQrToken(client, tableId);
+  if (existing) return existing;
+  return createMesaQrToken(client, tableId, createdByUserId, 'auto_created');
+}
+
+async function revokeActiveMesaQrTokens(client, tableId) {
+  await ensureQrSchema(client);
+  await client.query(
+    `update public.mesa_qr_tokens
+        set is_active = false,
+            revoked_at = now()
+      where mesa_id = $1
+        and is_active = true`,
+    [tableId]
+  );
+}
+async function ensureCustomerFlowSchema(client) {
+  await client.query(`create table if not exists public.customer_checkout_requests (
+    id text primary key default fn_uuid(),
+    sessao_id text not null references public.mesa_sessoes(id) on delete cascade,
+    mesa_id text not null references public.mesas(id) on delete cascade,
+    payment_method text not null,
+    status text not null default 'awaiting_confirmation' check (status in ('awaiting_confirmation','paid','approved','released','cancelled','rejected')),
+    amount_total numeric(12,2) not null default 0,
+    customer_name text null,
+    customer_phone text null,
+    customer_nif text null,
+    customer_email text null,
+    mbway_contact text null,
+    venue_type text null,
+    requested_at timestamptz not null default now(),
+    approved_at timestamptz null,
+    approved_by_user_id text null references public.app_users(id),
+    released_at timestamptz null,
+    email_sent_at timestamptz null,
+    metadata_json jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await client.query(`create index if not exists idx_customer_checkout_requests_status on public.customer_checkout_requests(status, requested_at desc)`);
+  await client.query(`create index if not exists idx_customer_checkout_requests_session on public.customer_checkout_requests(sessao_id)`);
+}
+
+async function ensureCustomerActor(client) {
+  let user = await getUserByEmail(client, 'customer@app.local');
+  if (user) return user;
+  const inserted = await client.query(
+    `insert into app_users (name, email, password_hash, role, is_active)
+     values ($1, $2, $3, $4, $5)
+     returning id, name, email, role, is_active, password_hash, created_at, updated_at`,
+    ['Cliente app', 'customer@app.local', 'customer-app-local', 'employee', true]
+  );
+  return inserted.rows[0];
+}
+
+async function getTableRowByCode(client, tableCode) {
+  const raw = String(tableCode || '').trim();
+  if (!raw) return null;
+  await ensureQrSchema(client);
+  const byToken = await client.query(
+    `select m.id, m.codigo, m.nome, m.capacidade, m.ativa, l.id as local_id, l.nome as local_nome
+       from public.mesa_qr_tokens qt
+       join public.mesas m on m.id = qt.mesa_id
+       join public.locais l on l.id = m.local_id
+      where qt.token = $1
+        and qt.is_active = true
+      order by qt.created_at desc
+      limit 1`,
+    [raw]
+  );
+  if (byToken.rows[0]) return byToken.rows[0];
+  const result = await client.query(
+    `select m.id, m.codigo, m.nome, m.capacidade, m.ativa, l.id as local_id, l.nome as local_nome
+       from mesas m
+       join locais l on l.id = m.local_id
+      where m.id = $1 or lower(m.codigo) = lower($1) or lower(m.nome) = lower($1)
+      order by case when m.id = $1 then 0 when lower(m.codigo) = lower($1) then 1 else 2 end
+      limit 1`,
+    [raw]
+  );
+  return result.rows[0] || null;
+}
+
+async function getSessionRowById(client, sessionId) {
+  const result = await client.query(
+    `select s.id, s.mesa_id, s.local_id, s.origem, s.estado, s.criada_por_user_id,
+            s.cliente_nome, s.cliente_qtd, s.nota, s.aberta_em, s.fechada_em, s.updated_at,
+            m.nome as table_name, m.codigo as table_codigo
+       from mesa_sessoes s
+       join mesas m on m.id = s.mesa_id
+      where s.id = $1
+      limit 1`,
+    [sessionId]
+  );
+  return result.rows[0] || null;
+}
+
+function menuItemsForLocal(menuItems = [], localNome = 'restaurante') {
+  const today = new Date().getDay();
+  const menuKey = mapLocalToMenuKey(localNome);
+  return (Array.isArray(menuItems) ? menuItems : [])
+    .filter((item) => item && item.active !== false)
+    .filter((item) => Array.isArray(item.menu_rules?.[menuKey]) && item.menu_rules[menuKey].includes(today))
+    .map((item) => {
+      const matchedPrice = (Array.isArray(item.prices) ? item.prices : []).find((entry) => entry.local_nome === localNome && entry.active !== false)
+        || (Array.isArray(item.prices) ? item.prices.find((entry) => entry.active !== false) : null)
+        || null;
+      return {
+        ...item,
+        display_price: parseMoney(matchedPrice?.price ?? item.price ?? 0),
+        menu_key: menuKey,
+      };
+    });
+}
+
+async function getLatestCustomerCheckoutRequest(client, sessionId) {
+  await ensureCustomerFlowSchema(client);
+  const result = await client.query(
+    `select ccr.*, m.nome as table_name, m.codigo as table_code
+       from public.customer_checkout_requests ccr
+       join public.mesas m on m.id = ccr.mesa_id
+      where ccr.sessao_id = $1
+      order by ccr.created_at desc
+      limit 1`,
+    [sessionId]
+  );
+  return result.rows[0] || null;
+}
+
+function mapCustomerPaymentRequest(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    session_id: row.sessao_id,
+    table_id: row.mesa_id,
+    table_name: row.table_name || row.table_code || null,
+    payment_method: uiPaymentType(row.payment_method),
+    raw_payment_method: row.payment_method,
+    status: row.status,
+    amount_total: parseMoney(row.amount_total),
+    customer_name: row.customer_name || '',
+    customer_phone: row.customer_phone || '',
+    customer_nif: row.customer_nif || '',
+    customer_email: row.customer_email || '',
+    mbway_contact: row.mbway_contact || '',
+    venue_type: row.venue_type || '',
+    requested_at: row.requested_at,
+    approved_at: row.approved_at,
+    released_at: row.released_at,
+    email_sent_at: row.email_sent_at,
+    metadata: row.metadata_json || {},
+  };
+}
+
+async function releaseDraftKitchenItems(client, { session, actorUserId, terminalId = 'terminal_customer', itemNotes = new Map() }) {
+  const draftRows = await client.query(
+    `select pi.id, pi.pedido_id, pi.nome_snapshot as name, pi.quantidade as quantity, pi.observacao as note
+       from pedido_itens pi
+       join pedidos p on p.id = pi.pedido_id
+      where p.sessao_id = $1
+        and pi.estado = 'rascunho'
+        and pi.sitio_prep_snapshot = 'cozinha'
+      order by pi.created_at asc`,
+    [session.id]
+  );
+  const selectedItems = draftRows.rows || [];
+  if (!selectedItems.length) return { sent_items: 0, item_ids: [] };
+
+  for (const item of selectedItems) {
+    const note = itemNotes.get(String(item.id));
+    if (note !== undefined) {
+      await client.query(`update pedido_itens set observacao = $2, updated_at = now() where id = $1`, [item.id, note || null]);
+    }
+  }
+
+  const itemIds = selectedItems.map((row) => row.id);
+  await client.query(
+    `update pedido_itens
+        set estado = 'enviado'::public.item_estado,
+            enviado_cozinha_em = coalesce(enviado_cozinha_em, now()),
+            updated_at = now()
+      where id = any($1::text[])
+        and estado = 'rascunho'`,
+    [itemIds]
+  );
+
+  const pedidoIds = [...new Set(selectedItems.map((row) => row.pedido_id))];
+  if (pedidoIds.length) {
+    await client.query(
+      `update pedidos
+          set estado = case when estado = 'rascunho' then 'enviado'::public.pedido_estado else estado end,
+              updated_at = now()
+        where id = any($1::text[])`,
+      [pedidoIds]
+    );
+  }
+
+  await insertAuditLog(client, {
+    actor_user_id: actorUserId,
+    terminal_id: terminalId,
+    entity_type: 'table_session',
+    entity_id: session.id,
+    action_type: 'order_sent_to_kitchen',
+    payload: {
+      table_session_id: session.id,
+      items_count: itemIds.length,
+      item_ids: itemIds,
+      item_names: selectedItems.map((item) => item.name),
+      source: 'customer_payment_release',
+    },
+  });
+
+  return { sent_items: itemIds.length, item_ids: itemIds };
+}
+
+async function sendCustomerOrderEmailIfNeeded({ customerEmail, customerName, sessionId, paymentMethod, amountTotal, tableName }) {
+  if (!customerEmail || !resend) return { sent: false, reason: !customerEmail ? 'missing_email' : 'resend_not_configured' };
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'no-reply@techbridge.pt';
+  const fromName = process.env.RESEND_FROM_NAME || 'Restaurant OS';
+  await resend.emails.send({
+    from: `${fromName} <${fromEmail}>`,
+    to: [customerEmail],
+    subject: `Pedido recebido · ${tableName || 'Restaurante'}`,
+    html: `<div style="font-family:Arial,sans-serif;color:#0f172a"><h2>Pedido recebido</h2><p>Olá ${String(customerName || '').trim() || 'cliente'}, recebemos o teu pedido para ${tableName || 'a mesa'}.</p><p>Método de pagamento: <strong>${uiPaymentType(paymentMethod)}</strong></p><p>Total: <strong>${parseMoney(amountTotal).toFixed(2)} €</strong></p><p>Referência do pedido: <strong>${sessionId}</strong></p><p>Assim que o pagamento estiver validado, a produção arranca.</p></div>`,
+  });
+  return { sent: true, reason: null };
 }
 
 async function ensureMenuAvailabilitySchema(client) {
@@ -566,6 +921,7 @@ async function getOperators(client) {
        from app_users
       where is_active = true
         and role <> 'admin'
+        and lower(email) <> 'customer@app.local'
       order by name asc`
   );
 
@@ -950,6 +1306,7 @@ export class RestaurantStore {
       const result = await client.query(
         `select id, name, email, role, is_active, created_at, updated_at
            from app_users
+          where lower(email) <> 'customer@app.local'
           order by case when role = 'admin' then 0 else 1 end, name asc`
       );
 
@@ -1103,12 +1460,178 @@ export class RestaurantStore {
 
   async listTableDefinitions() {
     return withClient(async (client) => {
+      await ensureQrSchema(client);
       const tables = await listTablesDetailedDb(client);
+      const qrRows = await client.query(
+        `select distinct on (mesa_id) mesa_id, token, created_at
+           from public.mesa_qr_tokens
+          where is_active = true
+          order by mesa_id, created_at desc`
+      );
+      const qrByTable = new Map(qrRows.rows.map((row) => [String(row.mesa_id), row]));
       return tables.map((table) => ({
         ...table,
         has_active_session: Boolean(table.session),
+        has_qr_token: qrByTable.has(String(table.id)),
+        qr_token_created_at: qrByTable.get(String(table.id))?.created_at || null,
       }));
     });
+  }
+
+  async getTableQrAdminSettings() {
+    return withClient(async (client) => getQrAdminSettings(client));
+  }
+
+  async updateTableQrAdminSettings({ restaurant_name = '', logo_url = '', wifi_ssid = '', wifi_password = '', wifi_security = 'WPA', wifi_hidden = false, wifi_label = '', print_note = '', operator_id = null }) {
+    return withTransaction(async (client) => {
+      const nextValue = {
+        restaurant_name: String(restaurant_name || '').trim() || defaultQrAdminSettings().restaurant_name,
+        logo_url: String(logo_url || '').trim(),
+        wifi_ssid: String(wifi_ssid || '').trim(),
+        wifi_password: String(wifi_password || '').trim(),
+        wifi_security: normalizeWifiSecurity(wifi_security),
+        wifi_hidden: wifi_hidden === true,
+        wifi_label: String(wifi_label || '').trim() || defaultQrAdminSettings().wifi_label,
+        print_note: String(print_note || '').trim() || defaultQrAdminSettings().print_note,
+      };
+      await setAdminSettingJson(client, 'table_qr_settings', nextValue, operator_id);
+      return { settings: nextValue };
+    });
+  }
+
+  async getTableQrBundle({ table_id, operator_id = null, regenerate = false }) {
+    return withTransaction(async (client) => {
+      await ensureQrSchema(client);
+      const table = await getTableRow(client, table_id);
+      if (!table) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
+      if (regenerate) {
+        await revokeActiveMesaQrTokens(client, table_id);
+      }
+      const token = regenerate
+        ? await createMesaQrToken(client, table_id, operator_id, 'manual_regenerate')
+        : await getOrCreateMesaQrToken(client, table_id, operator_id);
+      const settings = await getQrAdminSettings(client);
+      const wifiPayload = buildWifiPayload({
+        ssid: settings.wifi_ssid,
+        password: settings.wifi_password,
+        security: settings.wifi_security,
+        hidden: settings.wifi_hidden,
+      });
+      return {
+        table: {
+          id: table.id,
+          code: table.codigo,
+          number: deriveTableNumber(table),
+          name: table.nome || table.codigo,
+          zone: deriveZoneFromLocal(table.local_nome),
+          capacity: Number(table.capacidade || 0),
+          local_nome: table.local_nome,
+        },
+        qr: {
+          token: token.token,
+          created_at: token.created_at,
+          image_url: buildQrImageUrl(token.token, 360),
+          text_to_encode: token.token,
+        },
+        wifi: {
+          enabled: Boolean(settings.wifi_ssid),
+          ssid: settings.wifi_ssid,
+          security: settings.wifi_security,
+          label: settings.wifi_label,
+          payload: wifiPayload,
+          image_url: wifiPayload ? buildQrImageUrl(wifiPayload, 320) : null,
+        },
+        print_meta: {
+          restaurant_name: settings.restaurant_name,
+          logo_url: settings.logo_url,
+          print_note: settings.print_note,
+        },
+      };
+    });
+  }
+
+  async buildTableQrPrintHtml({ table_id, operator_id = null, regenerate = false }) {
+    const bundle = await this.getTableQrBundle({ table_id, operator_id, regenerate });
+    const restaurantName = bundle.print_meta.restaurant_name || 'Restaurant OS';
+    const note = bundle.print_meta.print_note || '';
+    const logoHtml = bundle.print_meta.logo_url
+      ? `<img src="${bundle.print_meta.logo_url}" alt="Logo" style="max-height:72px;max-width:220px;object-fit:contain;" />`
+      : `<div style="font-size:30px;font-weight:900;color:#0f172a;letter-spacing:-0.03em;">${restaurantName}</div>`;
+    const wifiBlock = bundle.wifi.enabled
+      ? `
+        <div class="qr-box">
+          <div class="qr-title">${bundle.wifi.label || 'Wi-Fi clientes'}</div>
+          <img class="qr-image" src="${bundle.wifi.image_url}" alt="QR Wi-Fi" />
+          <div class="qr-caption"><strong>Rede:</strong> ${bundle.wifi.ssid}</div>
+          <div class="tiny">Ao ler este QR, o telemóvel pode entrar automaticamente na internet.</div>
+        </div>`
+      : `
+        <div class="qr-box muted">
+          <div class="qr-title">Wi-Fi clientes</div>
+          <div class="tiny">Ainda não configuraste SSID/password no admin.</div>
+        </div>`;
+    return `<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<title>QR mesa ${bundle.table.name}</title>
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  * { box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; color:#0f172a; margin:0; background:#f8fafc; }
+  .page { width:100%; min-height:calc(297mm - 24mm); display:flex; align-items:center; justify-content:center; }
+  .card { width: 178mm; min-height: 110mm; background:#fff; border:2px solid #e2e8f0; border-radius:24px; padding:18mm 16mm; display:flex; flex-direction:column; gap:14mm; box-shadow:0 10px 30px rgba(15,23,42,.08); }
+  .header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .meta { text-align:right; }
+  .eyebrow { font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:#64748b; font-weight:700; }
+  .mesa-name { font-size:42px; line-height:1; font-weight:900; margin-top:8px; }
+  .mesa-sub { font-size:18px; color:#475569; margin-top:8px; }
+  .qr-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12mm; align-items:stretch; }
+  .qr-box { border:1px solid #cbd5e1; border-radius:20px; padding:8mm; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; }
+  .qr-box.muted { justify-content:center; }
+  .qr-title { font-size:22px; font-weight:800; margin-bottom:6mm; }
+  .qr-image { width:62mm; height:62mm; object-fit:contain; }
+  .qr-caption { margin-top:5mm; font-size:15px; line-height:1.4; color:#334155; word-break:break-word; }
+  .tiny { font-size:12px; line-height:1.4; color:#64748b; margin-top:2mm; }
+  .footer { border-top:1px dashed #cbd5e1; padding-top:6mm; display:flex; justify-content:space-between; gap:8mm; align-items:flex-end; }
+  .token { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; color:#475569; }
+  .print-btn { position:fixed; right:16px; top:16px; padding:10px 14px; border-radius:999px; border:0; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; }
+  @media print { .print-btn { display:none; } body { background:#fff; } .page { min-height:auto; } .card { box-shadow:none; } }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">Imprimir / PDF</button>
+<div class="page">
+  <div class="card">
+    <div class="header">
+      <div>${logoHtml}</div>
+      <div class="meta">
+        <div class="eyebrow">Mesa / zona</div>
+        <div class="mesa-name">${bundle.table.name}</div>
+        <div class="mesa-sub">Mesa ${bundle.table.number} · ${bundle.table.zone}</div>
+      </div>
+    </div>
+    <div class="qr-grid">
+      <div class="qr-box">
+        <div class="qr-title">Pedir na mesa</div>
+        <img class="qr-image" src="${bundle.qr.image_url}" alt="QR mesa" />
+        <div class="qr-caption">Abra a app do cliente e leia este QR para entrar diretamente na mesa.</div>
+        <div class="tiny">Código interno: ${bundle.table.code}</div>
+      </div>
+      ${wifiBlock}
+    </div>
+    <div class="footer">
+      <div>
+        <div class="eyebrow">Instruções</div>
+        <div style="font-size:15px;line-height:1.5;color:#334155;max-width:110mm;">${note}</div>
+      </div>
+      <div class="token">QR mesa: ${bundle.qr.token}</div>
+    </div>
+  </div>
+</div>
+<script>setTimeout(() => { window.focus(); }, 150);</script>
+</body>
+</html>`;
   }
 
   async createTable({ number, name, zone = 'Sala', capacity = 4, active = true, operator_id, terminal_id = 'terminal_main' }) {
@@ -1135,6 +1658,7 @@ export class RestaurantStore {
       );
 
       const table = await getTableRow(client, inserted.rows[0].id);
+      const qrToken = await createMesaQrToken(client, inserted.rows[0].id, operator_id, 'table_created');
       invalidateCache('tables', 'bootstrap', 'serviceBoard');
       return {
         table: {
@@ -1148,6 +1672,11 @@ export class RestaurantStore {
           active: table.ativa,
           local_id: table.local_id,
           local_nome: table.local_nome,
+        },
+        qr: {
+          token: qrToken.token,
+          created_at: qrToken.created_at,
+          image_url: buildQrImageUrl(qrToken.token, 320),
         },
       };
 
@@ -2897,6 +3426,370 @@ export class RestaurantStore {
       }
 
       return response;
+    });
+  }
+
+
+  async resolveCustomerTable({ table_code, venue_type = '' }) {
+    return withClient(async (client) => {
+      const table = await getTableRowByCode(client, table_code);
+      if (!table || table.ativa === false) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
+      const localNome = String(table.local_nome || 'restaurante');
+      const normalizedVenue = String(venue_type || '').trim().toLowerCase();
+      if (normalizedVenue === 'bar' && !['bar', 'esplanada'].includes(localNome)) {
+        throw makeError('Este QR não pertence ao bar.', 409, 'venue_table_mismatch');
+      }
+      if (normalizedVenue === 'restaurante' && localNome === 'bar') {
+        throw makeError('Este QR pertence ao bar.', 409, 'venue_table_mismatch');
+      }
+      return {
+        table: {
+          id: table.id,
+          code: table.codigo,
+          number: deriveTableNumber(table),
+          name: table.nome || table.codigo,
+          zone: deriveZoneFromLocal(table.local_nome),
+          capacity: Number(table.capacidade || 0),
+          local_nome: localNome,
+          menu_key: mapLocalToMenuKey(localNome),
+        }
+      };
+    });
+  }
+
+  async startCustomerSession({ table_code, venue_type = '', customer_name = '', customer_phone = '', customer_email = '', customer_nif = '', customer_count = 1 }) {
+    const payload = await withTransaction(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const table = await getTableRowByCode(client, table_code);
+      if (!table || table.ativa === false) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
+      const localNome = String(table.local_nome || 'restaurante');
+      const normalizedVenue = String(venue_type || '').trim().toLowerCase();
+      if (normalizedVenue === 'bar' && !['bar', 'esplanada'].includes(localNome)) {
+        throw makeError('Este QR não pertence ao bar.', 409, 'venue_table_mismatch');
+      }
+      if (normalizedVenue === 'restaurante' && localNome === 'bar') {
+        throw makeError('Este QR pertence ao bar.', 409, 'venue_table_mismatch');
+      }
+      const actor = await ensureCustomerActor(client);
+      let session = await getActiveSessionRow(client, table.id);
+      if (!session) {
+        await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [table.id, actor.id, String(customer_name || '').trim() || null, Math.max(1, Number(customer_count || 1)), 'self_service_customer']);
+        session = await getActiveSessionRow(client, table.id);
+      }
+      if (!session) throw makeError('Não foi possível iniciar a sessão.', 500, 'session_open_failed');
+      await client.query(
+        `update mesa_sessoes
+            set cliente_nome = coalesce(nullif($2, ''), cliente_nome),
+                cliente_qtd = coalesce($3, cliente_qtd),
+                nota = trim(both from concat_ws(' · ', nullif($4, ''), nullif($5, ''), nullif($6, ''))),
+                updated_at = now()
+          where id = $1`,
+        [session.id, String(customer_name || '').trim(), Math.max(1, Number(customer_count || 1)), String(customer_phone || '').trim(), String(customer_email || '').trim().toLowerCase(), digitsOnly(customer_nif)]
+      );
+      const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), localNome);
+      const items = await getSessionItems(client, session.id);
+      const visibleItems = items.filter((item) => item.estado !== 'cancelado');
+      const totals = {
+        total: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0),
+        total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+      };
+      return {
+        session: {
+          id: session.id,
+          table_id: table.id,
+          table_code: table.codigo,
+          table_name: table.nome || table.codigo,
+          zone: deriveZoneFromLocal(localNome),
+          local_nome: localNome,
+          menu_key: mapLocalToMenuKey(localNome),
+          venue_type: normalizedVenue || (localNome === 'bar' ? 'bar' : 'restaurante'),
+          customer_name: String(customer_name || '').trim(),
+          customer_phone: String(customer_phone || '').trim(),
+          customer_email: String(customer_email || '').trim().toLowerCase(),
+          customer_nif: digitsOnly(customer_nif),
+          customer_count: Math.max(1, Number(customer_count || 1)),
+          opened_at: session.aberta_em,
+        },
+        menu_items: menuItems,
+        order_items: visibleItems.map((item) => ({
+          id: item.id,
+          menu_item_id: item.menu_item_id,
+          name: item.name,
+          station: item.station,
+          flow: item.station,
+          category: item.category || 'Sem categoria',
+          image_url: item.imagem_url || null,
+          quantity: item.quantity,
+          prep_minutes: Number(item.prep_minutes || 0),
+          unit_price: item.unit_price,
+          note: item.note || '',
+          raw_status: item.estado,
+        })),
+        totals,
+      };
+    });
+    return payload;
+  }
+
+  async getCustomerSession({ session_id }) {
+    return withClient(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const session = await getSessionRowById(client, session_id);
+      if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+      const table = await getTableRow(client, session.mesa_id);
+      const items = await getSessionItems(client, session.id);
+      const visibleItems = items.filter((item) => item.estado !== 'cancelado');
+      const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), session.local_id ? String(table?.local_nome || 'restaurante') : 'restaurante');
+      const paymentRequest = mapCustomerPaymentRequest(await getLatestCustomerCheckoutRequest(client, session.id));
+      return {
+        session: {
+          id: session.id,
+          table_id: session.mesa_id,
+          table_code: session.table_codigo,
+          table_name: session.table_name || session.table_codigo,
+          zone: deriveZoneFromLocal(table?.local_nome),
+          local_nome: table?.local_nome || 'restaurante',
+          menu_key: mapLocalToMenuKey(table?.local_nome || 'restaurante'),
+          customer_name: session.cliente_nome || '',
+          customer_count: Number(session.cliente_qtd || 1),
+          note: session.nota || '',
+          opened_at: session.aberta_em,
+          updated_at: session.updated_at,
+        },
+        menu_items: menuItems,
+        order_items: visibleItems.map((item) => ({
+          id: item.id,
+          menu_item_id: item.menu_item_id,
+          name: item.name,
+          station: item.station,
+          flow: item.station,
+          category: item.category || 'Sem categoria',
+          image_url: item.imagem_url || null,
+          quantity: item.quantity,
+          prep_minutes: Number(item.prep_minutes || 0),
+          unit_price: item.unit_price,
+          note: item.note || '',
+          raw_status: item.estado,
+          status: mapDbItemStatusToKitchen(item.estado === 'rascunho' ? 'enviado' : item.estado),
+        })),
+        totals: {
+          total: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0),
+          total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        },
+        payment_request: paymentRequest,
+      };
+    });
+  }
+
+  async addCustomerItem({ session_id, menu_item_id, quantity = 1, note = '' }) {
+    return withTransaction(async (client) => {
+      const actor = await ensureCustomerActor(client);
+      const session = await getSessionRowById(client, session_id);
+      if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+      const latestRequest = await getLatestCustomerCheckoutRequest(client, session.id);
+      if (latestRequest && ['awaiting_confirmation', 'paid', 'approved', 'released'].includes(String(latestRequest.status))) {
+        throw makeError('O pedido já foi submetido para pagamento. Já não podes alterar itens.', 409, 'customer_order_locked');
+      }
+      const pedidoId = await getOrCreateDraftPedido(client, session.id, actor.id);
+      await ensureItemPriceForLocal(client, menu_item_id, session.local_id);
+      await client.query(`select adicionar_item_pedido($1, $2, $3, $4) as id`, [pedidoId, menu_item_id, Math.max(1, Number(quantity || 1)), note || null]);
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
+      return this.getCustomerSession({ session_id: session.id });
+    });
+  }
+
+  async updateCustomerItem({ session_id, order_item_id, quantity }) {
+    return withTransaction(async (client) => {
+      const session = await getSessionRowById(client, session_id);
+      if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+      const latestRequest = await getLatestCustomerCheckoutRequest(client, session.id);
+      if (latestRequest && ['awaiting_confirmation', 'paid', 'approved', 'released'].includes(String(latestRequest.status))) {
+        throw makeError('O pedido já foi submetido para pagamento. Já não podes alterar itens.', 409, 'customer_order_locked');
+      }
+      await client.query(
+        `update pedido_itens pi
+            set quantidade = $3,
+                updated_at = now()
+           from pedidos p
+          where pi.id = $1
+            and p.id = pi.pedido_id
+            and p.sessao_id = $2
+            and pi.estado = 'rascunho'`,
+        [order_item_id, session.id, Math.max(1, Number(quantity || 1))]
+      );
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
+      return this.getCustomerSession({ session_id: session.id });
+    });
+  }
+
+  async removeCustomerItem({ session_id, order_item_id }) {
+    return withTransaction(async (client) => {
+      const session = await getSessionRowById(client, session_id);
+      if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+      const latestRequest = await getLatestCustomerCheckoutRequest(client, session.id);
+      if (latestRequest && ['awaiting_confirmation', 'paid', 'approved', 'released'].includes(String(latestRequest.status))) {
+        throw makeError('O pedido já foi submetido para pagamento. Já não podes alterar itens.', 409, 'customer_order_locked');
+      }
+      await client.query(
+        `delete from pedido_itens pi
+         using pedidos p
+         where pi.id = $1
+           and p.id = pi.pedido_id
+           and p.sessao_id = $2
+           and pi.estado = 'rascunho'`,
+        [order_item_id, session.id]
+      );
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
+      return this.getCustomerSession({ session_id: session.id });
+    });
+  }
+
+  async submitCustomerOrder({ session_id, payment_method, customer_name = '', customer_phone = '', customer_email = '', customer_nif = '', mbway_contact = '', venue_type = '', send_email = false }) {
+    const payload = await withTransaction(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const actor = await ensureCustomerActor(client);
+      const session = await getSessionRowById(client, session_id);
+      if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+      const existingRequest = await getLatestCustomerCheckoutRequest(client, session.id);
+      if (existingRequest && ['awaiting_confirmation', 'paid', 'approved', 'released'].includes(String(existingRequest.status))) {
+        throw makeError('Já existe um pedido submetido para pagamento nesta mesa.', 409, 'customer_payment_request_exists');
+      }
+      const totals = await computeSessionTotals(client, session.id);
+      const visibleItems = totals.items.filter((item) => item.estado !== 'cancelado');
+      const draftItems = visibleItems.filter((item) => item.estado === 'rascunho');
+      if (!draftItems.length) throw makeError('Não tens itens em rascunho para submeter.', 409, 'no_draft_items');
+      const normalizedPayment = normalizePaymentType(payment_method);
+      const initialStatus = normalizedPayment === 'mbway' ? 'paid' : 'awaiting_confirmation';
+      const inserted = await client.query(
+        `insert into public.customer_checkout_requests (
+          sessao_id, mesa_id, payment_method, status, amount_total,
+          customer_name, customer_phone, customer_nif, customer_email, mbway_contact, venue_type, metadata_json
+        ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
+        returning *`,
+        [session.id, session.mesa_id, normalizedPayment, initialStatus, totals.total, String(customer_name || '').trim() || session.cliente_nome || null, String(customer_phone || '').trim() || null, digitsOnly(customer_nif) || null, String(customer_email || '').trim().toLowerCase() || null, String(mbway_contact || '').trim() || null, String(venue_type || '').trim() || null, JSON.stringify({ send_email: send_email === true, draft_item_ids: draftItems.map((item) => item.id) })]
+      );
+      let requestRow = inserted.rows[0];
+      let released = { sent_items: 0, item_ids: [] };
+      if (normalizedPayment === 'mbway') {
+        released = await releaseDraftKitchenItems(client, { session, actorUserId: actor.id, terminalId: 'terminal_customer' });
+        const updated = await client.query(
+          `update public.customer_checkout_requests
+              set status = 'released',
+                  approved_at = now(),
+                  released_at = now(),
+                  approved_by_user_id = null,
+                  updated_at = now()
+            where id = $1
+        returning *`,
+          [requestRow.id]
+        );
+        requestRow = updated.rows[0];
+      }
+      await insertAuditLog(client, {
+        actor_user_id: actor.id,
+        terminal_id: 'terminal_customer',
+        entity_type: 'table_session',
+        entity_id: session.id,
+        action_type: 'customer_payment_requested',
+        payload: {
+          table_session_id: session.id,
+          payment_method: uiPaymentType(normalizedPayment),
+          amount_total: totals.total,
+          request_id: requestRow.id,
+          released_to_production: normalizedPayment === 'mbway',
+        },
+      });
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard', 'kitchen');
+      return { request: mapCustomerPaymentRequest({ ...requestRow, table_name: session.table_name || session.table_codigo, table_code: session.table_codigo }), released, session_id: session.id, customer_email: requestRow.customer_email, customer_name: requestRow.customer_name, send_email: send_email === true, table_name: session.table_name || session.table_codigo };
+    });
+    let email = { sent: false, reason: 'not_requested' };
+    if (payload.send_email === true) {
+      email = await sendCustomerOrderEmailIfNeeded({ customerEmail: payload.customer_email, customerName: payload.customer_name, sessionId: payload.session_id, paymentMethod: payload.request.raw_payment_method, amountTotal: payload.request.amount_total, tableName: payload.table_name });
+      if (email.sent) {
+        await withTransaction(async (client) => {
+          await ensureCustomerFlowSchema(client);
+          await client.query(`update public.customer_checkout_requests set email_sent_at = now(), updated_at = now() where id = $1`, [payload.request.id]);
+        });
+      }
+    }
+    return { payment_request: payload.request, released: payload.released, email };
+  }
+
+  async listPendingPaymentRequests({ terminal_id = 'terminal_main' } = {}) {
+    return withClient(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const rows = await client.query(
+        `select ccr.*, m.nome as table_name, m.codigo as table_code, l.nome as local_nome
+           from public.customer_checkout_requests ccr
+           join public.mesas m on m.id = ccr.mesa_id
+           join public.locais l on l.id = m.local_id
+          where ccr.status in ('awaiting_confirmation')
+          order by ccr.requested_at asc`
+      );
+      const normalizedTerminal = String(terminal_id || 'terminal_main').toLowerCase();
+      const items = rows.rows.filter((row) => {
+        const localNome = String(row.local_nome || '').toLowerCase();
+        if (normalizedTerminal === 'terminal_bar') return ['bar', 'esplanada'].includes(localNome);
+        if (normalizedTerminal === 'terminal_takeaway') return localNome === 'takeaway';
+        return !['bar'].includes(localNome);
+      }).map((row) => ({
+        ...mapCustomerPaymentRequest({ ...row, table_name: row.table_name, table_code: row.table_code }),
+        local_nome: row.local_nome,
+      }));
+      return { items, total: items.length };
+    });
+  }
+
+  async approvePaymentRequest({ request_id, operator_id, terminal_id = 'terminal_main' }) {
+    return withTransaction(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const result = await client.query(
+        `select ccr.*, m.nome as table_name, m.codigo as table_code
+           from public.customer_checkout_requests ccr
+           join public.mesas m on m.id = ccr.mesa_id
+          where ccr.id = $1
+          limit 1`,
+        [request_id]
+      );
+      const requestRow = result.rows[0];
+      if (!requestRow) throw makeError('Pedido de pagamento não encontrado.', 404, 'payment_request_not_found');
+      if (String(requestRow.status) !== 'awaiting_confirmation') throw makeError('Este pedido já não está pendente.', 409, 'payment_request_not_pending');
+      const session = await getSessionRowById(client, requestRow.sessao_id);
+      if (!session || session.fechada_em) throw makeError('Sessão já não está ativa.', 409, 'session_not_active');
+      await client.query(
+        `update public.customer_checkout_requests
+            set status = 'approved',
+                approved_at = now(),
+                approved_by_user_id = $2,
+                updated_at = now()
+          where id = $1`,
+        [requestRow.id, operator_id]
+      );
+      const released = await releaseDraftKitchenItems(client, { session, actorUserId: operator_id, terminalId: terminal_id });
+      const updated = await client.query(
+        `update public.customer_checkout_requests
+            set status = 'released',
+                released_at = now(),
+                updated_at = now()
+          where id = $1
+        returning *`,
+        [requestRow.id]
+      );
+      await insertAuditLog(client, {
+        actor_user_id: operator_id,
+        terminal_id,
+        entity_type: 'table_session',
+        entity_id: session.id,
+        action_type: 'customer_payment_approved',
+        payload: {
+          table_session_id: session.id,
+          request_id: requestRow.id,
+          payment_method: uiPaymentType(requestRow.payment_method),
+          released_items: released.sent_items,
+        },
+      });
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard', 'kitchen');
+      return { payment_request: mapCustomerPaymentRequest({ ...updated.rows[0], table_name: requestRow.table_name, table_code: requestRow.table_code }), released };
     });
   }
 }

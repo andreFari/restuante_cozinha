@@ -131,6 +131,84 @@ router.post("/auth/logout", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+
+router.get('/customer/resolve-table', asyncHandler(async (req, res) => {
+  const table_code = String(req.query.table_code || req.query.qr || '').trim();
+  if (!table_code) {
+    const error = new Error('QR/mesa obrigatório.');
+    error.statusCode = 400;
+    error.code = 'table_code_required';
+    throw error;
+  }
+  res.json(await restaurantStore.resolveCustomerTable({
+    table_code,
+    venue_type: req.query.venue_type || req.query.venue || '',
+  }));
+}));
+
+router.post('/customer/session/start', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['table_code']);
+  const result = await restaurantStore.startCustomerSession({
+    table_code: req.body.table_code,
+    venue_type: req.body.venue_type || '',
+    customer_name: req.body.customer_name || '',
+    customer_phone: req.body.customer_phone || '',
+    customer_email: req.body.customer_email || '',
+    customer_nif: req.body.customer_nif || '',
+    customer_count: req.body.customer_count || 1,
+  });
+  res.status(201).json(result);
+}));
+
+router.get('/customer/session/:sessionId', asyncHandler(async (req, res) => {
+  res.json(await restaurantStore.getCustomerSession({ session_id: req.params.sessionId }));
+}));
+
+router.post('/customer/session/:sessionId/items', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['menu_item_id']);
+  const result = await restaurantStore.addCustomerItem({
+    session_id: req.params.sessionId,
+    menu_item_id: req.body.menu_item_id,
+    quantity: req.body.quantity || 1,
+    note: req.body.note || '',
+  });
+  res.status(201).json(result);
+}));
+
+router.patch('/customer/session/:sessionId/items/:orderItemId', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['quantity']);
+  const result = await restaurantStore.updateCustomerItem({
+    session_id: req.params.sessionId,
+    order_item_id: req.params.orderItemId,
+    quantity: req.body.quantity,
+  });
+  res.json(result);
+}));
+
+router.delete('/customer/session/:sessionId/items/:orderItemId', asyncHandler(async (req, res) => {
+  const result = await restaurantStore.removeCustomerItem({
+    session_id: req.params.sessionId,
+    order_item_id: req.params.orderItemId,
+  });
+  res.json(result);
+}));
+
+router.post('/customer/session/:sessionId/submit', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['payment_method']);
+  const result = await restaurantStore.submitCustomerOrder({
+    session_id: req.params.sessionId,
+    payment_method: req.body.payment_method,
+    customer_name: req.body.customer_name || '',
+    customer_phone: req.body.customer_phone || '',
+    customer_email: req.body.customer_email || '',
+    customer_nif: req.body.customer_nif || '',
+    mbway_contact: req.body.mbway_contact || '',
+    venue_type: req.body.venue_type || '',
+    send_email: req.body.send_email === true,
+  });
+  res.json(result);
+}));
+
 router.use((req, _res, next) => {
   try {
     requireRestaurantAuth(req);
@@ -205,6 +283,20 @@ router.patch("/workers/:workerId", asyncHandler(async (req, res) => {
   res.json(result);
 }));
 
+
+router.get('/payment-requests', asyncHandler(async (req, res) => {
+  res.json(await restaurantStore.listPendingPaymentRequests({ terminal_id: String(req.query.terminal_id || req.query.terminal || 'terminal_main') }));
+}));
+
+router.post('/payment-requests/:requestId/approve', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['operator_id']);
+  res.json(await restaurantStore.approvePaymentRequest({
+    request_id: req.params.requestId,
+    operator_id: req.body.operator_id,
+    terminal_id: req.body.terminal_id || 'terminal_main',
+  }));
+}));
+
 router.get("/tables", asyncHandler(async (req, res) => {
   const terminalId = String(req.query.terminal_id || req.query.terminal || "terminal_main");
   const search = String(req.query.search || "");
@@ -257,6 +349,57 @@ router.delete("/tables/manage/:tableId", asyncHandler(async (req, res) => {
     terminal_id: req.body.terminal_id || "terminal_main",
   });
   res.json(result);
+}));
+
+
+router.get("/settings/qr", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  res.json(await restaurantStore.getTableQrAdminSettings());
+}));
+
+router.put("/settings/qr", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const result = await restaurantStore.updateTableQrAdminSettings({
+    restaurant_name: req.body.restaurant_name,
+    logo_url: req.body.logo_url,
+    wifi_ssid: req.body.wifi_ssid,
+    wifi_password: req.body.wifi_password,
+    wifi_security: req.body.wifi_security,
+    wifi_hidden: req.body.wifi_hidden === true,
+    wifi_label: req.body.wifi_label,
+    print_note: req.body.print_note,
+    operator_id: req.restaurantAuth.user_id,
+  });
+  res.json(result);
+}));
+
+router.get("/tables/manage/:tableId/qr", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  res.json(await restaurantStore.getTableQrBundle({
+    table_id: req.params.tableId,
+    operator_id: req.restaurantAuth.user_id,
+    regenerate: String(req.query.regenerate || '') === '1',
+  }));
+}));
+
+router.post("/tables/manage/:tableId/qr/regenerate", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  res.json(await restaurantStore.getTableQrBundle({
+    table_id: req.params.tableId,
+    operator_id: req.restaurantAuth.user_id,
+    regenerate: true,
+  }));
+}));
+
+router.get("/tables/manage/:tableId/print", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const html = await restaurantStore.buildTableQrPrintHtml({
+    table_id: req.params.tableId,
+    operator_id: req.restaurantAuth.user_id,
+    regenerate: String(req.query.regenerate || '') === '1',
+  });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 }));
 
 router.get("/tables/:tableId", asyncHandler(async (req, res) => {

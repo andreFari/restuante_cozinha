@@ -72,6 +72,57 @@ export const restaurantApi = {
   listTables() {
     return request(`/api/restaurant/tables`);
   },
+
+  listPendingPaymentRequests() {
+    return request(`/api/restaurant/payment-requests?terminal_id=${encodeURIComponent(getTerminalId())}`);
+  },
+  approvePaymentRequest(requestId) {
+    return request(`/api/restaurant/payment-requests/${encodeURIComponent(requestId)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  customerResolveTable(tableCode, venueType = "") {
+    const params = new URLSearchParams({ table_code: tableCode });
+    if (venueType) params.set('venue_type', venueType);
+    return request(`/api/restaurant/customer/resolve-table?${params.toString()}`);
+  },
+  customerStartSession(payload) {
+    return request(`/api/restaurant/customer/session/start`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getCustomerSession(sessionId) {
+    return request(`/api/restaurant/customer/session/${encodeURIComponent(sessionId)}`);
+  },
+  addCustomerItem(sessionId, payload) {
+    return request(`/api/restaurant/customer/session/${encodeURIComponent(sessionId)}/items`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateCustomerItem(sessionId, orderItemId, payload) {
+    return request(`/api/restaurant/customer/session/${encodeURIComponent(sessionId)}/items/${encodeURIComponent(orderItemId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  removeCustomerItem(sessionId, orderItemId) {
+    return request(`/api/restaurant/customer/session/${encodeURIComponent(sessionId)}/items/${encodeURIComponent(orderItemId)}`, {
+      method: 'DELETE',
+    });
+  },
+  submitCustomerOrder(sessionId, payload) {
+    return request(`/api/restaurant/customer/session/${encodeURIComponent(sessionId)}/submit`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   getTable(tableId) {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}`);
   },
@@ -238,6 +289,27 @@ export const restaurantApi = {
         terminal_id: getTerminalId(),
       }),
     });
+  },
+  getQrSettings() {
+    return request(`/api/restaurant/settings/qr`);
+  },
+  updateQrSettings(payload) {
+    return request(`/api/restaurant/settings/qr`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  getTableQr(tableId) {
+    return request(`/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/qr`);
+  },
+  regenerateTableQr(tableId) {
+    return request(`/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/qr/regenerate`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+  getTablePrintUrl(tableId, regenerate = false) {
+    return `/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/print${regenerate ? '?regenerate=1' : ''}`;
   },
   archiveTable(tableId) {
     return request(`/api/restaurant/tables/manage/${encodeURIComponent(tableId)}`, {

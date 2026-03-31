@@ -10,8 +10,9 @@
     <style>
       .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
       .filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-      .filters input,.filters select{min-height:46px;border:1px solid #dbe3ef;border-radius:14px;padding:0 14px;background:#fff;font:inherit}
-      .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+      .filters input,.filters select,.field-stack textarea{min-height:46px;border:1px solid #dbe3ef;border-radius:14px;padding:10px 14px;background:#fff;font:inherit}
+      .field-stack textarea{min-height:110px;resize:vertical}
+      .tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
       .table-card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:22px;background:#fff;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.05)}
       .table-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
       .table-name{font-size:22px;font-weight:800;line-height:1.1}
@@ -21,14 +22,15 @@
       .soft-badge.busy{background:#fff7ed;color:#c2410c}
       .soft-badge.off{background:#eef2f7;color:#64748b}
       .soft-badge.zone{background:#e7faf1;color:#0f766e}
+      .soft-badge.qr{background:#ecfdf5;color:#047857}
       .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
       .modal-backdrop.show{display:flex}
-      .modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
+      .modal-card{width:min(960px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
       .modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
       .modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
       .field-stack{display:grid;gap:14px}
       .field-stack label{display:grid;gap:8px;font-weight:700;color:#243247}
-      .field-stack input,.field-stack select{width:100%;border:1px solid #d7dfeb;border-radius:16px;padding:13px 14px;font:inherit;background:#fff}
+      .field-stack input,.field-stack select,.field-stack textarea{width:100%}
       .check-pill{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #d7dfeb;border-radius:16px;background:#fbfcfe;font-weight:600;color:#243247}
       .modal-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
       .chip-row{display:flex;gap:10px;flex-wrap:wrap}
@@ -36,7 +38,12 @@
       .zone-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}
       .tiny{font-size:13px;color:#64748b}
       .empty-box{padding:28px;border:1px dashed #d7dfeb;border-radius:20px;text-align:center;color:#64748b;background:#fff}
-      @media (max-width: 860px){.modal-grid{grid-template-columns:1fr}}
+      .qr-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+      .qr-panel{border:1px solid #dbe3ef;border-radius:22px;background:#fff;padding:18px;display:grid;gap:12px;justify-items:center;text-align:center}
+      .qr-panel img{width:min(260px,100%);aspect-ratio:1/1;object-fit:contain;background:#fff;border-radius:18px;border:1px solid #e5edf8;padding:10px}
+      .qr-code-text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#475569;word-break:break-all}
+      .info-box{padding:14px 16px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0;color:#334155;line-height:1.5}
+      @media (max-width: 860px){.modal-grid,.qr-preview-grid{grid-template-columns:1fr}}
     </style>
   </head>
   <body>
@@ -66,10 +73,11 @@
           <div>
             <div class="shell-eyebrow">MESAS</div>
             <h1 class="shell-title" style="margin:0">Gestão de Mesas</h1>
-            <div class="helper-text">Zona em dropdown e edição só em popup.</div>
+            <div class="helper-text">Cada mesa gera QR próprio na criação. Se houver problema, podes regenerar outro e o antigo deixa de valer.</div>
           </div>
           <div class="chip-row">
             <button id="manageZonesBtn" class="ghost-btn">Gerir zonas</button>
+            <button id="qrSettingsBtn" class="ghost-btn">Wi-Fi / impressão</button>
             <button id="refreshBtn" class="ghost-btn">Atualizar</button>
             <button id="newTableBtn" class="primary-btn">Nova mesa</button>
           </div>
@@ -97,7 +105,7 @@
           <div>
             <div class="shell-eyebrow">MESA</div>
             <h2 id="modalTitle" style="margin:0">Nova mesa</h2>
-            <div class="helper-text">A zona é escolhida de uma lista central.</div>
+            <div class="helper-text">A zona é escolhida de uma lista central. O QR da mesa nasce logo na criação.</div>
           </div>
           <button id="closeModalBtn" class="ghost-btn" type="button">Fechar</button>
         </div>
@@ -163,13 +171,86 @@
       </div>
     </div>
 
+    <div id="qrSettingsModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">QR / WI-FI</div>
+            <h2 style="margin:0">Configurar impressão e internet</h2>
+            <div class="tiny">O browser não consegue ler a password do Wi-Fi do computador por segurança. Tens de a escrever aqui uma vez.</div>
+          </div>
+          <button id="closeQrSettingsBtn" class="ghost-btn" type="button">Fechar</button>
+        </div>
+        <form id="qrSettingsForm">
+          <div class="modal-grid">
+            <div class="field-stack">
+              <label>Nome do restaurante
+                <input id="restaurantNameInput" type="text" placeholder="Nome do restaurante" />
+              </label>
+              <label>URL do logo (opcional)
+                <input id="logoUrlInput" type="url" placeholder="https://... ou /images/logo.png" />
+              </label>
+              <label>Texto de apoio na impressão
+                <textarea id="printNoteInput" placeholder="Leia o QR da mesa na app do cliente..." ></textarea>
+              </label>
+            </div>
+            <div class="field-stack">
+              <label>Etiqueta do Wi-Fi
+                <input id="wifiLabelInput" type="text" placeholder="Wi-Fi clientes" />
+              </label>
+              <label>SSID / nome da rede
+                <input id="wifiSsidInput" type="text" placeholder="Nome da rede Wi-Fi" />
+              </label>
+              <label>Password Wi-Fi
+                <input id="wifiPasswordInput" type="text" placeholder="Password da rede" />
+              </label>
+              <label>Segurança
+                <select id="wifiSecuritySelect">
+                  <option value="WPA">WPA / WPA2</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">Sem password</option>
+                </select>
+              </label>
+              <label class="check-pill"><input id="wifiHiddenInput" type="checkbox" /> Rede oculta</label>
+            </div>
+          </div>
+          <div class="info-box" style="margin-top:18px">
+            Para a mesa funcionar na app do cliente, o QR da mesa deve conter o token da mesa. Para entrar automaticamente no Wi-Fi, o QR tem de usar o formato Wi-Fi. Por isso, a forma robusta é imprimir <strong>dois QR codes</strong> no mesmo cartão. Um só QR para os dois não é fiável.
+          </div>
+          <div class="modal-actions">
+            <div class="chip-row"><button type="submit" class="primary-btn">Guardar configuração</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="qrModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">QR DA MESA</div>
+            <h2 id="qrModalTitle" style="margin:0">Mesa</h2>
+            <div class="tiny">Podes imprimir o cartão ou regenerar o QR se o atual ficar comprometido.</div>
+          </div>
+          <button id="closeQrModalBtn" class="ghost-btn" type="button">Fechar</button>
+        </div>
+        <div id="qrPreviewGrid" class="qr-preview-grid"></div>
+        <div class="modal-actions">
+          <div class="chip-row">
+            <button id="regenerateQrBtn" class="ghost-btn" type="button">Gerar outro QR</button>
+            <button id="printQrBtn" class="primary-btn" type="button">Imprimir / PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module">
       import { restaurantApi } from './js/restaurant-api.js';
       import { mountOperatorShell, ensureOperatorSelected, toast } from './js/restaurant-shell.js';
 
       const ZONES_KEY = 'restaurant_zone_catalog';
       const DEFAULT_ZONES = ['Sala', 'Esplanada', 'Bar', 'Takeaway'];
-      const state = { rows: [], selectedTableId: null, zones: [] };
+      const state = { rows: [], selectedTableId: null, zones: [], qrSettings: null, qrTableId: null };
 
       const grid = document.getElementById('tablesGrid');
       const searchInput = document.getElementById('searchInput');
@@ -178,28 +259,40 @@
       const summaryLine = document.getElementById('summaryLine');
       const modal = document.getElementById('tableModal');
       const zonesModal = document.getElementById('zonesModal');
+      const qrSettingsModal = document.getElementById('qrSettingsModal');
+      const qrModal = document.getElementById('qrModal');
       const form = document.getElementById('tableForm');
+      const qrSettingsForm = document.getElementById('qrSettingsForm');
       const modalTitle = document.getElementById('modalTitle');
       const tableZone = document.getElementById('tableZone');
       const zonesList = document.getElementById('zonesList');
+      const qrPreviewGrid = document.getElementById('qrPreviewGrid');
+      const qrModalTitle = document.getElementById('qrModalTitle');
 
       await mountOperatorShell({ title: 'Gestão de Mesas', eyebrow: 'Configuração de sala' });
       hydrateZones();
-      await refreshTables();
+      await Promise.all([refreshTables(), loadQrSettings()]);
 
       document.getElementById('refreshBtn').addEventListener('click', refreshTables);
       document.getElementById('newTableBtn').addEventListener('click', () => openModal());
       document.getElementById('manageZonesBtn').addEventListener('click', openZonesModal);
+      document.getElementById('qrSettingsBtn').addEventListener('click', openQrSettingsModal);
       document.getElementById('closeModalBtn').addEventListener('click', closeModal);
       document.getElementById('closeZonesModalBtn').addEventListener('click', () => zonesModal.classList.remove('show'));
+      document.getElementById('closeQrSettingsBtn').addEventListener('click', () => qrSettingsModal.classList.remove('show'));
+      document.getElementById('closeQrModalBtn').addEventListener('click', () => qrModal.classList.remove('show'));
       document.getElementById('resetBtn').addEventListener('click', () => openModal(state.selectedTableId));
       document.getElementById('archiveBtn').addEventListener('click', archiveCurrent);
       document.getElementById('addZoneBtn').addEventListener('click', addZone);
+      document.getElementById('regenerateQrBtn').addEventListener('click', regenerateCurrentQr);
+      document.getElementById('printQrBtn').addEventListener('click', printCurrentQr);
       searchInput.addEventListener('input', renderGrid);
       zoneFilter.addEventListener('change', renderGrid);
       statusFilter.addEventListener('change', renderGrid);
       modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
       zonesModal.addEventListener('click', (event) => { if (event.target === zonesModal) zonesModal.classList.remove('show'); });
+      qrSettingsModal.addEventListener('click', (event) => { if (event.target === qrSettingsModal) qrSettingsModal.classList.remove('show'); });
+      qrModal.addEventListener('click', (event) => { if (event.target === qrModal) qrModal.classList.remove('show'); });
       document.addEventListener('restaurant:operator-changed', refreshTables);
 
       form.addEventListener('submit', async (event) => {
@@ -213,15 +306,38 @@
           active: document.getElementById('tableActive').checked,
         };
         try {
+          let result;
           if (state.selectedTableId) {
-            await restaurantApi.updateTable(state.selectedTableId, payload);
+            result = await restaurantApi.updateTable(state.selectedTableId, payload);
             toast('Mesa atualizada.');
           } else {
-            await restaurantApi.createTable(payload);
-            toast('Mesa criada.');
+            result = await restaurantApi.createTable(payload);
+            toast(result?.qr?.token ? 'Mesa criada com QR ativo.' : 'Mesa criada.');
           }
           closeModal();
           await refreshTables();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      });
+
+      qrSettingsForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const payload = {
+            restaurant_name: document.getElementById('restaurantNameInput').value.trim(),
+            logo_url: document.getElementById('logoUrlInput').value.trim(),
+            wifi_label: document.getElementById('wifiLabelInput').value.trim(),
+            wifi_ssid: document.getElementById('wifiSsidInput').value.trim(),
+            wifi_password: document.getElementById('wifiPasswordInput').value.trim(),
+            wifi_security: document.getElementById('wifiSecuritySelect').value,
+            wifi_hidden: document.getElementById('wifiHiddenInput').checked,
+            print_note: document.getElementById('printNoteInput').value.trim(),
+          };
+          const result = await restaurantApi.updateQrSettings(payload);
+          state.qrSettings = result.settings;
+          qrSettingsModal.classList.remove('show');
+          toast('Configuração de QR/Wi-Fi guardada.');
         } catch (error) {
           toast(error.message, true);
         }
@@ -232,6 +348,32 @@
         state.zones = [...new Set([...DEFAULT_ZONES, ...stored])].sort((a, b) => a.localeCompare(b, 'pt'));
         tableZone.innerHTML = state.zones.map((zone) => `<option value="${escapeHtml(zone)}">${escapeHtml(zone)}</option>`).join('');
         zoneFilter.innerHTML = `<option value="">Todas as zonas</option>` + state.zones.map((zone) => `<option value="${escapeHtml(zone)}">${escapeHtml(zone)}</option>`).join('');
+      }
+
+      async function loadQrSettings() {
+        try {
+          state.qrSettings = await restaurantApi.getQrSettings();
+        } catch (error) {
+          state.qrSettings = null;
+          toast(error.message, true);
+        }
+      }
+
+      function fillQrSettingsForm() {
+        const settings = state.qrSettings || {};
+        document.getElementById('restaurantNameInput').value = settings.restaurant_name || '';
+        document.getElementById('logoUrlInput').value = settings.logo_url || '';
+        document.getElementById('wifiLabelInput').value = settings.wifi_label || '';
+        document.getElementById('wifiSsidInput').value = settings.wifi_ssid || '';
+        document.getElementById('wifiPasswordInput').value = settings.wifi_password || '';
+        document.getElementById('wifiSecuritySelect').value = settings.wifi_security || 'WPA';
+        document.getElementById('wifiHiddenInput').checked = settings.wifi_hidden === true;
+        document.getElementById('printNoteInput').value = settings.print_note || '';
+      }
+
+      function openQrSettingsModal() {
+        fillQrSettingsForm();
+        qrSettingsModal.classList.add('show');
       }
 
       async function refreshTables() {
@@ -276,12 +418,21 @@
               <div class="chip-row">
                 <span class="soft-badge zone">${escapeHtml(table.zone || 'Sem zona')}</span>
                 <span class="soft-badge ${statusClass}">${statusText}</span>
+                ${table.has_qr_token ? '<span class="soft-badge qr">QR pronto</span>' : ''}
+              </div>
+              <div class="chip-row">
+                <button class="ghost-btn" data-show-qr-id="${table.id}">Ver QR</button>
+                <button class="ghost-btn" data-regenerate-qr-id="${table.id}">Novo QR</button>
+                <button class="primary-btn" data-print-qr-id="${table.id}">Imprimir</button>
               </div>
             </article>
           `;
         }).join('');
 
         grid.querySelectorAll('[data-edit-id]').forEach((btn) => btn.addEventListener('click', () => openModal(btn.dataset.editId)));
+        grid.querySelectorAll('[data-show-qr-id]').forEach((btn) => btn.addEventListener('click', () => openQrPreview(btn.dataset.showQrId)));
+        grid.querySelectorAll('[data-regenerate-qr-id]').forEach((btn) => btn.addEventListener('click', () => regenerateQrForTable(btn.dataset.regenerateQrId)));
+        grid.querySelectorAll('[data-print-qr-id]').forEach((btn) => btn.addEventListener('click', () => printQrForTable(btn.dataset.printQrId)));
       }
 
       function openModal(tableId = null) {
@@ -360,6 +511,76 @@
 
       function saveZones() {
         localStorage.setItem(ZONES_KEY, JSON.stringify(state.zones.filter((zone) => !DEFAULT_ZONES.includes(zone))));
+      }
+
+      async function openQrPreview(tableId) {
+        try {
+          const bundle = await restaurantApi.getTableQr(tableId);
+          state.qrTableId = tableId;
+          renderQrPreview(bundle);
+          qrModal.classList.add('show');
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+
+      async function regenerateQrForTable(tableId) {
+        if (!confirm('Gerar outro QR para esta mesa? O QR atual deixa de funcionar.')) return;
+        try {
+          const bundle = await restaurantApi.regenerateTableQr(tableId);
+          state.qrTableId = tableId;
+          renderQrPreview(bundle);
+          qrModal.classList.add('show');
+          await refreshTables();
+          toast('Novo QR gerado. O anterior foi invalidado.');
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+
+      async function regenerateCurrentQr() {
+        if (!state.qrTableId) return;
+        await regenerateQrForTable(state.qrTableId);
+      }
+
+      function printQrForTable(tableId) {
+        const url = restaurantApi.getTablePrintUrl(tableId);
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      function printCurrentQr() {
+        if (!state.qrTableId) return;
+        printQrForTable(state.qrTableId);
+      }
+
+      function renderQrPreview(bundle) {
+        qrModalTitle.textContent = `${bundle.table.name} · mesa ${bundle.table.number}`;
+        const wifiHtml = bundle.wifi?.enabled
+          ? `
+            <div class="qr-panel">
+              <div class="shell-eyebrow">INTERNET</div>
+              <h3 style="margin:0">${escapeHtml(bundle.wifi.label || 'Wi-Fi clientes')}</h3>
+              <img src="${bundle.wifi.image_url}" alt="QR Wi-Fi" />
+              <div><strong>Rede:</strong> ${escapeHtml(bundle.wifi.ssid || '')}</div>
+              <div class="tiny">Este QR serve só para entrar no Wi-Fi.</div>
+            </div>`
+          : `
+            <div class="qr-panel">
+              <div class="shell-eyebrow">INTERNET</div>
+              <h3 style="margin:0">Wi-Fi clientes</h3>
+              <div class="info-box">Ainda não configuraste o Wi-Fi. Vai a <strong>Wi-Fi / impressão</strong>.</div>
+            </div>`;
+
+        qrPreviewGrid.innerHTML = `
+          <div class="qr-panel">
+            <div class="shell-eyebrow">MESA</div>
+            <h3 style="margin:0">QR da mesa</h3>
+            <img src="${bundle.qr.image_url}" alt="QR da mesa" />
+            <div>Este QR é o que a app do cliente deve ler para entrar na mesa.</div>
+            <div class="qr-code-text">${escapeHtml(bundle.qr.token)}</div>
+          </div>
+          ${wifiHtml}
+        `;
       }
 
       function escapeHtml(value) {

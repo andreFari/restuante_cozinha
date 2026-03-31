@@ -47,7 +47,7 @@
       .checkout-summary .big{font-size:24px;font-weight:800}
       .pending-list{display:grid;gap:8px;margin-top:10px}
       .pending-pill{padding:10px 12px;border-radius:14px;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;font-size:14px}
-      .send-kitchen-list{display:grid;gap:12px;margin-top:16px}.send-kitchen-row{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}.send-kitchen-row textarea{min-height:82px;border:1px solid #dbe3ef;border-radius:14px;padding:12px;font:inherit;resize:vertical}.tone-danger{background:#fff1f2 !important;color:#9f1239 !important;border:1px solid #fecdd3 !important}.tone-success{background:#e7faf1 !important;color:#0f766e !important;border:1px solid #bbf7d0 !important}.tone-dark{background:#162033 !important;color:#fff !important}.alerts-stack{display:grid;gap:8px;margin-bottom:14px}.alert-pill{padding:10px 12px;border-radius:14px;background:#fff8e8;color:#8a5a12;border:1px solid #f6d58c;font-size:14px}@media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
+      .send-kitchen-list{display:grid;gap:12px;margin-top:16px}.send-kitchen-row{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}.send-kitchen-row textarea{min-height:82px;border:1px solid #dbe3ef;border-radius:14px;padding:12px;font:inherit;resize:vertical}.tone-danger{background:#fff1f2 !important;color:#9f1239 !important;border:1px solid #fecdd3 !important}.tone-success{background:#e7faf1 !important;color:#0f766e !important;border:1px solid #bbf7d0 !important}.tone-dark{background:#162033 !important;color:#fff !important}.alerts-stack{display:grid;gap:8px;margin-bottom:14px}.alert-pill{padding:10px 12px;border-radius:14px;background:#fff8e8;color:#8a5a12;border:1px solid #f6d58c;font-size:14px}.payment-requests{display:grid;gap:12px;margin-bottom:16px}.payment-request{border:1px solid #f6d58c;background:#fffdf6;border-radius:18px;padding:14px;display:grid;gap:10px}.payment-request .meta{font-size:13px;color:#6b7280}@media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
     </style>
   </head>
   <body>
@@ -76,6 +76,10 @@
         <button id="openTableBtn" class="primary-btn">Abrir mesa</button>
       </div>
       <div class="filter-chips" id="zoneFilters" style="margin-bottom:16px"></div>
+      <section class="panel" id="paymentRequestsPanel" style="margin-bottom:16px">
+        <div class="panel-title-row"><div><strong>Pagamentos pendentes</strong><div class="helper-text">Pedidos de clientes à espera de validação de pagamento antes de arrancar produção.</div></div><button id="refreshPaymentsBtn" class="ghost-btn">Atualizar</button></div>
+        <div id="paymentRequestsBox" class="payment-requests"></div>
+      </section>
       <div class="service-layout">
         <section class="panel">
           <div class="panel-title-row"><div><strong>Mapa de mesas</strong><div class="helper-text">Organização operacional com mais espaço útil.</div></div></div>
@@ -186,7 +190,7 @@
       import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from './js/restaurant-shell.js';
       setTerminalId('terminal_main');
       const TODAY = new Date().getDay();
-      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null };
+      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, paymentRequests: [] };
       const tablesList = document.getElementById('tablesList');
       const searchInput = document.getElementById('searchInput');
       const zoneFilters = document.getElementById('zoneFilters');
@@ -216,10 +220,12 @@
       const mbwayGrid = document.getElementById('mbwayGrid');
       const takeawayModal = document.getElementById('takeawayModal');
       const takeawayTargetSelect = document.getElementById('takeawayTargetSelect');
+      const paymentRequestsBox = document.getElementById('paymentRequestsBox');
 
       await mountOperatorShell({ title: 'Receção Cozinha', eyebrow: 'Sala principal' });
       await refreshAll();
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+      document.getElementById('refreshPaymentsBtn')?.addEventListener('click', refreshAll);
       document.getElementById('openTableBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.openTable(id), 'Mesa aberta.'));
       document.getElementById('sendKitchenBtn').addEventListener('click', openSendKitchenModal);
       document.getElementById('confirmSendKitchenBtn').addEventListener('click', confirmSendKitchen);
@@ -274,12 +280,38 @@
       }
 
       async function refreshAll(forcePreferred = false) {
-        state.bootstrap = await restaurantApi.bootstrap();
+        const [bootstrap, pendingPayments] = await Promise.all([restaurantApi.bootstrap(), restaurantApi.listPendingPaymentRequests().catch(() => ({ items: [] }))]);
+        state.bootstrap = bootstrap;
+        state.paymentRequests = pendingPayments?.items || [];
         const currentTables = filteredTables(state.bootstrap?.tables || []);
         const preferred = currentTables.find((table) => table.session) || currentTables[0] || null;
         if ((forcePreferred || !state.selectedTableId) && preferred) state.selectedTableId = preferred.id;
         if (state.selectedTableId && !currentTables.some((table) => table.id === state.selectedTableId)) state.selectedTableId = preferred?.id || null;
-        renderZoneFilters(); renderTables(); renderCatalogFilters(); await renderSelectedTable(); renderKpis();
+        renderZoneFilters(); renderPaymentRequests(); renderTables(); renderCatalogFilters(); await renderSelectedTable(); renderKpis();
+      }
+
+
+      function renderPaymentRequests() {
+        const items = Array.isArray(state.paymentRequests) ? state.paymentRequests : [];
+        paymentRequestsBox.innerHTML = items.length ? items.map((item) => `
+          <article class="payment-request">
+            <div class="row-between"><strong>${escapeHtml(item.table_name || 'Mesa')}</strong><span class="soft-badge bar">${escapeHtml(item.payment_method || 'pagamento')}</span></div>
+            <div class="meta">Total ${euro(item.amount_total || 0)} · Pedido às ${new Date(item.requested_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
+            <div>${escapeHtml(item.customer_name || 'Cliente sem nome')} · ${escapeHtml(item.customer_phone || 'sem contacto')}</div>
+            <div class="row-between"><span class="meta">Confirmar pagamento para libertar produção.</span><button class="primary-btn" data-payment-approve="${item.id}">Confirmar pagamento</button></div>
+          </article>`).join('') : `<div class="empty-state">Sem pedidos pendentes de pagamento.</div>`;
+        paymentRequestsBox.querySelectorAll('[data-payment-approve]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            if (!ensureOperatorSelected()) return;
+            try {
+              await restaurantApi.approvePaymentRequest(button.dataset.paymentApprove);
+              toast('Pagamento confirmado e produção libertada.');
+              await refreshAll();
+            } catch (error) {
+              toast(error.message, true);
+            }
+          });
+        });
       }
 
       function renderZoneFilters() {
