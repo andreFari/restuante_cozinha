@@ -53,39 +53,45 @@
       import { restaurantApi, setTerminalId } from "./js/restaurant-api.js";
       import { mountOperatorShell, ensureOperatorSelected, toast, relativeMinutes } from "./js/restaurant-shell.js";
       setTerminalId("terminal_kitchen");
-      const columnLabels = { new: "Novo", in_progress: "Em preparação", ready: "Pronto", delivered: "Entregue" };
+      const columnLabels = { new: "Novo", in_progress: "A ser feito", ready: "Pronto", delivered: "Entregue" };
+      let boardState = { columns: { new: [], in_progress: [], ready: [], delivered: [] }, totals: { total: 0, pending: 0, overdue: 0 }, alerts: [] };
       await mountOperatorShell({ title: "Cozinha", eyebrow: "Produção" });
       await refreshBoard();
       document.getElementById("refreshBtn").addEventListener("click", refreshBoard);
       document.getElementById("seedDemoBtn").addEventListener("click", async()=>{ try { const result = await restaurantApi.seedDemo(); toast(result?.message || "Exemplo carregado."); await refreshBoard(); } catch (error) { toast(error.message, true); } });
       document.getElementById("resetDemoBtn").addEventListener("click", async()=>{ try { const result = await restaurantApi.resetDemo(); toast(result?.message || "Demo limpa."); await refreshBoard(); } catch (error) { toast(error.message, true); } });
       document.addEventListener("restaurant:operator-changed", refreshBoard);
-      setInterval(refreshBoard, 30000);
+      setInterval(() => refreshBoard(true), 8000);
 
-      async function refreshBoard() {
-        const data = await restaurantApi.kitchenBoard();
-        document.getElementById("kpiTotal").textContent = String(data.totals.total || 0);
-        document.getElementById("kpiPending").textContent = String(data.totals.pending || 0);
-        document.getElementById("kpiOverdue").textContent = String(data.totals.overdue || 0);
+      function renderBoard(data) {
+        boardState = data || boardState;
+        document.getElementById("kpiTotal").textContent = String(boardState.totals?.total || 0);
+        document.getElementById("kpiPending").textContent = String(boardState.totals?.pending || 0);
+        document.getElementById("kpiOverdue").textContent = String(boardState.totals?.overdue || 0);
 
         const alertsBox = document.getElementById("kitchenAlerts");
-        const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+        const alerts = Array.isArray(boardState.alerts) ? boardState.alerts : [];
         alertsBox.style.display = alerts.length ? "grid" : "none";
         alertsBox.innerHTML = alerts.map((alert) => `<div class="alert-pill">${escapeHtml(alert.message || "")}</div>`).join("");
 
         const grid = document.getElementById("kanbanGrid");
         grid.innerHTML = Object.entries(columnLabels).map(([status, label]) => {
-          const items = data.columns?.[status] || [];
+          const items = boardState.columns?.[status] || [];
           return `<section class="kanban-column"><div class="kanban-header"><strong>${label}</strong><span class="badge">${items.length}</span></div><div class="kanban-list">${items.length ? items.map(renderKitchenCard).join("") : `<div class="empty-state">Sem itens.</div>`}</div></section>`;
         }).join("");
 
         grid.querySelectorAll("button[data-next-status]").forEach((btn)=>btn.addEventListener("click", async()=>{
           if (!ensureOperatorSelected()) return;
+          const itemId = btn.dataset.itemId;
+          const nextStatus = btn.dataset.nextStatus;
+          btn.disabled = true;
           try {
-            await restaurantApi.kitchenStatus(btn.dataset.itemId, btn.dataset.nextStatus);
+            const result = await restaurantApi.kitchenStatus(itemId, nextStatus);
+            patchKitchenItem(result?.item || null);
             toast("Estado atualizado.");
-            await refreshBoard();
+            refreshBoard(true).catch(() => null);
           } catch (e) {
+            btn.disabled = false;
             toast(e.message, true);
           }
         }));
@@ -94,8 +100,6 @@
           const panel = btn.closest('[data-note-panel]');
           if (!panel) return;
           panel.dataset.selectedPreset = btn.dataset.notePreset || '';
-          const textarea = panel.querySelector('textarea');
-          if (textarea) textarea.value = btn.dataset.noteMessage || '';
           panel.querySelectorAll('[data-note-preset]').forEach((node) => {
             node.classList.toggle('active', node === btn);
           });
@@ -106,17 +110,69 @@
           const panel = btn.closest('[data-note-panel]');
           if (!panel) return;
           const textarea = panel.querySelector('textarea');
+          btn.disabled = true;
           try {
-            await restaurantApi.replyKitchenNoteThread(btn.dataset.itemId, {
+            const result = await restaurantApi.replyKitchenNoteThread(btn.dataset.itemId, {
               preset_code: panel.dataset.selectedPreset || '',
               message: textarea?.value || '',
             });
+            patchNoteThread(btn.dataset.itemId, result?.thread || null);
             toast('Resposta enviada ao cliente.');
-            await refreshBoard();
+            refreshBoard(true).catch(() => null);
           } catch (e) {
+            btn.disabled = false;
             toast(e.message, true);
           }
         }));
+      }
+
+      async function refreshBoard(silent = false) {
+        const data = await restaurantApi.kitchenBoard();
+        renderBoard(data);
+        if (!silent) return data;
+        return data;
+      }
+
+      function recalcBoardTotals() {
+        const cards = Object.values(boardState.columns || {}).flat();
+        boardState.totals = {
+          total: cards.length,
+          pending: cards.filter((card) => ['new', 'in_progress'].includes(card.status)).length,
+          overdue: cards.filter((card) => Number(card.overdue_by_minutes || 0) > 0).length,
+        };
+      }
+
+      function patchKitchenItem(updatedItem) {
+        if (!updatedItem?.id) return;
+        for (const key of Object.keys(boardState.columns || {})) {
+          boardState.columns[key] = (boardState.columns[key] || []).filter((entry) => String(entry.id) !== String(updatedItem.id));
+        }
+        const targetStatus = updatedItem.status || 'new';
+        if (!boardState.columns[targetStatus]) boardState.columns[targetStatus] = [];
+        if (targetStatus !== 'cancelled') {
+          boardState.columns[targetStatus].push({ ...updatedItem, note_chat: findExistingNoteThread(updatedItem.id) });
+        }
+        recalcBoardTotals();
+        renderBoard(boardState);
+      }
+
+      function findExistingNoteThread(orderItemId) {
+        for (const items of Object.values(boardState.columns || {})) {
+          const existing = (items || []).find((entry) => String(entry.order_item_id) === String(orderItemId) || String(entry.id) === String(orderItemId));
+          if (existing?.note_chat) return existing.note_chat;
+        }
+        return null;
+      }
+
+      function patchNoteThread(orderItemId, thread) {
+        if (!thread) return;
+        for (const key of Object.keys(boardState.columns || {})) {
+          boardState.columns[key] = (boardState.columns[key] || []).map((entry) => {
+            if (String(entry.order_item_id) !== String(orderItemId) && String(entry.id) !== String(orderItemId)) return entry;
+            return { ...entry, note_chat: { ...(entry.note_chat || {}), ...thread } };
+          });
+        }
+        renderBoard(boardState);
       }
 
       function renderKitchenCard(item) {

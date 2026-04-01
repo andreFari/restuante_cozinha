@@ -3787,7 +3787,7 @@ export class RestaurantStore {
     const table = await getTableRow(client, session.mesa_id);
     const items = await getSessionItems(client, session.id);
     const visibleItems = items.filter((item) => item.estado !== 'cancelado');
-    const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), String(table?.local_nome || 'restaurante'));
+    const menuItems = menuItemsForLocal(await readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => getMenuItemsFromDb(client)), String(table?.local_nome || 'restaurante'));
     const paymentRequest = mapCustomerPaymentRequest(await getLatestCustomerCheckoutRequest(client, session.id));
     const noteThreadMap = await getCustomerNoteThreadMapForSession(client, session.id);
     return {
@@ -4074,8 +4074,14 @@ async replyCustomerNoteThread({ session_id, order_item_id, message = '' }) {
       const presetOptions = Array.isArray(thread.kitchen_preset_options) ? thread.kitchen_preset_options : [];
       const matchedPreset = presetOptions.find((option) => String(option?.id || '') === String(preset_code || '')) || null;
       const extraMessage = sanitizeCustomerNoteMessage(message);
-      let finalMessage = matchedPreset?.message || '';
-      if (extraMessage) finalMessage = finalMessage ? `${finalMessage} ${extraMessage}` : extraMessage;
+      const presetMessage = sanitizeCustomerNoteMessage(matchedPreset?.message || '');
+      let finalMessage = presetMessage || '';
+      if (extraMessage) {
+        const normalizedPreset = presetMessage.toLowerCase();
+        const normalizedExtra = extraMessage.toLowerCase();
+        if (!finalMessage) finalMessage = extraMessage;
+        else if (normalizedPreset !== normalizedExtra && !normalizedPreset.includes(normalizedExtra)) finalMessage = `${finalMessage} ${extraMessage}`;
+      }
       if (!finalMessage) throw makeError('Seleciona uma resposta ou escreve uma mensagem.', 400, 'kitchen_reply_required');
 
       if (Number(thread.kitchen_reply_count || 0) >= 2) {

@@ -604,7 +604,7 @@
       }
     
 
-      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'Em preparo'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; case 'cancelado': return 'Cancelado'; default: return raw || '—'; } }
+      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'A ser feito'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; case 'cancelado': return 'Cancelado'; default: return raw || '—'; } }
       function uiStatus(raw) { switch (raw) { case 'rascunho': return 'draft'; case 'enviado': return 'new'; case 'em_preparo': return 'in_progress'; case 'pronto': return 'ready'; case 'entregue': return 'delivered'; case 'cancelado': return 'draft'; default: return 'draft'; } }
       function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
     </script>

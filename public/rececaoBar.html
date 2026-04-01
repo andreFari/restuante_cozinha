@@ -95,6 +95,7 @@
           <div class="detail-actions" style="margin-top:14px;margin-bottom:16px">
             <button id="addArticleBtn" class="primary-btn">Adicionar artigo</button>
             <button id="historyBtn" class="ghost-btn">Ver histórico</button>
+            <button id="closeEmptyBtn" class="ghost-btn tone-danger">Fechar mesa vazia</button>
             <button id="sendKitchenBtn" class="secondary-btn">Enviar produção</button>
             <button id="transferTakeawayBtn" class="ghost-btn">Enviar para takeaway</button>
             <button id="checkoutBtn" class="ghost-btn">Pagamento / checkout</button>
@@ -230,6 +231,7 @@
       document.addEventListener('restaurant:operator-changed', refreshAll);
       
       document.getElementById('transferTakeawayBtn').addEventListener('click', openTakeawayModal);
+      document.getElementById('closeEmptyBtn').addEventListener('click', closeEmptyTable);
       document.getElementById('closeTakeawayModal').addEventListener('click', () => takeawayModal.classList.remove('show'));
       document.getElementById('confirmTakeawayBtn').addEventListener('click', confirmTakeawayTransfer);
     
@@ -498,7 +500,7 @@
         if (payload.send_email && !payload.customer_email) return toast('Preenche o email para enviar a fatura.', true);
         try {
           const result = await restaurantApi.checkoutTable(state.selectedTableId, payload);
-          toast(result.message || 'Pagamento registado.');
+          toast(result.message || 'Pagamento registado e mesa fechada.');
           checkoutModal.classList.remove('show');
           state.selectedTableId = null;
           await refreshAll(true);
@@ -527,7 +529,20 @@
       }
     
 
-      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'Em preparo'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; default: return raw || '—'; } }
+
+      async function closeEmptyTable() {
+        if (!ensureOperatorSelected()) return;
+        if (!state.selectedTableId) return toast('Seleciona mesa primeiro.', true);
+        if ((state.details?.order_items || []).length) return toast('Só podes fechar mesa vazia.', true);
+        try {
+          await restaurantApi.closeTable(state.selectedTableId);
+          toast('Mesa fechada.');
+          state.selectedTableId = null;
+          await refreshAll(true);
+        } catch (error) { toast(error.message, true); }
+      }
+
+      function statusLabel(raw) { switch (raw) { case 'rascunho': return 'Rascunho'; case 'enviado': return 'Enviado'; case 'em_preparo': return 'A ser feito'; case 'pronto': return 'Pronto'; case 'entregue': return 'Entregue'; default: return raw || '—'; } }
       function uiStatus(raw) { switch (raw) { case 'rascunho': return 'draft'; case 'enviado': return 'new'; case 'em_preparo': return 'in_progress'; case 'pronto': return 'ready'; case 'entregue': return 'delivered'; default: return 'draft'; } }
       function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
     </script>
