@@ -7,7 +7,7 @@ import morgan from "morgan";
 import session from "express-session";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
-
+import cors from 'cors';
 import moloniRoutes from "./routes/moloni.js";
 import artigosRoutes from "./routes/artigos.js";
 import moloniAuthRoutes, {
@@ -45,6 +45,17 @@ app.use(
     cookie: { httpOnly: true },
   }),
 );
+app.use(cors({
+  origin: [
+    'http://192.168.68.51:5173',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+}));
+
 
 const protectedPages = new Set([
   "/rececaoBar.html",

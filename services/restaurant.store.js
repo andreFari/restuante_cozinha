@@ -3722,8 +3722,8 @@ export class RestaurantStore {
     await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [
   table.id,
   actor.id,
-  String(customer_name || '').trim() || null,
   Math.max(1, Number(customer_count || 1)),
+  String(customer_name || '').trim() || null,
   'self_service_customer',
 ]);
         session = await getActiveSessionRow(client, table.id);
