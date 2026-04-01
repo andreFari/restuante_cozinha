@@ -209,8 +209,46 @@ router.post('/customer/session/:sessionId/submit', asyncHandler(async (req, res)
   res.json(result);
 }));
 
+
+router.post('/customer/session/:sessionId/send-to-kitchen', asyncHandler(async (req, res) => {
+  const result = await restaurantStore.sendCustomerItemsToKitchen({
+    session_id: req.params.sessionId,
+    items: Array.isArray(req.body?.items) ? req.body.items : [],
+  });
+  res.json(result);
+}));
+
+router.post('/customer/session/:sessionId/request-payment', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['payment_method']);
+  const result = await restaurantStore.requestCustomerPayment({
+    session_id: req.params.sessionId,
+    payment_method: req.body.payment_method,
+    customer_name: req.body.customer_name || '',
+    customer_phone: req.body.customer_phone || '',
+    customer_email: req.body.customer_email || '',
+    customer_nif: req.body.customer_nif || '',
+    mbway_contact: req.body.mbway_contact || '',
+    venue_type: req.body.venue_type || '',
+    send_email: req.body.send_email === true,
+  });
+  res.json(result);
+}));
+
+router.post('/customer/session/:sessionId/items/:orderItemId/note-chat/reply', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['message']);
+  const result = await restaurantStore.replyCustomerNoteThread({
+    session_id: req.params.sessionId,
+    order_item_id: req.params.orderItemId,
+    message: req.body.message || '',
+  });
+  res.json(result);
+}));
+
 router.use((req, _res, next) => {
   try {
+    if (req.path.startsWith('/customer') || req.originalUrl?.includes('/customer/')) {
+      return next();
+    }
     requireRestaurantAuth(req);
     next();
   } catch (error) {
@@ -541,6 +579,18 @@ router.post("/kitchen/items/:kitchenItemId/status", asyncHandler(async (req, res
   res.json(result);
 }));
 
+router.post('/kitchen/items/:orderItemId/note-chat/reply', asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ['operator_id']);
+  const result = await restaurantStore.replyKitchenNoteThread({
+    order_item_id: req.params.orderItemId,
+    operator_id: req.body.operator_id,
+    terminal_id: req.body.terminal_id || 'terminal_kitchen',
+    preset_code: req.body.preset_code || '',
+    message: req.body.message || '',
+  });
+  res.json(result);
+}));
+
 router.get("/menu-profiles", asyncHandler(async (req, res) => {
   requireAdmin(req);
   res.json(await restaurantStore.listMenuProfiles());
@@ -670,7 +720,6 @@ router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
   });
   res.json(result);
 }));
-
 router.delete("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
   requireAdmin(req);
   requireBodyFields(req.body, ["operator_id"]);

@@ -267,6 +267,17 @@ export const restaurantApi = {
       }),
     });
   },
+  replyKitchenNoteThread(orderItemId, payload = {}) {
+    return request(`/api/restaurant/kitchen/items/${encodeURIComponent(orderItemId)}/note-chat/reply`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+        preset_code: payload.preset_code || '',
+        message: payload.message || '',
+      }),
+    });
+  },
   listTableDefinitions() {
     return request(`/api/restaurant/tables/manage`);
   },

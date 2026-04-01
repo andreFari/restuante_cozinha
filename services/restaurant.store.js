@@ -309,6 +309,37 @@ async function ensureCustomerFlowSchema(client) {
   )`);
   await client.query(`create index if not exists idx_customer_checkout_requests_status on public.customer_checkout_requests(status, requested_at desc)`);
   await client.query(`create index if not exists idx_customer_checkout_requests_session on public.customer_checkout_requests(sessao_id)`);
+
+  await client.query(`create table if not exists public.customer_note_threads (
+    id text primary key default fn_uuid(),
+    sessao_id text not null references public.mesa_sessoes(id) on delete cascade,
+    mesa_id text not null references public.mesas(id) on delete cascade,
+    order_item_id text not null unique references public.pedido_itens(id) on delete cascade,
+    status text not null default 'pending_kitchen' check (status in ('pending_kitchen','answered_by_kitchen','answered_by_customer','closed','needs_staff_help')),
+    customer_reply_count integer not null default 0,
+    kitchen_reply_count integer not null default 0,
+    note_snapshot text null,
+    latest_customer_message text null,
+    latest_kitchen_message text null,
+    last_message_from text null,
+    kitchen_preset_options jsonb not null default '[]'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    closed_at timestamptz null
+  )`);
+  await client.query(`create index if not exists idx_customer_note_threads_session on public.customer_note_threads(sessao_id, updated_at desc)`);
+  await client.query(`create index if not exists idx_customer_note_threads_status on public.customer_note_threads(status, updated_at desc)`);
+
+  await client.query(`create table if not exists public.customer_note_thread_messages (
+    id text primary key default fn_uuid(),
+    thread_id text not null references public.customer_note_threads(id) on delete cascade,
+    order_item_id text not null references public.pedido_itens(id) on delete cascade,
+    sender_role text not null check (sender_role in ('customer','kitchen','system')),
+    body text not null,
+    preset_code text null,
+    created_at timestamptz not null default now()
+  )`);
+  await client.query(`create index if not exists idx_customer_note_thread_messages_thread on public.customer_note_thread_messages(thread_id, created_at asc)`);
 }
 
 async function ensureCustomerActor(client) {
@@ -422,7 +453,219 @@ function mapCustomerPaymentRequest(row) {
   };
 }
 
-async function releaseDraftKitchenItems(client, { session, actorUserId, terminalId = 'terminal_customer', itemNotes = new Map() }) {
+
+
+function sanitizeCustomerNoteMessage(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 280);
+}
+
+function slugifyChatOption(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+function buildKitchenPresetOptions(menuItems = []) {
+  const optionNames = [];
+  const seen = new Set();
+  for (const item of Array.isArray(menuItems) ? menuItems : []) {
+    const name = String(item?.name || '').trim();
+    if (!name) continue;
+    const normalizedName = name.toLowerCase();
+    const normalizedCategory = String(item?.category || '').toLowerCase();
+    const isExtraLike = normalizedCategory.includes('extra')
+      || normalizedCategory.includes('acomp')
+      || ['arroz', 'batata', 'salada', 'couve', 'legume', 'massa'].some((term) => normalizedName.includes(term));
+    if (!isExtraLike) continue;
+    if (seen.has(normalizedName)) continue;
+    seen.add(normalizedName);
+    optionNames.push(name);
+    if (optionNames.length >= 6) break;
+  }
+
+  const options = [
+    { id: 'accepted', label: 'Aceitar pedido', message: 'Pedido aceite como indicado.' },
+  ];
+
+  for (const name of optionNames) {
+    options.push({
+      id: `alt_${slugifyChatOption(name)}`,
+      label: `Trocar por ${name}`,
+      message: `Não é possível exatamente como pediu. Podemos fazer com ${name}.`,
+    });
+  }
+
+  if (optionNames.length) {
+    options.push({
+      id: 'available_today',
+      label: 'Mostrar opções do dia',
+      message: `Não é possível exatamente assim. Hoje temos disponível: ${optionNames.join(', ')}.`,
+    });
+  }
+
+  options.push(
+    { id: 'not_possible', label: 'Não é possível', message: 'Não é possível fazer essa alteração hoje.' },
+    { id: 'call_staff', label: 'Chamar colaborador', message: 'Para esta alteração, por favor chame um colaborador.' },
+  );
+
+  return options;
+}
+
+function mapCustomerNoteMessage(row) {
+  return {
+    id: row.id,
+    sender_role: row.sender_role,
+    body: row.body || '',
+    preset_code: row.preset_code || null,
+    created_at: row.created_at,
+  };
+}
+
+function mapCustomerNoteThread(row) {
+  const messages = Array.isArray(row.messages) ? row.messages.map(mapCustomerNoteMessage) : [];
+  return {
+    id: row.id,
+    order_item_id: row.order_item_id,
+    status: row.status,
+    note_snapshot: row.note_snapshot || '',
+    customer_reply_count: Number(row.customer_reply_count || 0),
+    kitchen_reply_count: Number(row.kitchen_reply_count || 0),
+    latest_customer_message: row.latest_customer_message || '',
+    latest_kitchen_message: row.latest_kitchen_message || '',
+    last_message_from: row.last_message_from || '',
+    preset_options: Array.isArray(row.kitchen_preset_options) ? row.kitchen_preset_options : [],
+    messages,
+    closed_at: row.closed_at || null,
+    updated_at: row.updated_at,
+  };
+}
+
+async function listCustomerNoteThreads(client, { sessionId = null, orderItemIds = [] } = {}) {
+  await ensureCustomerFlowSchema(client);
+  const normalizedIds = Array.isArray(orderItemIds) ? orderItemIds.filter(Boolean) : [];
+  if (!sessionId && !normalizedIds.length) return [];
+
+  let threadsRes;
+  if (sessionId) {
+    threadsRes = await client.query(
+      `select *
+         from public.customer_note_threads
+        where sessao_id = $1
+        order by updated_at desc`,
+      [sessionId]
+    );
+  } else {
+    threadsRes = await client.query(
+      `select *
+         from public.customer_note_threads
+        where order_item_id = any($1::text[])
+        order by updated_at desc`,
+      [normalizedIds]
+    );
+  }
+
+  const rows = threadsRes.rows || [];
+  if (!rows.length) return [];
+
+  const threadIds = rows.map((row) => row.id);
+  const messagesRes = await client.query(
+    `select *
+       from public.customer_note_thread_messages
+      where thread_id = any($1::text[])
+      order by created_at asc`,
+    [threadIds]
+  );
+
+  const messageMap = new Map();
+  for (const message of messagesRes.rows || []) {
+    const list = messageMap.get(message.thread_id) || [];
+    list.push(message);
+    messageMap.set(message.thread_id, list);
+  }
+
+  return rows.map((row) => ({ ...row, messages: messageMap.get(row.id) || [] }));
+}
+
+async function getCustomerNoteThreadMapForSession(client, sessionId) {
+  const threads = await listCustomerNoteThreads(client, { sessionId });
+  const map = new Map();
+  for (const thread of threads) {
+    map.set(String(thread.order_item_id), mapCustomerNoteThread(thread));
+  }
+  return map;
+}
+
+async function getCustomerNoteThreadMapForOrderItems(client, orderItemIds = []) {
+  const threads = await listCustomerNoteThreads(client, { orderItemIds });
+  const map = new Map();
+  for (const thread of threads) {
+    map.set(String(thread.order_item_id), mapCustomerNoteThread(thread));
+  }
+  return map;
+}
+
+async function upsertCustomerNoteThreadForItem(client, { session, table, orderItemId, note }) {
+  const sanitizedNote = sanitizeCustomerNoteMessage(note);
+  if (!sanitizedNote) return null;
+
+  const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), String(table?.local_nome || 'restaurante'));
+  const presetOptions = buildKitchenPresetOptions(menuItems);
+
+  const existing = (await client.query(
+    `select *
+       from public.customer_note_threads
+      where order_item_id = $1
+      limit 1`,
+    [orderItemId]
+  )).rows[0];
+
+  let thread;
+  if (existing) {
+    thread = (await client.query(
+      `update public.customer_note_threads
+          set status = 'pending_kitchen',
+              note_snapshot = $2,
+              latest_customer_message = $2,
+              latest_kitchen_message = null,
+              last_message_from = 'customer',
+              kitchen_preset_options = $3::jsonb,
+              closed_at = null,
+              updated_at = now()
+        where id = $1
+        returning *`,
+      [existing.id, sanitizedNote, JSON.stringify(presetOptions)]
+    )).rows[0];
+  } else {
+    thread = (await client.query(
+      `insert into public.customer_note_threads (
+        sessao_id, mesa_id, order_item_id, status, note_snapshot,
+        latest_customer_message, latest_kitchen_message, last_message_from, kitchen_preset_options
+      ) values ($1, $2, $3, 'pending_kitchen', $4, $4, null, 'customer', $5::jsonb)
+      returning *`,
+      [session.id, session.mesa_id, orderItemId, sanitizedNote, JSON.stringify(presetOptions)]
+    )).rows[0];
+  }
+
+  await client.query(
+    `insert into public.customer_note_thread_messages (thread_id, order_item_id, sender_role, body)
+     values ($1, $2, 'customer', $3)`,
+    [thread.id, orderItemId, sanitizedNote]
+  );
+
+  return mapCustomerNoteThread({ ...thread, messages: [] });
+}
+
+function resolveCustomerTerminalId(localNome = '') {
+  const normalized = String(localNome || '').trim().toLowerCase();
+  if (normalized === 'bar') return 'terminal_bar';
+  if (normalized === 'takeaway') return 'terminal_takeaway';
+  return 'terminal_main';
+}
+
+async function releaseDraftKitchenItems(client, { session, actorUserId, terminalId = null, itemNotes = new Map() }) {
   const draftRows = await client.query(
     `select pi.id, pi.pedido_id, pi.nome_snapshot as name, pi.quantidade as quantity, pi.observacao as note
        from pedido_itens pi
@@ -1206,6 +1449,8 @@ async function buildKitchenBoardDb(client) {
     []
   );
 
+  const noteThreadMap = await getCustomerNoteThreadMapForOrderItems(client, result.rows.map((row) => row.id));
+
   const cards = result.rows.map((row) => {
     const status = mapDbItemStatusToKitchen(row.estado);
     const prepMinutes = Number(row.prep_minutes || 0);
@@ -1233,6 +1478,7 @@ async function buildKitchenBoardDb(client) {
       operator_name: row.operator_name || '—',
       sent_by: row.operator_name || '—',
       overdue_by_minutes: overdueByMinutes,
+      note_chat: noteThreadMap.get(String(row.id)) || null,
     };
   });
 
@@ -3473,13 +3719,13 @@ export class RestaurantStore {
       const actor = await ensureCustomerActor(client);
       let session = await getActiveSessionRow(client, table.id);
       if (!session) {
-        await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [
-          table.id,
-          actor.id,
-          Math.max(1, Number(customer_count || 1)),
-          String(customer_name || '').trim() || null,
-          'self_service_customer',
-        ]);
+    await client.query(`select abrir_mesa_staff($1, $2, $3, $4, $5) as id`, [
+  table.id,
+  actor.id,
+  String(customer_name || '').trim() || null,
+  Math.max(1, Number(customer_count || 1)),
+  'self_service_customer',
+]);
         session = await getActiveSessionRow(client, table.id);
       }
       if (!session) throw makeError('Não foi possível iniciar a sessão.', 500, 'session_open_failed');
@@ -3537,53 +3783,59 @@ export class RestaurantStore {
     return payload;
   }
 
+  async buildCustomerSessionPayload(client, session) {
+    const table = await getTableRow(client, session.mesa_id);
+    const items = await getSessionItems(client, session.id);
+    const visibleItems = items.filter((item) => item.estado !== 'cancelado');
+    const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), String(table?.local_nome || 'restaurante'));
+    const paymentRequest = mapCustomerPaymentRequest(await getLatestCustomerCheckoutRequest(client, session.id));
+    const noteThreadMap = await getCustomerNoteThreadMapForSession(client, session.id);
+    return {
+      session: {
+        id: session.id,
+        table_id: session.mesa_id,
+        table_code: session.table_codigo,
+        table_name: session.table_name || session.table_codigo,
+        zone: deriveZoneFromLocal(table?.local_nome),
+        local_nome: table?.local_nome || 'restaurante',
+        menu_key: mapLocalToMenuKey(table?.local_nome || 'restaurante'),
+        customer_name: session.cliente_nome || '',
+        customer_count: Number(session.cliente_qtd || 1),
+        note: session.nota || '',
+        opened_at: session.aberta_em,
+        updated_at: session.updated_at,
+      },
+      menu_items: menuItems,
+      order_items: visibleItems.map((item) => ({
+        id: item.id,
+        menu_item_id: item.menu_item_id,
+        name: item.name,
+        station: item.station,
+        flow: item.station,
+        category: item.category || 'Sem categoria',
+        image_url: item.imagem_url || null,
+        quantity: item.quantity,
+        prep_minutes: Number(item.prep_minutes || 0),
+        unit_price: item.unit_price,
+        note: item.note || '',
+        raw_status: item.estado,
+        status: mapDbItemStatusToKitchen(item.estado === 'rascunho' ? 'enviado' : item.estado),
+        note_chat: noteThreadMap.get(String(item.id)) || null,
+      })),
+      totals: {
+        total: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0),
+        total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+      },
+      payment_request: paymentRequest,
+    };
+  }
+
   async getCustomerSession({ session_id }) {
     return withClient(async (client) => {
       await ensureCustomerFlowSchema(client);
       const session = await getSessionRowById(client, session_id);
       if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
-      const table = await getTableRow(client, session.mesa_id);
-      const items = await getSessionItems(client, session.id);
-      const visibleItems = items.filter((item) => item.estado !== 'cancelado');
-      const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), session.local_id ? String(table?.local_nome || 'restaurante') : 'restaurante');
-      const paymentRequest = mapCustomerPaymentRequest(await getLatestCustomerCheckoutRequest(client, session.id));
-      return {
-        session: {
-          id: session.id,
-          table_id: session.mesa_id,
-          table_code: session.table_codigo,
-          table_name: session.table_name || session.table_codigo,
-          zone: deriveZoneFromLocal(table?.local_nome),
-          local_nome: table?.local_nome || 'restaurante',
-          menu_key: mapLocalToMenuKey(table?.local_nome || 'restaurante'),
-          customer_name: session.cliente_nome || '',
-          customer_count: Number(session.cliente_qtd || 1),
-          note: session.nota || '',
-          opened_at: session.aberta_em,
-          updated_at: session.updated_at,
-        },
-        menu_items: menuItems,
-        order_items: visibleItems.map((item) => ({
-          id: item.id,
-          menu_item_id: item.menu_item_id,
-          name: item.name,
-          station: item.station,
-          flow: item.station,
-          category: item.category || 'Sem categoria',
-          image_url: item.imagem_url || null,
-          quantity: item.quantity,
-          prep_minutes: Number(item.prep_minutes || 0),
-          unit_price: item.unit_price,
-          note: item.note || '',
-          raw_status: item.estado,
-          status: mapDbItemStatusToKitchen(item.estado === 'rascunho' ? 'enviado' : item.estado),
-        })),
-        totals: {
-          total: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0),
-          total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
-        },
-        payment_request: paymentRequest,
-      };
+      return this.buildCustomerSessionPayload(client, session);
     });
   }
 
@@ -3598,12 +3850,402 @@ export class RestaurantStore {
       }
       const pedidoId = await getOrCreateDraftPedido(client, session.id, actor.id);
       await ensureItemPriceForLocal(client, menu_item_id, session.local_id);
-      await client.query(`select adicionar_item_pedido($1, $2, $3, $4) as id`, [pedidoId, menu_item_id, Math.max(1, Number(quantity || 1)), note || null]);
+
+      const normalizedNote = String(note || '').trim();
+      const existingDraft = (await client.query(
+        `select id, quantidade
+           from pedido_itens
+          where pedido_id = $1
+            and artigo_id = $2
+            and estado = 'rascunho'
+            and coalesce(observacao, '') = $3
+          order by created_at asc
+          limit 1`,
+        [pedidoId, menu_item_id, normalizedNote]
+      )).rows[0];
+
+      if (existingDraft) {
+        await client.query(
+          `update pedido_itens
+              set quantidade = quantidade + $2,
+                  updated_at = now()
+            where id = $1`,
+          [existingDraft.id, Math.max(1, Number(quantity || 1))]
+        );
+      } else {
+        await client.query(`select adicionar_item_pedido($1, $2, $3, $4) as id`, [pedidoId, menu_item_id, Math.max(1, Number(quantity || 1)), normalizedNote || null]);
+      }
+
       invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
-      return this.getCustomerSession({ session_id: session.id });
+      return this.buildCustomerSessionPayload(client, session)
+    });
+  }
+async sendCustomerItemsToKitchen({ session_id, items = [] }) {
+  return withTransaction(async (client) => {
+    const session = await getSessionRowById(client, session_id);
+    if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+
+    const table = await getTableRow(client, session.mesa_id);
+    const venue = String(table?.local_nome || 'restaurante').toLowerCase();
+    if (venue === 'bar') {
+      throw makeError('No bar o pedido é libertado pelo pagamento.', 409, 'bar_requires_payment_first');
+    }
+
+    const actor = await ensureCustomerActor(client);
+    const selectedItemIds = (Array.isArray(items) ? items : [])
+      .map((entry) => String(entry?.order_item_id || entry?.id))
+      .filter(Boolean);
+
+    if (!selectedItemIds.length) {
+      throw makeError('Seleciona pelo menos um prato para enviar.', 400, 'no_items_selected');
+    }
+
+    const noteMap = new Map(
+      (Array.isArray(items) ? items : []).map((entry) => [
+        String(entry?.order_item_id || entry?.id),
+        String(entry?.note || ''),
+      ])
+    );
+
+    const draftRows = await client.query(
+      `select pi.id, pi.pedido_id, pi.nome_snapshot as name, pi.sitio_prep_snapshot as station
+         from pedido_itens pi
+         join pedidos p on p.id = pi.pedido_id
+        where p.sessao_id = $1
+          and pi.estado = 'rascunho'`,
+      [session.id]
+    );
+
+    const selectedRows = draftRows.rows.filter((row) => selectedItemIds.includes(String(row.id)));
+    if (!selectedRows.length) {
+      throw makeError('Não existem itens em rascunho para enviar.', 409, 'no_draft_items');
+    }
+
+    for (const item of selectedRows) {
+      if (noteMap.has(String(item.id))) {
+        await client.query(
+          `update pedido_itens
+              set observacao = $2,
+                  updated_at = now()
+            where id = $1`,
+          [item.id, String(noteMap.get(String(item.id)) || '').trim() || null]
+        );
+      }
+    }
+
+    for (const item of selectedRows) {
+      const noteValue = String(noteMap.get(String(item.id)) || '').trim();
+      if (noteValue) {
+        await upsertCustomerNoteThreadForItem(client, {
+          session,
+          table,
+          orderItemId: item.id,
+          note: noteValue,
+        });
+      }
+    }
+
+    const ids = selectedRows.map((row) => row.id);
+    await client.query(
+      `update pedido_itens
+          set estado = 'enviado'::public.item_estado,
+              enviado_cozinha_em = case
+                when sitio_prep_snapshot = 'cozinha' then coalesce(enviado_cozinha_em, now())
+                else enviado_cozinha_em
+              end,
+              updated_at = now()
+        where id = any($1::text[])
+          and estado = 'rascunho'`,
+      [ids]
+    );
+
+    const pedidoIds = [...new Set(selectedRows.map((row) => row.pedido_id))];
+    if (pedidoIds.length) {
+      await client.query(
+        `update pedidos
+            set estado = case when estado = 'rascunho' then 'enviado'::public.pedido_estado else estado end,
+                updated_at = now()
+          where id = any($1::text[])`,
+        [pedidoIds]
+      );
+    }
+
+    await insertAuditLog(client, {
+      actor_user_id: actor.id,
+      terminal_id: resolveCustomerTerminalId(table?.local_nome),
+      entity_type: 'table_session',
+      entity_id: session.id,
+      action_type: 'customer_items_sent_to_kitchen',
+      payload: {
+        table_session_id: session.id,
+        item_ids: ids,
+      },
+    });
+
+    invalidateCache('tables', 'kitchen', 'serviceBoard', 'history', 'bootstrap');
+    return this.buildCustomerSessionPayload(client, session)
+  });
+}
+
+async replyCustomerNoteThread({ session_id, order_item_id, message = '' }) {
+  return withTransaction(async (client) => {
+    await ensureCustomerFlowSchema(client);
+    const session = await getSessionRowById(client, session_id);
+    if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+
+    const thread = (await client.query(
+      `select *
+         from public.customer_note_threads
+        where sessao_id = $1
+          and order_item_id = $2
+        limit 1`,
+      [session.id, order_item_id]
+    )).rows[0];
+    const table = await getTableRow(client, session.mesa_id);
+
+    if (!thread) throw makeError('Conversa da nota não encontrada.', 404, 'note_thread_not_found');
+    if (['closed', 'needs_staff_help'].includes(String(thread.status))) {
+      throw makeError('Esta conversa já está fechada. Chame um colaborador.', 409, 'note_thread_closed');
+    }
+
+    const cleanMessage = sanitizeCustomerNoteMessage(message);
+    if (!cleanMessage) throw makeError('Escreve uma resposta para a cozinha.', 400, 'note_reply_required');
+
+    if (Number(thread.customer_reply_count || 0) >= 2) {
+      await client.query(
+        `update public.customer_note_threads
+            set status = 'needs_staff_help',
+                closed_at = now(),
+                updated_at = now()
+          where id = $1`,
+        [thread.id]
+      );
+      throw makeError('Limite de respostas atingido. Chame um colaborador.', 409, 'note_reply_limit_reached');
+    }
+
+    await client.query(
+      `insert into public.customer_note_thread_messages (thread_id, order_item_id, sender_role, body)
+       values ($1, $2, 'customer', $3)`,
+      [thread.id, order_item_id, cleanMessage]
+    );
+
+    await client.query(
+      `update public.customer_note_threads
+          set status = 'answered_by_customer',
+              customer_reply_count = customer_reply_count + 1,
+              latest_customer_message = $2,
+              last_message_from = 'customer',
+              updated_at = now()
+        where id = $1`,
+      [thread.id, cleanMessage]
+    );
+
+    const actor = await ensureCustomerActor(client);
+    await insertAuditLog(client, {
+      actor_user_id: actor.id,
+      terminal_id: resolveCustomerTerminalId(table?.local_nome || ''),
+      entity_type: 'table_session',
+      entity_id: session.id,
+      action_type: 'customer_note_reply',
+      payload: { table_session_id: session.id, order_item_id, thread_id: thread.id },
+    });
+
+    invalidateCache('kitchen', 'tables', 'history', 'bootstrap');
+    return this.buildCustomerSessionPayload(client, session);
+  });
+}
+
+  async replyKitchenNoteThread({ order_item_id, operator_id, terminal_id = 'terminal_kitchen', preset_code = '', message = '' }) {
+    return withTransaction(async (client) => {
+      await ensureCustomerFlowSchema(client);
+      const thread = (await client.query(
+        `select *
+           from public.customer_note_threads
+          where order_item_id = $1
+          limit 1`,
+        [order_item_id]
+      )).rows[0];
+
+      if (!thread) throw makeError('Conversa da nota não encontrada.', 404, 'note_thread_not_found');
+      if (['closed', 'needs_staff_help'].includes(String(thread.status))) {
+        throw makeError('Esta conversa já está fechada.', 409, 'note_thread_closed');
+      }
+
+      const presetOptions = Array.isArray(thread.kitchen_preset_options) ? thread.kitchen_preset_options : [];
+      const matchedPreset = presetOptions.find((option) => String(option?.id || '') === String(preset_code || '')) || null;
+      const extraMessage = sanitizeCustomerNoteMessage(message);
+      let finalMessage = matchedPreset?.message || '';
+      if (extraMessage) finalMessage = finalMessage ? `${finalMessage} ${extraMessage}` : extraMessage;
+      if (!finalMessage) throw makeError('Seleciona uma resposta ou escreve uma mensagem.', 400, 'kitchen_reply_required');
+
+      if (Number(thread.kitchen_reply_count || 0) >= 2) {
+        await client.query(
+          `update public.customer_note_threads
+              set status = 'needs_staff_help',
+                  latest_kitchen_message = 'Para esta alteração, por favor chame um colaborador.',
+                  last_message_from = 'kitchen',
+                  closed_at = now(),
+                  updated_at = now()
+            where id = $1`,
+          [thread.id]
+        );
+        throw makeError('Limite de respostas atingido. Pede ao cliente para chamar um colaborador.', 409, 'kitchen_reply_limit_reached');
+      }
+
+      await client.query(
+        `insert into public.customer_note_thread_messages (thread_id, order_item_id, sender_role, body, preset_code)
+         values ($1, $2, 'kitchen', $3, $4)`,
+        [thread.id, order_item_id, finalMessage, String(preset_code || '').trim() || null]
+      );
+
+      const nextStatus = matchedPreset?.id === 'accepted'
+        ? 'closed'
+        : matchedPreset?.id === 'call_staff'
+          ? 'needs_staff_help'
+          : 'answered_by_kitchen';
+
+      const updatedThread = (await client.query(
+        `update public.customer_note_threads
+            set status = $2,
+                kitchen_reply_count = kitchen_reply_count + 1,
+                latest_kitchen_message = $3,
+                last_message_from = 'kitchen',
+                updated_at = now(),
+                closed_at = case when $2 in ('closed','needs_staff_help') then coalesce(closed_at, now()) else null end
+          where id = $1
+          returning *`,
+        [thread.id, nextStatus, finalMessage]
+      )).rows[0];
+
+      const session = await getSessionRowById(client, thread.sessao_id);
+      await insertAuditLog(client, {
+        actor_user_id: operator_id,
+        terminal_id,
+        entity_type: 'table_session',
+        entity_id: thread.sessao_id,
+        action_type: 'kitchen_note_reply',
+        payload: { table_session_id: thread.sessao_id, order_item_id, thread_id: thread.id, status: nextStatus },
+      });
+
+      invalidateCache('kitchen', 'tables', 'history', 'bootstrap');
+      return {
+        thread: mapCustomerNoteThread({ ...updatedThread, messages: [] }),
+        session: session ? await this.buildCustomerSessionPayload(client, session) : null,
+      };
     });
   }
 
+
+async requestCustomerPayment({
+  session_id,
+  payment_method,
+  customer_name = '',
+  customer_phone = '',
+  customer_email = '',
+  customer_nif = '',
+  mbway_contact = '',
+  venue_type = '',
+  send_email = false,
+}) {
+  const sessionInfo = await withTransaction(async (client) => {
+    await ensureCustomerFlowSchema(client);
+
+    const session = await getSessionRowById(client, session_id);
+    if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
+
+    const table = await getTableRow(client, session.mesa_id);
+    const normalizedVenue = String(venue_type || table?.local_nome || '').trim().toLowerCase();
+
+    if (normalizedVenue === 'bar') return null;
+
+    const totals = await computeSessionTotals(client, session.id);
+    if (!totals.items.length) throw makeError('A mesa não tem itens para fechar.', 409, 'no_items_to_invoice');
+
+    const pending = totals.items.filter((item) => !['entregue', 'cancelado'].includes(item.estado));
+    if (pending.length) {
+      throw makeError('Ainda existem itens não entregues/cancelados. Fecha a produção/serviço antes de pedir pagamento.', 409, 'pending_items_before_payment_request');
+    }
+
+    const existingRequest = await getLatestCustomerCheckoutRequest(client, session.id);
+    if (existingRequest && ['awaiting_confirmation', 'paid', 'approved', 'released'].includes(String(existingRequest.status))) {
+      throw makeError('Já existe um pedido de pagamento ativo para esta mesa.', 409, 'customer_payment_request_exists');
+    }
+
+    return { session, table, totals, normalizedVenue };
+  });
+
+  if (!sessionInfo) {
+    return this.submitCustomerOrder({
+      session_id,
+      payment_method,
+      customer_name,
+      customer_phone,
+      customer_email,
+      customer_nif,
+      mbway_contact,
+      venue_type,
+      send_email,
+    });
+  }
+
+  const actor = await withClient((client) => ensureCustomerActor(client));
+  const normalizedPayment = normalizePaymentType(payment_method);
+
+  if (normalizedPayment === 'mbway') {
+    return {
+      payment_request: null,
+      checkout: await this.processCheckout({
+        table_id: sessionInfo.session.mesa_id,
+        operator_id: actor.id,
+        terminal_id: resolveCustomerTerminalId(sessionInfo.table?.local_nome),
+        payment_type: normalizedPayment,
+        customer_name: String(customer_name || '').trim() || sessionInfo.session.cliente_nome || '',
+        customer_email: String(customer_email || '').trim().toLowerCase() || '',
+        customer_nif: digitsOnly(customer_nif) || '',
+        mbway_contact: String(mbway_contact || '').trim() || '',
+        send_email: send_email === true,
+      }),
+      released: { sent_items: 0 },
+      email: { sent: false, reason: 'not_requested' },
+    };
+  }
+
+  return withTransaction(async (client) => {
+    const requestRow = (await client.query(
+      `insert into public.customer_checkout_requests (
+        sessao_id, mesa_id, payment_method, status, amount_total,
+        customer_name, customer_phone, customer_nif, customer_email, mbway_contact, venue_type, metadata_json
+      )
+      values ($1, $2, $3, 'awaiting_confirmation', $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+      returning *`,
+      [
+        sessionInfo.session.id,
+        sessionInfo.session.mesa_id,
+        normalizedPayment,
+        sessionInfo.totals.total,
+        String(customer_name || '').trim() || sessionInfo.session.cliente_nome || null,
+        String(customer_phone || '').trim() || null,
+        digitsOnly(customer_nif) || null,
+        String(customer_email || '').trim().toLowerCase() || null,
+        String(mbway_contact || '').trim() || null,
+        sessionInfo.normalizedVenue,
+        JSON.stringify({ kind: 'restaurant_settlement', send_email: send_email === true }),
+      ]
+    )).rows[0];
+
+    invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard', 'kitchen');
+
+    return {
+      payment_request: mapCustomerPaymentRequest({
+        ...requestRow,
+        table_name: sessionInfo.session.table_name || sessionInfo.session.table_codigo,
+        table_code: sessionInfo.session.table_codigo,
+      }),
+      released: { sent_items: 0 },
+      email: { sent: false, reason: 'not_requested' },
+    };
+  });
+}
   async updateCustomerItem({ session_id, order_item_id, quantity }) {
     return withTransaction(async (client) => {
       const session = await getSessionRowById(client, session_id);
@@ -3624,7 +4266,7 @@ export class RestaurantStore {
         [order_item_id, session.id, Math.max(1, Number(quantity || 1))]
       );
       invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
-      return this.getCustomerSession({ session_id: session.id });
+      return this.buildCustomerSessionPayload(client, session)
     });
   }
 
@@ -3646,11 +4288,29 @@ export class RestaurantStore {
         [order_item_id, session.id]
       );
       invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard');
-      return this.getCustomerSession({ session_id: session.id });
+      return this.buildCustomerSessionPayload(client, session)
     });
   }
 
   async submitCustomerOrder({ session_id, payment_method, customer_name = '', customer_phone = '', customer_email = '', customer_nif = '', mbway_contact = '', venue_type = '', send_email = false }) {
+   const currentSession = await withClient(async (client) => getSessionRowById(client, session_id));
+const currentTable = currentSession ? await withClient(async (client) => getTableRow(client, currentSession.mesa_id)) : null;
+const normalizedVenue = String(venue_type || currentTable?.local_nome || '').trim().toLowerCase();
+
+if (normalizedVenue && normalizedVenue !== 'bar') {
+  return this.requestCustomerPayment({
+    session_id,
+    payment_method,
+    customer_name,
+    customer_phone,
+    customer_email,
+    customer_nif,
+    mbway_contact,
+    venue_type: normalizedVenue,
+    send_email,
+  });
+}
+   
     const payload = await withTransaction(async (client) => {
       await ensureCustomerFlowSchema(client);
       const actor = await ensureCustomerActor(client);
@@ -3672,12 +4332,12 @@ export class RestaurantStore {
           customer_name, customer_phone, customer_nif, customer_email, mbway_contact, venue_type, metadata_json
         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
         returning *`,
-        [session.id, session.mesa_id, normalizedPayment, initialStatus, totals.total, String(customer_name || '').trim() || session.cliente_nome || null, String(customer_phone || '').trim() || null, digitsOnly(customer_nif) || null, String(customer_email || '').trim().toLowerCase() || null, String(mbway_contact || '').trim() || null, String(venue_type || '').trim() || null, JSON.stringify({ send_email: send_email === true, draft_item_ids: draftItems.map((item) => item.id) })]
+        [session.id, session.mesa_id, normalizedPayment, initialStatus, totals.total, String(customer_name || '').trim() || session.cliente_nome || null, String(customer_phone || '').trim() || null, digitsOnly(customer_nif) || null, String(customer_email || '').trim().toLowerCase() || null, String(mbway_contact || '').trim() || null, String(venue_type || '').trim() || null, JSON.stringify({ kind: 'prepay_order', send_email: send_email === true, draft_item_ids: draftItems.map((item) => item.id) })]
       );
       let requestRow = inserted.rows[0];
       let released = { sent_items: 0, item_ids: [] };
       if (normalizedPayment === 'mbway') {
-        released = await releaseDraftKitchenItems(client, { session, actorUserId: actor.id, terminalId: 'terminal_customer' });
+        released = await releaseDraftKitchenItems(client, { session, actorUserId: actor.id, terminalId: resolveCustomerTerminalId(venue_type || '') });
         const updated = await client.query(
           `update public.customer_checkout_requests
               set status = 'released',
@@ -3693,7 +4353,7 @@ export class RestaurantStore {
       }
       await insertAuditLog(client, {
         actor_user_id: actor.id,
-        terminal_id: 'terminal_customer',
+        terminal_id: resolveCustomerTerminalId(currentTable?.local_nome || venue_type || ''),
         entity_type: 'table_session',
         entity_id: session.id,
         action_type: 'customer_payment_requested',

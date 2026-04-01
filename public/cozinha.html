@@ -89,24 +89,76 @@
             toast(e.message, true);
           }
         }));
+
+        grid.querySelectorAll('[data-note-preset]').forEach((btn) => btn.addEventListener('click', () => {
+          const panel = btn.closest('[data-note-panel]');
+          if (!panel) return;
+          panel.dataset.selectedPreset = btn.dataset.notePreset || '';
+          const textarea = panel.querySelector('textarea');
+          if (textarea) textarea.value = btn.dataset.noteMessage || '';
+          panel.querySelectorAll('[data-note-preset]').forEach((node) => {
+            node.classList.toggle('active', node === btn);
+          });
+        }));
+
+        grid.querySelectorAll('button[data-note-send]').forEach((btn) => btn.addEventListener('click', async () => {
+          if (!ensureOperatorSelected()) return;
+          const panel = btn.closest('[data-note-panel]');
+          if (!panel) return;
+          const textarea = panel.querySelector('textarea');
+          try {
+            await restaurantApi.replyKitchenNoteThread(btn.dataset.itemId, {
+              preset_code: panel.dataset.selectedPreset || '',
+              message: textarea?.value || '',
+            });
+            toast('Resposta enviada ao cliente.');
+            await refreshBoard();
+          } catch (e) {
+            toast(e.message, true);
+          }
+        }));
       }
 
       function renderKitchenCard(item) {
         const overdueBadge = item.overdue_by_minutes > 0 ? `<span class="badge overdue">+${item.overdue_by_minutes} min</span>` : "";
-        return `<article class="kitchen-card">
+        const hasNote = Boolean(String(item.note || '').trim());
+        const noteChat = item.note_chat || null;
+        const showReplyPanel = Boolean(noteChat) && !['closed', 'needs_staff_help'].includes(String(noteChat.status || ''));
+        const hasKitchenReply = Boolean(String(noteChat?.latest_kitchen_message || '').trim());
+        const hasCustomerFollowup = Boolean(noteChat?.customer_reply_count > 0 && String(noteChat?.latest_customer_message || '').trim() && String(noteChat?.latest_customer_message || '').trim() !== String(noteChat?.note_snapshot || '').trim());
+        const presetButtons = Array.isArray(noteChat?.preset_options) ? noteChat.preset_options.map((option) => `<button type="button" class="ghost-btn" data-note-preset="${escapeHtml(option.id)}" data-note-message="${escapeHtml(option.message || '')}" style="padding:8px 10px; font-size:12px;">${escapeHtml(option.label || option.id)}</button>`).join('') : '';
+        const noteStatusLabel = noteChat?.status === 'answered_by_customer'
+          ? 'Cliente respondeu'
+          : noteChat?.status === 'answered_by_kitchen'
+            ? 'Resposta enviada'
+            : noteChat?.status === 'needs_staff_help'
+              ? 'Chamar colaborador'
+              : noteChat?.status === 'closed'
+                ? 'Fechado'
+                : 'Aguarda cozinha';
+
+        return `<article class="kitchen-card ${hasNote ? 'kitchen-card--note' : ''}">
           <div class="kitchen-card-head">
             <div>
               <div class="kitchen-card-title">${escapeHtml(item.name)}</div>
               <div class="meta">${escapeHtml(item.table_name || "—")} · ${Number(item.quantity || 0)}x · ${escapeHtml(item.station || "cozinha")}</div>
             </div>
-            ${overdueBadge}
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+              ${hasNote ? '<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-weight:800;">NOTA</span>' : ''}
+              ${noteChat ? `<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:800;">${escapeHtml(noteStatusLabel)}</span>` : ''}
+              ${overdueBadge}
+            </div>
           </div>
           <div class="meta-row">
             <span>Meta: ${Number(item.prep_minutes || 0)} min</span>
             <span>Na fila: ${relativeMinutes(item.sent_to_kitchen_at)}</span>
             <span>Enviado por: ${escapeHtml(item.sent_by || item.operator_name || "—")}</span>
           </div>
-          ${item.note ? `<div style="margin-top:10px;">Nota: ${escapeHtml(item.note)}</div>` : ""}
+          ${hasNote ? `<div style="margin-top:12px; padding:12px 14px; border-radius:14px; background:#fff1f2; border:1px solid #fecdd3;"><div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#be123c;margin-bottom:6px;">Nota do cliente</div><div style="font-size:16px;font-weight:700;color:#881337;">${escapeHtml(item.note)}</div></div>` : ""}
+          ${hasCustomerFollowup ? `<div style="margin-top:10px; padding:12px 14px; border-radius:14px; background:#eff6ff; border:1px solid #bfdbfe;"><div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Resposta do cliente</div><div style="font-size:15px;font-weight:700;color:#1e3a8a;">${escapeHtml(noteChat.latest_customer_message)}</div></div>` : ''}
+          ${hasKitchenReply ? `<div style="margin-top:10px; padding:12px 14px; border-radius:14px; background:#ecfdf5; border:1px solid #bbf7d0;"><div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#166534;margin-bottom:6px;">Última resposta enviada</div><div style="font-size:15px;font-weight:700;color:#166534;">${escapeHtml(noteChat.latest_kitchen_message)}</div></div>` : ''}
+          ${noteChat?.status === 'needs_staff_help' ? `<div style="margin-top:10px; padding:12px 14px; border-radius:14px; background:#fff7ed; border:1px solid #fdba74;"><div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#c2410c;margin-bottom:6px;">Escalado</div><div style="font-size:15px;font-weight:700;color:#9a3412;">A conversa atingiu o limite. Peça ao cliente para chamar um colaborador.</div></div>` : ''}
+          ${showReplyPanel ? `<details data-note-panel data-selected-preset="" style="margin-top:12px; border:1px solid #e2e8f0; border-radius:16px; padding:10px 12px; background:#f8fafc;"><summary style="cursor:pointer; font-weight:800; color:#0f172a;">Responder à nota</summary><div style="display:grid; gap:10px; margin-top:12px;"><div style="display:flex; flex-wrap:wrap; gap:8px;">${presetButtons}</div><textarea placeholder="Mensagem opcional para o cliente" style="width:100%; min-height:78px; border:1px solid #cbd5e1; border-radius:12px; padding:10px; font:inherit;"></textarea><button type="button" class="status-btn" data-note-send data-item-id="${escapeHtml(item.order_item_id)}">Enviar resposta</button></div></details>` : ''}
           <div class="kitchen-actions">${renderStatusActions(item)}</div>
         </article>`;
       }
