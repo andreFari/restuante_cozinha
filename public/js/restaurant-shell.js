@@ -83,7 +83,11 @@ export async function mountOperatorShell({
     restaurantApi.getOperatorContext(),
   ]);
 
-  const activeOperator = resolveActiveOperator(operators, context);
+  const visibleOperators = auth.user?.role === "kitchen"
+    ? operators.filter((operator) => String(operator.role || "").toLowerCase() === "kitchen")
+    : operators;
+
+  const activeOperator = resolveActiveOperator(visibleOperators, context);
   if (activeOperator?.id) setOperatorId(activeOperator.id);
 
   root.innerHTML = `
@@ -106,7 +110,7 @@ export async function mountOperatorShell({
         <button id="operatorPanelClose" class="ghost-icon-btn">×</button>
       </div>
       <div class="operator-grid">
-        ${operators
+        ${visibleOperators
           .map(
             (op) => `
           <button class="operator-card ${activeOperator?.id === op.id ? "selected" : ""}" data-operator-id="${op.id}" data-operator-name="${op.name}">

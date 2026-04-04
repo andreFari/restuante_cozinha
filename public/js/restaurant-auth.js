@@ -1,6 +1,6 @@
 import { restaurantApi, clearOperatorId, setOperatorId } from "./restaurant-api.js";
 
-const ADMIN_ONLY_PAGES = new Set(["/menu.html", "/gest_mesas.html", "/trabalhadores.html"]);
+const ADMIN_ONLY_PAGES = new Set(["/gest_mesas.html", "/trabalhadores.html"]);
 const AUTH_CACHE_KEY = "restaurant_auth_session_cache";
 const AUTH_CACHE_TTL_MS = 15000;
 
@@ -27,6 +27,14 @@ function clearCachedAuth() {
   try { sessionStorage.removeItem(AUTH_CACHE_KEY); } catch {}
 }
 
+const ROLE_ALLOWED_PAGES = {
+  admin: null,
+  kitchen: new Set(["/cozinha.html", "/artigos.html", "/menu.html"]),
+  employee: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
+  bar: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
+  manager: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
+};
+
 const PROTECTED_PAGES = new Set([
   "/rececaoBar.html",
   "/rececaoCozi.html",
@@ -39,9 +47,28 @@ const PROTECTED_PAGES = new Set([
   "/trabalhadores.html",
 ]);
 
+function roleLabel(session) {
+  const role = String(session?.user?.role || "").toLowerCase();
+  if (session?.is_admin || role === "admin") return "Admin";
+  if (role === "kitchen") return "Cozinha";
+  if (role === "bar") return "Bar";
+  if (role === "manager") return "Gestor";
+  return "Trabalhador";
+}
+
 function defaultPageFor(session) {
   if (session?.is_admin) return "/rececaoCozi.html";
+  if (String(session?.user?.role || "").toLowerCase() === "kitchen") return "/cozinha.html";
   return "/rececaoCozi.html";
+}
+
+function canAccessPage(session, path) {
+  if (!PROTECTED_PAGES.has(path)) return true;
+  if (!session?.authenticated) return false;
+  if (session?.is_admin) return true;
+  const role = String(session?.user?.role || "").toLowerCase() || "employee";
+  const allowed = ROLE_ALLOWED_PAGES[role] || ROLE_ALLOWED_PAGES.employee;
+  return allowed ? allowed.has(path) : true;
 }
 
 function ensureLogoutButton(session) {
@@ -68,13 +95,13 @@ function ensureLogoutButton(session) {
 
   const tokenDisplay = document.getElementById("tokenDisplay");
   if (tokenDisplay) {
-    tokenDisplay.textContent = `${session.user.name} · ${session.is_admin ? "Admin" : "Trabalhador"}`;
+    tokenDisplay.textContent = `${session.user.name} · ${roleLabel(session)}`;
   }
 }
 
 function patchNav(session) {
   document.querySelectorAll('a[href="./login.html"], a[href="login.html"], a[href="/login.html"]').forEach((link) => {
-    link.setAttribute("href", "./rececaoBar.html");
+    link.setAttribute("href", defaultPageFor(session));
   });
 
   const nav = document.getElementById("navLinks");
@@ -87,10 +114,20 @@ function patchNav(session) {
     nav.appendChild(link);
   }
 
-  const adminSelectors = ['a[href="./menu.html"]', 'a[href="./gest_mesas.html"]', 'a[href="./trabalhadores.html"]'];
-  adminSelectors.forEach((selector) => {
-    document.querySelectorAll(selector).forEach((link) => {
-      link.style.display = session.is_admin ? "inline-block" : "none";
+  const role = String(session?.user?.role || "").toLowerCase();
+  const visibilityRules = [
+    { selectors: ['a[href="./menu.html"]'], visible: session.is_admin || role === "kitchen" },
+    { selectors: ['a[href="./artigos.html"]'], visible: session.is_admin || role === "kitchen" },
+    { selectors: ['a[href="./gest_mesas.html"]', 'a[href="./trabalhadores.html"]'], visible: session.is_admin },
+    { selectors: ['a[href="./rececaoBar.html"]', 'a[href="./rececaoCozi.html"]', 'a[href="./takeway.html"]', 'a[href="./faturas.html"]'], visible: role !== "kitchen" || session.is_admin },
+    { selectors: ['a[href="./cozinha.html"]'], visible: true },
+  ];
+
+  visibilityRules.forEach(({ selectors, visible }) => {
+    selectors.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((link) => {
+        link.style.display = visible ? "inline-block" : "none";
+      });
     });
   });
 
@@ -126,6 +163,11 @@ async function applyAuth() {
   }
 
   if (ADMIN_ONLY_PAGES.has(path) && !session?.is_admin) {
+    window.location.replace(defaultPageFor(session));
+    return;
+  }
+
+  if (session?.authenticated && !canAccessPage(session, path)) {
     window.location.replace(defaultPageFor(session));
     return;
   }

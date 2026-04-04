@@ -234,6 +234,31 @@ export const restaurantApi = {
   checkoutPreview(tableId) {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/checkout-preview`);
   },
+
+  listPrinters() {
+    return request(`/api/restaurant/printers`);
+  },
+  getPaymentIntent(intentId) {
+    return request(`/api/restaurant/payment-intents/${encodeURIComponent(intentId)}`);
+  },
+  refreshPaymentIntent(intentId) {
+    return request(`/api/restaurant/payment-intents/${encodeURIComponent(intentId)}/refresh`, {
+      method: "POST",
+      body: JSON.stringify({
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  cancelPaymentIntent(intentId) {
+    return request(`/api/restaurant/payment-intents/${encodeURIComponent(intentId)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
   checkoutTable(tableId, payload) {
     return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/checkout`, {
       method: "POST",

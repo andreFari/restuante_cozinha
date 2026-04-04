@@ -18,7 +18,7 @@
         <section class="panel">
           <div class="shell-eyebrow">Acesso ao restaurante</div>
           <h1 class="shell-title">Entrar no sistema</h1>
-          <div class="helper-text" style="margin-bottom:16px;">Admin vê tudo. Trabalhador não vê gestão de menus nem gestão de mesas.</div>
+          <div class="helper-text" style="margin-bottom:16px;">Admin vê tudo. Trabalhador fica na operação. Cozinha entra só no painel de cozinha, artigos e menus.</div>
           <form id="loginForm" class="form-stack">
             <label>Email<input id="email" type="email" required placeholder="admin@rest.local" /></label>
             <label>Password<input id="password" type="password" required placeholder="••••••••" /></label>
@@ -31,6 +31,7 @@
           <div class="list-stack">
             <article class="timeline-row"><strong>Admin</strong><div class="meta">admin@rest.local · admin123</div></article>
             <article class="timeline-row"><strong>Trabalhador</strong><div class="meta">worker@rest.local · worker123</div></article>
+            <article class="timeline-row"><strong>Cozinha</strong><div class="meta">joao.cozinha@rest.local · 1234</div></article>
           </div>
           <div class="callout" style="margin-top:12px;">
             <strong>Primeiro passo</strong>
@@ -51,7 +52,7 @@
         const password = document.getElementById('password').value;
         try {
           const result = await restaurantApi.login(email, password);
-          window.location.replace(result?.is_admin ? '/rececaoCozi.html' : '/rececaoCozi.html');
+          window.location.replace(result?.user?.role === 'kitchen' ? '/cozinha.html' : (result?.is_admin ? '/rececaoCozi.html' : '/rececaoCozi.html'));
         } catch (error) {
           errorNode.textContent = error.message || 'Falha no login.';
         }

@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import path from 'path';
 import { Resend } from 'resend';
 import { query, withClient, withTransaction } from '../src/db.js';
+import { mbwayService } from './mbway.service.js';
+import { printersService } from './printers.service.js';
 const ACTIVE_DB_SESSION_STATES = ['rascunho', 'enviado', 'em_preparo', 'parcialmente_pronto', 'pronto', 'entregue'];
 const MENU_PROFILE_DEFS = [
   { id: 'sala', name: 'Restaurante interior', description: 'Menu servido dentro do restaurante.', local_nome: 'restaurante' },
@@ -856,6 +858,341 @@ function numberOrNull(value) {
 function parseMoney(value) {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
+}
+
+
+function buildInvoiceUrl(invoiceFilePath) {
+  const appBaseUrl = String(process.env.APP_BASE_URL || process.env.PRINT_BASE_URL || '').replace(/\/$/, '');
+  return appBaseUrl ? `${appBaseUrl}${invoiceFilePath}` : invoiceFilePath;
+}
+
+async function ensureCheckoutPaymentIntentSchema(client) {
+  await client.query(`create table if not exists public.checkout_payment_intents (
+    id text primary key default fn_uuid(),
+    sessao_id text not null references public.mesa_sessoes(id) on delete cascade,
+    mesa_id text not null references public.mesas(id) on delete cascade,
+    requested_by_user_id text null references public.app_users(id),
+    confirmed_by_user_id text null references public.app_users(id),
+    invoice_id text null references public.faturas(id) on delete set null,
+    payment_type text not null,
+    status text not null default 'pending',
+    amount_total numeric(12,2) not null check (amount_total >= 0),
+    customer_name text null,
+    customer_nif text null,
+    customer_email text null,
+    mbway_contact text null,
+    send_email boolean not null default false,
+    terminal_id text null,
+    printer_agent_id text null,
+    printer_id text null,
+    printer_name text null,
+    provider_name text null,
+    provider_reference text null,
+    provider_status text null,
+    provider_payload_json jsonb not null default '{}'::jsonb,
+    invoice_file_path text null,
+    metadata_json jsonb not null default '{}'::jsonb,
+    expires_at timestamptz null,
+    confirmed_at timestamptz null,
+    cancelled_at timestamptz null,
+    failed_at timestamptz null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint checkout_payment_intents_status_check check (status in ('pending','confirmed','cancelled','expired','failed'))
+  )`);
+  await client.query(`create index if not exists idx_checkout_payment_intents_session on public.checkout_payment_intents(sessao_id, created_at desc)`);
+  await client.query(`create index if not exists idx_checkout_payment_intents_status on public.checkout_payment_intents(status, created_at desc)`);
+  await client.query(`create index if not exists idx_checkout_payment_intents_provider_reference on public.checkout_payment_intents(provider_reference)`);
+}
+
+function mapCheckoutPaymentIntent(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    session_id: row.sessao_id,
+    table_id: row.mesa_id,
+    invoice_id: row.invoice_id || null,
+    payment_type: uiPaymentType(row.payment_type),
+    raw_payment_type: row.payment_type,
+    status: row.status,
+    amount_total: parseMoney(row.amount_total),
+    customer_name: row.customer_name || '',
+    customer_nif: row.customer_nif || '',
+    customer_email: row.customer_email || '',
+    mbway_contact: row.mbway_contact || '',
+    send_email: row.send_email === true,
+    terminal_id: row.terminal_id || '',
+    provider_name: row.provider_name || '',
+    provider_reference: row.provider_reference || '',
+    provider_status: row.provider_status || '',
+    printer_agent_id: row.printer_agent_id || '',
+    printer_id: row.printer_id || '',
+    printer_name: row.printer_name || '',
+    invoice_file_path: row.invoice_file_path || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    expires_at: row.expires_at,
+    confirmed_at: row.confirmed_at,
+    cancelled_at: row.cancelled_at,
+    failed_at: row.failed_at,
+  };
+}
+
+function mapStoredInvoice(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    number: row.numero_documento || row.number || '',
+    file_path: row.file_path,
+    url: buildInvoiceUrl(row.file_path),
+    total: parseMoney(row.total),
+    total_sem_iva: parseMoney(row.total_sem_iva),
+    total_iva: parseMoney(row.total_iva),
+    created_at: row.created_at,
+    customer_email: row.cliente_email || '',
+    customer_name: row.cliente_nome || '',
+  };
+}
+
+async function getStoredInvoiceById(client, invoiceId) {
+  if (!invoiceId) return null;
+  const result = await client.query(
+    `select id, numero_documento, file_path, total, total_sem_iva, total_iva, created_at, cliente_email, cliente_nome
+       from public.faturas
+      where id = $1
+      limit 1`,
+    [invoiceId]
+  );
+  return mapStoredInvoice(result.rows[0]);
+}
+
+function queueInvoicePrint({ invoiceUrl, printer_agent_id = '', printer_id = '', printer_name = '' }) {
+  if (!printer_agent_id || !printer_id) {
+    return { requested: false, queued: false, reason: 'printer_not_selected' };
+  }
+  if (!String(invoiceUrl || '').startsWith('http')) {
+    return { requested: true, queued: false, reason: 'missing_absolute_invoice_url', printer_agent_id, printer_id, printer_name };
+  }
+  const socket = printersService.getAgentSocket(printer_agent_id);
+  if (!socket) {
+    return { requested: true, queued: false, reason: 'agent_offline', printer_agent_id, printer_id, printer_name };
+  }
+  socket.emit('print_job', { printer_id, pdfUrl: invoiceUrl, title: printer_name || '' });
+  return { requested: true, queued: true, reason: null, printer_agent_id, printer_id, printer_name };
+}
+
+async function finalizeCheckoutSideEffects({ payload, send_email = false, print_invoice = false, printer_agent_id = '', printer_id = '', printer_name = '' }) {
+  const invoiceDiskPath = path.join(PUBLIC_INVOICES_DIR, path.basename(payload.invoice_file_path));
+  fs.writeFileSync(invoiceDiskPath, payload.invoice_html, 'utf8');
+
+  const invoiceUrl = buildInvoiceUrl(payload.invoice_file_path);
+
+  let emailResult = { sent: false, reason: send_email ? 'missing_email' : 'not_requested' };
+  if (send_email && payload.customer_email) {
+    try {
+      emailResult = await sendInvoiceEmailIfNeeded({
+        customerEmail: payload.customer_email,
+        customerName: payload.customer_name,
+        invoiceNumber: payload.invoice_number,
+        invoiceHtml: payload.invoice_html,
+        invoiceUrl,
+        total: payload.total,
+      });
+      if (emailResult.sent) {
+        await withTransaction(async (client) => {
+          await ensureCheckoutSchema(client);
+          await client.query(`update public.faturas set enviada_por_email_em = now() where id = $1`, [payload.invoice_id]);
+        });
+      }
+    } catch (error) {
+      emailResult = { sent: false, reason: error.message || 'email_send_failed' };
+    }
+  }
+
+  const printResult = print_invoice
+    ? queueInvoicePrint({ invoiceUrl, printer_agent_id, printer_id, printer_name })
+    : { requested: false, queued: false, reason: 'not_requested' };
+
+  invalidateCache('tables', 'kitchen', 'serviceBoard', 'history', 'bootstrap');
+
+  return {
+    ok: true,
+    payment_flow: 'completed',
+    invoice: {
+      id: payload.invoice_id,
+      number: payload.invoice_number,
+      file_path: payload.invoice_file_path,
+      url: invoiceUrl,
+      total: payload.total,
+      total_sem_iva: payload.total_sem_iva,
+      total_iva: payload.total_iva,
+      created_at: payload.invoice_created_at,
+      customer_email: payload.customer_email,
+      customer_name: payload.customer_name,
+    },
+    payment: {
+      type: uiPaymentType(payload.payment_type),
+      amount_received: payload.amount_received,
+      change_amount: payload.change_amount,
+    },
+    email: emailResult,
+    print: printResult,
+    message: emailResult.sent
+      ? 'Pagamento registado, fatura gerada e email enviado.'
+      : send_email
+        ? `Pagamento registado e fatura gerada. Email não enviado: ${emailResult.reason || 'falha desconhecida'}.`
+        : 'Pagamento registado e fatura gerada.',
+  };
+}
+
+async function finalizeCheckoutTransaction(client, {
+  table_id = null,
+  session_id = null,
+  operator_id,
+  terminal_id = 'terminal_main',
+  payment_type,
+  amount_received = null,
+  customer_nif = '',
+  customer_name = '',
+  customer_email = '',
+  mbway_contact = '',
+  payment_reference = '',
+}) {
+  await ensureCheckoutSchema(client);
+  const session = session_id ? await getSessionRowById(client, session_id) : await getActiveSessionRow(client, table_id);
+  if (!session || session.fechada_em) throw makeError('Mesa não aberta.', 409, 'table_not_open');
+
+  const totals = await computeSessionTotals(client, session.id);
+  if (!totals.items.length) throw makeError('A mesa não tem itens para faturar.', 409, 'no_items_to_invoice');
+  const pending = totals.items.filter((item) => !['entregue', 'cancelado'].includes(item.estado));
+  if (pending.length) {
+    throw makeError('Ainda existem itens não entregues/cancelados. Fecha a produção/serviço antes de faturar.', 409, 'pending_items_before_checkout');
+  }
+
+  const normalizedPayment = normalizePaymentType(payment_type);
+  const amountReceived = parseMoney(amount_received ?? totals.total);
+  const changeAmount = normalizedPayment === 'dinheiro' ? parseMoney(amountReceived - totals.total) : 0;
+  if (normalizedPayment === 'dinheiro' && amountReceived < totals.total) {
+    throw makeError('Valor recebido inferior ao total da conta.', 400, 'insufficient_cash');
+  }
+
+  const nifDigits = digitsOnly(customer_nif);
+  if (customer_nif && nifDigits.length !== 9) {
+    throw makeError('NIF inválido. Usa 9 dígitos ou deixa vazio.', 400, 'invalid_nif');
+  }
+
+  const numberRes = await client.query(`select count(*)::int + 1 as next_number from public.faturas where created_at::date = current_date`);
+  const createdAt = new Date().toISOString();
+  const invoiceNumber = buildInvoiceNumber(createdAt, Number(numberRes.rows[0]?.next_number || 1));
+  const invoiceFileName = `${invoiceNumber.toLowerCase()}.html`;
+  const invoiceFilePath = `/invoices/${invoiceFileName}`;
+
+  const insertedFatura = await client.query(
+    `insert into public.faturas (
+      sessao_id, pedido_id, total_sem_iva, total_iva, total, file_path, estado, tipo_pagamento, quem_faturou_id,
+      numero_documento, cliente_nif, cliente_nome, cliente_email, checkout_origem
+    )
+    values ($1, null, $2, $3, $4, $5, 'pago', $6::public.tipo_pagamento, $7, $8, $9, $10, $11, $12)
+    returning id, created_at`,
+    [
+      session.id,
+      totals.total_sem_iva,
+      totals.total_iva,
+      totals.total,
+      invoiceFilePath,
+      normalizedPayment,
+      operator_id,
+      invoiceNumber,
+      nifDigits || null,
+      String(customer_name || '').trim() || null,
+      String(customer_email || '').trim().toLowerCase() || null,
+      terminal_id,
+    ]
+  );
+  const fatura = insertedFatura.rows[0];
+
+  await client.query(
+    `insert into public.pagamentos (
+      sessao_id, fatura_id, tipo_pagamento, valor, dinheiro_recebido, troco, mbway_contacto, referencia, processed_by_user_id
+    ) values ($1, $2, $3::public.tipo_pagamento, $4, $5, $6, $7, $8, $9)`,
+    [
+      session.id,
+      fatura.id,
+      normalizedPayment,
+      totals.total,
+      normalizedPayment === 'dinheiro' ? amountReceived : null,
+      normalizedPayment === 'dinheiro' ? changeAmount : null,
+      normalizedPayment === 'mbway' ? String(mbway_contact || '').trim() || null : null,
+      String(payment_reference || '').trim() || (normalizedPayment === 'mbway' ? String(mbway_contact || '').trim() || null : uiPaymentType(normalizedPayment)),
+      operator_id,
+    ]
+  );
+
+  await client.query(
+    `update public.pedidos
+        set quem_faturou_id = $2,
+            data_faturacao = now(),
+            tipo_pagamento = $3::public.tipo_pagamento,
+            estado = case when estado <> 'cancelado' then 'fechado'::public.pedido_estado else estado end,
+            updated_at = now()
+      where sessao_id = $1`,
+    [session.id, operator_id, normalizedPayment]
+  );
+
+  await client.query(`select public.fechar_sessao($1, $2)`, [session.id, operator_id]);
+
+  await insertAuditLog(client, {
+    actor_user_id: operator_id,
+    terminal_id,
+    entity_type: 'table_session',
+    entity_id: session.id,
+    action_type: 'checkout_completed',
+    payload: {
+      table_session_id: session.id,
+      table_id: session.mesa_id,
+      table_name: session.table_name || null,
+      invoice_id: fatura.id,
+      invoice_number: invoiceNumber,
+      payment_type: uiPaymentType(normalizedPayment),
+      total: totals.total,
+      payment_reference: String(payment_reference || '').trim() || null,
+    },
+  });
+
+  const invoiceHtml = buildInvoiceHtml({
+    invoiceNumber,
+    createdAt: fatura.created_at || createdAt,
+    customerName: String(customer_name || '').trim() || null,
+    customerNif: nifDigits || null,
+    customerEmail: String(customer_email || '').trim().toLowerCase() || null,
+    paymentType: normalizedPayment,
+    amountReceived: normalizedPayment === 'dinheiro' ? amountReceived : totals.total,
+    changeAmount,
+    tableName: session.table_name || session.table_codigo || null,
+    items: totals.items,
+    totalSemIva: totals.total_sem_iva,
+    totalIva: totals.total_iva,
+    total: totals.total,
+  });
+
+  return {
+    invoice_id: fatura.id,
+    invoice_number: invoiceNumber,
+    invoice_file_path: invoiceFilePath,
+    invoice_html: invoiceHtml,
+    invoice_created_at: fatura.created_at || createdAt,
+    customer_email: String(customer_email || '').trim().toLowerCase() || null,
+    customer_name: String(customer_name || '').trim() || null,
+    total: totals.total,
+    total_sem_iva: totals.total_sem_iva,
+    total_iva: totals.total_iva,
+    payment_type: normalizedPayment,
+    amount_received: normalizedPayment === 'dinheiro' ? amountReceived : totals.total,
+    change_amount: changeAmount,
+    table_name: session.table_name || session.table_codigo || null,
+    session_id: session.id,
+    table_id: session.mesa_id,
+  };
 }
 
 function deriveTableNumber(row) {
@@ -2571,6 +2908,10 @@ export class RestaurantStore {
     });
   }
 
+  async listRegisteredPrinters() {
+    return { printers: printersService.listRegisteredPrinters() };
+  }
+
   async processCheckout({
     table_id,
     operator_id,
@@ -2582,196 +2923,379 @@ export class RestaurantStore {
     customer_email = '',
     mbway_contact = '',
     send_email = false,
+    print_invoice = false,
+    printer_id = '',
+    printer_agent_id = '',
+    printer_name = '',
   }) {
-    const payload = await withTransaction(async (client) => {
-      await ensureCheckoutSchema(client);
-      const session = await getActiveSessionRow(client, table_id);
-      if (!session) throw makeError('Mesa não aberta.', 409, 'table_not_open');
+    const normalizedPayment = normalizePaymentType(payment_type);
 
-      const totals = await computeSessionTotals(client, session.id);
-      if (!totals.items.length) throw makeError('A mesa não tem itens para faturar.', 409, 'no_items_to_invoice');
-      const pending = totals.items.filter((item) => !['entregue', 'cancelado'].includes(item.estado));
-      if (pending.length) {
-        throw makeError('Ainda existem itens não entregues/cancelados. Fecha a produção/serviço antes de faturar.', 409, 'pending_items_before_checkout');
+    if (normalizedPayment === 'mbway') {
+      if (!String(mbway_contact || '').trim()) {
+        throw makeError('Contacto MB WAY obrigatório.', 400, 'mbway_contact_required');
       }
 
-      const normalizedPayment = normalizePaymentType(payment_type);
-      const amountReceived = parseMoney(amount_received ?? totals.total);
-      const changeAmount = normalizedPayment === 'dinheiro' ? parseMoney(amountReceived - totals.total) : 0;
-      if (normalizedPayment === 'dinheiro' && amountReceived < totals.total) {
-        throw makeError('Valor recebido inferior ao total da conta.', 400, 'insufficient_cash');
-      }
+      const intent = await withTransaction(async (client) => {
+        await ensureCheckoutSchema(client);
+        await ensureCheckoutPaymentIntentSchema(client);
+        const session = await getActiveSessionRow(client, table_id);
+        if (!session) throw makeError('Mesa não aberta.', 409, 'table_not_open');
 
-      const nifDigits = digitsOnly(customer_nif);
-      if (customer_nif && nifDigits.length !== 9) {
-        throw makeError('NIF inválido. Usa 9 dígitos ou deixa vazio.', 400, 'invalid_nif');
-      }
+        const totals = await computeSessionTotals(client, session.id);
+        if (!totals.items.length) throw makeError('A mesa não tem itens para faturar.', 409, 'no_items_to_invoice');
+        const pending = totals.items.filter((item) => !['entregue', 'cancelado'].includes(item.estado));
+        if (pending.length) {
+          throw makeError('Ainda existem itens não entregues/cancelados. Fecha a produção/serviço antes de faturar.', 409, 'pending_items_before_checkout');
+        }
 
-      const numberRes = await client.query(`select count(*)::int + 1 as next_number from public.faturas where created_at::date = current_date`);
-      const createdAt = new Date().toISOString();
-      const invoiceNumber = buildInvoiceNumber(createdAt, Number(numberRes.rows[0]?.next_number || 1));
-      const invoiceFileName = `${invoiceNumber.toLowerCase()}.html`;
-      const invoiceFilePath = `/invoices/${invoiceFileName}`;
+        const nifDigits = digitsOnly(customer_nif);
+        if (customer_nif && nifDigits.length !== 9) {
+          throw makeError('NIF inválido. Usa 9 dígitos ou deixa vazio.', 400, 'invalid_nif');
+        }
 
-      const insertedFatura = await client.query(
-        `insert into public.faturas (
-          sessao_id, pedido_id, total_sem_iva, total_iva, total, file_path, estado, tipo_pagamento, quem_faturou_id,
-          numero_documento, cliente_nif, cliente_nome, cliente_email, checkout_origem
-        )
-        values ($1, null, $2, $3, $4, $5, 'pago', $6::public.tipo_pagamento, $7, $8, $9, $10, $11, $12)
-        returning id, created_at`,
-        [
-          session.id,
-          totals.total_sem_iva,
-          totals.total_iva,
-          totals.total,
-          invoiceFilePath,
-          normalizedPayment,
-          operator_id,
-          invoiceNumber,
-          nifDigits || null,
-          String(customer_name || '').trim() || null,
-          String(customer_email || '').trim().toLowerCase() || null,
+        const existing = await client.query(
+          `select *
+             from public.checkout_payment_intents
+            where sessao_id = $1
+              and payment_type = 'mbway'
+              and status = 'pending'
+            order by created_at desc
+            limit 1`,
+          [session.id]
+        );
+        if (existing.rows[0]) {
+          return { already_exists: true, row: existing.rows[0] };
+        }
+
+        const merchantTransactionId = `mesa_${session.id}_${Date.now()}`;
+        const providerResult = await mbwayService.createPayment({
+          amount: totals.total,
+          phone: mbway_contact,
+          merchantTransactionId,
+          metadata: {
+            table_id,
+            session_id: session.id,
+            customer_name: String(customer_name || '').trim() || null,
+            customer_email: String(customer_email || '').trim().toLowerCase() || null,
+          },
+        });
+
+        const inserted = await client.query(
+          `insert into public.checkout_payment_intents (
+            sessao_id, mesa_id, requested_by_user_id, payment_type, status, amount_total,
+            customer_name, customer_nif, customer_email, mbway_contact, send_email, terminal_id,
+            printer_agent_id, printer_id, printer_name,
+            provider_name, provider_reference, provider_status, provider_payload_json, metadata_json, expires_at
+          ) values (
+            $1, $2, $3, 'mbway', 'pending', $4,
+            $5, $6, $7, $8, $9, $10,
+            $11, $12, $13,
+            $14, $15, $16, $17::jsonb, $18::jsonb, now() + interval '15 minutes'
+          ) returning *`,
+          [
+            session.id,
+            session.mesa_id,
+            operator_id,
+            totals.total,
+            String(customer_name || '').trim() || null,
+            nifDigits || null,
+            String(customer_email || '').trim().toLowerCase() || null,
+            String(mbway_contact || '').trim() || null,
+            send_email === true,
+            terminal_id,
+            String(printer_agent_id || '').trim() || null,
+            String(printer_id || '').trim() || null,
+            String(printer_name || '').trim() || null,
+            providerResult.provider || 'mbway',
+            providerResult.provider_reference || merchantTransactionId,
+            providerResult.raw_status || providerResult.status || 'PENDING',
+            JSON.stringify(providerResult.response_payload || providerResult || {}),
+            JSON.stringify({ merchantTransactionId, print_invoice: print_invoice === true }),
+          ]
+        );
+
+        await insertAuditLog(client, {
+          actor_user_id: operator_id,
           terminal_id,
-        ]
-      );
-      const fatura = insertedFatura.rows[0];
+          entity_type: 'table_session',
+          entity_id: session.id,
+          action_type: 'mbway_checkout_requested',
+          payload: {
+            table_session_id: session.id,
+            table_id,
+            amount_total: totals.total,
+            provider_reference: providerResult.provider_reference || merchantTransactionId,
+          },
+        });
 
-      await client.query(
-        `insert into public.pagamentos (
-          sessao_id, fatura_id, tipo_pagamento, valor, dinheiro_recebido, troco, mbway_contacto, referencia, processed_by_user_id
-        ) values ($1, $2, $3::public.tipo_pagamento, $4, $5, $6, $7, $8, $9)`,
-        [
-          session.id,
-          fatura.id,
-          normalizedPayment,
-          totals.total,
-          normalizedPayment === 'dinheiro' ? amountReceived : null,
-          normalizedPayment === 'dinheiro' ? changeAmount : null,
-          normalizedPayment === 'mbway' ? String(mbway_contact || '').trim() || null : null,
-          normalizedPayment === 'mbway' ? String(mbway_contact || '').trim() || null : uiPaymentType(normalizedPayment),
-          operator_id,
-        ]
-      );
-
-      await client.query(
-        `update public.pedidos
-            set quem_faturou_id = $2,
-                data_faturacao = now(),
-                tipo_pagamento = $3::public.tipo_pagamento,
-                estado = case when estado <> 'cancelado' then 'fechado'::public.pedido_estado else estado end,
-                updated_at = now()
-          where sessao_id = $1`,
-        [session.id, operator_id, normalizedPayment]
-      );
-
-      await client.query(`select public.fechar_sessao($1, $2)`, [session.id, operator_id]);
-
-      await insertAuditLog(client, {
-        actor_user_id: operator_id,
-        terminal_id,
-        entity_type: 'table_session',
-        entity_id: session.id,
-        action_type: 'checkout_completed',
-        payload: {
-          table_session_id: session.id,
-          table_id,
-          table_name: session.table_name || null,
-          invoice_id: fatura.id,
-          invoice_number: invoiceNumber,
-          payment_type: uiPaymentType(normalizedPayment),
-          total: totals.total,
-        },
+        return { already_exists: false, row: inserted.rows[0] };
       });
 
-      const invoiceHtml = buildInvoiceHtml({
-        invoiceNumber,
-        createdAt: fatura.created_at || createdAt,
-        customerName: String(customer_name || '').trim() || null,
-        customerNif: nifDigits || null,
-        customerEmail: String(customer_email || '').trim().toLowerCase() || null,
-        paymentType: normalizedPayment,
-        amountReceived: normalizedPayment === 'dinheiro' ? amountReceived : totals.total,
-        changeAmount,
-        tableName: session.table_name || session.table_codigo || null,
-        items: totals.items,
-        totalSemIva: totals.total_sem_iva,
-        totalIva: totals.total_iva,
-        total: totals.total,
+      const paymentIntent = mapCheckoutPaymentIntent(intent.row);
+      return {
+        ok: true,
+        payment_flow: paymentIntent?.status === 'confirmed' ? 'confirmed' : 'pending_confirmation',
+        payment_intent: paymentIntent,
+        invoice: null,
+        payment: {
+          type: 'mbway',
+          amount_received: 0,
+          change_amount: 0,
+        },
+        email: { sent: false, reason: send_email ? 'awaiting_payment_confirmation' : 'not_requested' },
+        print: print_invoice
+          ? { requested: true, queued: false, reason: 'awaiting_payment_confirmation', printer_agent_id, printer_id, printer_name }
+          : { requested: false, queued: false, reason: 'not_requested' },
+        message: 'Pedido MB WAY criado. A mesa só fecha e a fatura só é gerada depois da confirmação do pagamento.',
+      };
+    }
+
+    const payload = await withTransaction(async (client) => finalizeCheckoutTransaction(client, {
+      table_id,
+      operator_id,
+      terminal_id,
+      payment_type: normalizedPayment,
+      amount_received,
+      customer_nif,
+      customer_name,
+      customer_email,
+      mbway_contact,
+    }));
+
+    return finalizeCheckoutSideEffects({
+      payload,
+      send_email,
+      print_invoice,
+      printer_agent_id,
+      printer_id,
+      printer_name,
+    });
+  }
+
+  async getCheckoutPaymentIntent(intent_id) {
+    return withClient(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(`select * from public.checkout_payment_intents where id = $1 limit 1`, [intent_id]);
+      const row = result.rows[0];
+      if (!row) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
+      return {
+        ok: true,
+        payment_flow: row.status === 'confirmed' ? 'confirmed' : row.status === 'pending' ? 'pending_confirmation' : row.status,
+        payment_intent: mapCheckoutPaymentIntent(row),
+        invoice: await getStoredInvoiceById(client, row.invoice_id),
+      };
+    });
+  }
+
+  async refreshCheckoutPaymentIntent({ intent_id, operator_id, terminal_id = 'terminal_main' }) {
+    const current = await withClient(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(`select * from public.checkout_payment_intents where id = $1 limit 1`, [intent_id]);
+      return result.rows[0] || null;
+    });
+    if (!current) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
+
+    if (current.status === 'confirmed') {
+      return withClient(async (client) => ({
+        ok: true,
+        payment_flow: 'confirmed',
+        payment_intent: mapCheckoutPaymentIntent(current),
+        invoice: await getStoredInvoiceById(client, current.invoice_id),
+      }));
+    }
+    if (['cancelled', 'expired', 'failed'].includes(String(current.status))) {
+      return {
+        ok: true,
+        payment_flow: current.status,
+        payment_intent: mapCheckoutPaymentIntent(current),
+        invoice: null,
+        message: `Pedido MB WAY ${current.status}.`,
+      };
+    }
+
+    const providerStatus = await mbwayService.getPaymentStatus({ provider_reference: current.provider_reference || current.id });
+    const normalizedProviderStatus = String(providerStatus.status || 'pending').toLowerCase();
+
+    if (normalizedProviderStatus === 'confirmed') {
+      const finalized = await withTransaction(async (client) => {
+        await ensureCheckoutPaymentIntentSchema(client);
+        const lockedRes = await client.query(`select * from public.checkout_payment_intents where id = $1 for update`, [intent_id]);
+        const row = lockedRes.rows[0];
+        if (!row) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
+        if (row.status === 'confirmed') {
+          return { row, payload: null, already_done: true };
+        }
+        if (row.status !== 'pending') {
+          return { row, payload: null, already_done: false };
+        }
+
+        const payload = await finalizeCheckoutTransaction(client, {
+          session_id: row.sessao_id,
+          operator_id: row.requested_by_user_id || operator_id,
+          terminal_id: row.terminal_id || terminal_id,
+          payment_type: 'mbway',
+          amount_received: row.amount_total,
+          customer_nif: row.customer_nif || '',
+          customer_name: row.customer_name || '',
+          customer_email: row.customer_email || '',
+          mbway_contact: row.mbway_contact || '',
+          payment_reference: row.provider_reference || row.id,
+        });
+
+        const updated = await client.query(
+          `update public.checkout_payment_intents
+              set status = 'confirmed',
+                  confirmed_at = now(),
+                  confirmed_by_user_id = $2,
+                  invoice_id = $3,
+                  invoice_file_path = $4,
+                  provider_status = $5,
+                  provider_payload_json = $6::jsonb,
+                  updated_at = now()
+            where id = $1
+        returning *`,
+          [intent_id, operator_id || row.requested_by_user_id || null, payload.invoice_id, payload.invoice_file_path, providerStatus.raw_status || 'CONFIRMED', JSON.stringify(providerStatus.response_payload || providerStatus || {})]
+        );
+
+        await insertAuditLog(client, {
+          actor_user_id: operator_id || row.requested_by_user_id || null,
+          terminal_id: row.terminal_id || terminal_id,
+          entity_type: 'table_session',
+          entity_id: row.sessao_id,
+          action_type: 'mbway_checkout_confirmed',
+          payload: {
+            table_session_id: row.sessao_id,
+            invoice_id: payload.invoice_id,
+            provider_reference: row.provider_reference || row.id,
+          },
+        });
+
+        return { row: updated.rows[0], payload, already_done: false };
+      });
+
+      if (finalized.payload) {
+        const response = await finalizeCheckoutSideEffects({
+          payload: finalized.payload,
+          send_email: finalized.row.send_email === true,
+          print_invoice: finalized.row.printer_id && finalized.row.printer_agent_id,
+          printer_agent_id: finalized.row.printer_agent_id || '',
+          printer_id: finalized.row.printer_id || '',
+          printer_name: finalized.row.printer_name || '',
+        });
+        return {
+          ...response,
+          payment_flow: 'confirmed',
+          payment_intent: mapCheckoutPaymentIntent(finalized.row),
+          message: 'Pagamento MB WAY confirmado. Mesa fechada e fatura gerada.',
+        };
+      }
+
+      return withClient(async (client) => ({
+        ok: true,
+        payment_flow: finalized.row.status === 'confirmed' ? 'confirmed' : finalized.row.status,
+        payment_intent: mapCheckoutPaymentIntent(finalized.row),
+        invoice: await getStoredInvoiceById(client, finalized.row.invoice_id),
+      }));
+    }
+
+    if (['cancelled', 'expired', 'failed'].includes(normalizedProviderStatus)) {
+      const updated = await withTransaction(async (client) => {
+        await ensureCheckoutPaymentIntentSchema(client);
+        const result = await client.query(
+          `update public.checkout_payment_intents
+              set status = $2,
+                  provider_status = $3,
+                  provider_payload_json = $4::jsonb,
+                  cancelled_at = case when $2 = 'cancelled' then now() else cancelled_at end,
+                  failed_at = case when $2 in ('failed','expired') then now() else failed_at end,
+                  updated_at = now()
+            where id = $1
+        returning *`,
+          [intent_id, normalizedProviderStatus, providerStatus.raw_status || normalizedProviderStatus.toUpperCase(), JSON.stringify(providerStatus.response_payload || providerStatus || {})]
+        );
+        return result.rows[0];
       });
 
       return {
-        invoice_id: fatura.id,
-        invoice_number: invoiceNumber,
-        invoice_file_path: invoiceFilePath,
-        invoice_html: invoiceHtml,
-        invoice_created_at: fatura.created_at || createdAt,
-        customer_email: String(customer_email || '').trim().toLowerCase() || null,
-        customer_name: String(customer_name || '').trim() || null,
-        total: totals.total,
-        total_sem_iva: totals.total_sem_iva,
-        total_iva: totals.total_iva,
-        payment_type: normalizedPayment,
-        amount_received: normalizedPayment === 'dinheiro' ? amountReceived : totals.total,
-        change_amount: changeAmount,
-        table_name: session.table_name || session.table_codigo || null,
+        ok: true,
+        payment_flow: normalizedProviderStatus,
+        payment_intent: mapCheckoutPaymentIntent(updated),
+        invoice: null,
+        message: `Pedido MB WAY ${normalizedProviderStatus}.`,
       };
-    });
-
-    const invoiceDiskPath = path.join(PUBLIC_INVOICES_DIR, path.basename(payload.invoice_file_path));
-    fs.writeFileSync(invoiceDiskPath, payload.invoice_html, 'utf8');
-
-    const appBaseUrl = String(process.env.APP_BASE_URL || '').replace(/\/$/, '');
-    const invoiceUrl = appBaseUrl ? `${appBaseUrl}${payload.invoice_file_path}` : payload.invoice_file_path;
-
-    let emailResult = { sent: false, reason: send_email ? 'missing_email' : 'not_requested' };
-    if (send_email && payload.customer_email) {
-      try {
-        emailResult = await sendInvoiceEmailIfNeeded({
-          customerEmail: payload.customer_email,
-          customerName: payload.customer_name,
-          invoiceNumber: payload.invoice_number,
-          invoiceHtml: payload.invoice_html,
-          invoiceUrl,
-          total: payload.total,
-        });
-        if (emailResult.sent) {
-          await withTransaction(async (client) => {
-            await ensureCheckoutSchema(client);
-            await client.query(`update public.faturas set enviada_por_email_em = now() where id = $1`, [payload.invoice_id]);
-          });
-        }
-      } catch (error) {
-        emailResult = { sent: false, reason: error.message || 'email_send_failed' };
-      }
     }
 
-    invalidateCache('tables', 'kitchen', 'serviceBoard', 'history', 'bootstrap');
+    const pendingUpdated = await withTransaction(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(
+        `update public.checkout_payment_intents
+            set provider_status = $2,
+                provider_payload_json = $3::jsonb,
+                updated_at = now()
+          where id = $1
+      returning *`,
+        [intent_id, providerStatus.raw_status || 'PENDING', JSON.stringify(providerStatus.response_payload || providerStatus || {})]
+      );
+      return result.rows[0];
+    });
 
     return {
       ok: true,
-      invoice: {
-        id: payload.invoice_id,
-        number: payload.invoice_number,
-        file_path: payload.invoice_file_path,
-        url: invoiceUrl,
-        total: payload.total,
-        total_sem_iva: payload.total_sem_iva,
-        total_iva: payload.total_iva,
-        created_at: payload.invoice_created_at,
-        customer_email: payload.customer_email,
-      },
-      payment: {
-        type: uiPaymentType(payload.payment_type),
-        amount_received: payload.amount_received,
-        change_amount: payload.change_amount,
-      },
-      email: emailResult,
-      message: emailResult.sent
-        ? 'Pagamento registado, fatura gerada e email enviado.'
-        : send_email
-          ? `Pagamento registado e fatura gerada. Email não enviado: ${emailResult.reason || 'falha desconhecida'}.`
-          : 'Pagamento registado e fatura gerada.',
+      payment_flow: 'pending_confirmation',
+      payment_intent: mapCheckoutPaymentIntent(pendingUpdated),
+      invoice: null,
+      message: 'Pagamento MB WAY ainda pendente de confirmação.',
+    };
+  }
+
+  async cancelCheckoutPaymentIntent({ intent_id, operator_id, terminal_id = 'terminal_main' }) {
+    const current = await withClient(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(`select * from public.checkout_payment_intents where id = $1 limit 1`, [intent_id]);
+      return result.rows[0] || null;
+    });
+    if (!current) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
+    if (current.status === 'confirmed') {
+      throw makeError('Este pedido já foi confirmado e já fechou a mesa.', 409, 'payment_intent_already_confirmed');
+    }
+
+    const cancelResult = await mbwayService.cancelPayment({ provider_reference: current.provider_reference || current.id });
+    const updated = await withTransaction(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(
+        `update public.checkout_payment_intents
+            set status = 'cancelled',
+                provider_status = $2,
+                provider_payload_json = $3::jsonb,
+                cancelled_at = now(),
+                updated_at = now()
+          where id = $1
+        returning *`,
+        [intent_id, cancelResult.raw_status || 'CANCELLED', JSON.stringify(cancelResult.response_payload || cancelResult || {})]
+      );
+      const row = result.rows[0];
+      if (row) {
+        await insertAuditLog(client, {
+          actor_user_id: operator_id || row.requested_by_user_id || null,
+          terminal_id: row.terminal_id || terminal_id,
+          entity_type: 'table_session',
+          entity_id: row.sessao_id,
+          action_type: 'mbway_checkout_cancelled',
+          payload: {
+            table_session_id: row.sessao_id,
+            provider_reference: row.provider_reference || row.id,
+          },
+        });
+      }
+      return row;
+    });
+
+    return {
+      ok: true,
+      payment_flow: 'cancelled',
+      payment_intent: mapCheckoutPaymentIntent(updated),
+      invoice: null,
+      message: 'Pedido MB WAY cancelado.',
     };
   }
 
@@ -3664,6 +4188,7 @@ export class RestaurantStore {
         credentials: {
           admin: { email: 'admin@rest.local', password: 'admin123' },
           worker: { email: 'worker@rest.local', password: 'worker123' },
+          kitchen: { email: 'joao.cozinha@rest.local', password: '1234' },
         },
       };
 

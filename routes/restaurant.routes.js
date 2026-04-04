@@ -66,6 +66,31 @@ function requireAdmin(req) {
   }
 }
 
+function requireAnyRole(req, allowedRoles = []) {
+  requireRestaurantAuth(req);
+  const role = String(req.restaurantAuth?.role || "").toLowerCase();
+  if (!allowedRoles.map((item) => String(item || "").toLowerCase()).includes(role)) {
+    const error = new Error("Sem permissões para esta área.");
+    error.statusCode = 403;
+    error.code = "role_forbidden";
+    throw error;
+  }
+}
+
+function requireMenuManager(req) {
+  requireAnyRole(req, ["admin", "kitchen"]);
+}
+
+function requireOperationalAccess(req) {
+  requireRestaurantAuth(req);
+  if (String(req.restaurantAuth?.role || "").toLowerCase() === "kitchen") {
+    const error = new Error("Perfil cozinha sem acesso a esta área.");
+    error.statusCode = 403;
+    error.code = "kitchen_restricted_area";
+    throw error;
+  }
+}
+
 function filterTablesForTerminal(tables = [], terminalId = "terminal_main", search = "") {
   const normalizedTerminal = String(terminalId || "terminal_main").trim().toLowerCase();
   const normalizedSearch = String(search || "").trim().toLowerCase();
@@ -323,10 +348,12 @@ router.patch("/workers/:workerId", asyncHandler(async (req, res) => {
 
 
 router.get('/payment-requests', asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   res.json(await restaurantStore.listPendingPaymentRequests({ terminal_id: String(req.query.terminal_id || req.query.terminal || 'terminal_main') }));
 }));
 
 router.post('/payment-requests/:requestId/approve', asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ['operator_id']);
   res.json(await restaurantStore.approvePaymentRequest({
     request_id: req.params.requestId,
@@ -336,6 +363,7 @@ router.post('/payment-requests/:requestId/approve', asyncHandler(async (req, res
 }));
 
 router.get("/tables", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   const terminalId = String(req.query.terminal_id || req.query.terminal || "terminal_main");
   const search = String(req.query.search || "");
   const tables = await restaurantStore.listTables();
@@ -441,15 +469,18 @@ router.get("/tables/manage/:tableId/print", asyncHandler(async (req, res) => {
 }));
 
 router.get("/tables/:tableId", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   const includeHistory = String(req.query.include_history || "").trim() === "1";
   res.json(await restaurantStore.getTableDetails(req.params.tableId, { includeHistory }));
 }));
 
 router.get("/tables/:tableId/history", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   res.json(await restaurantStore.getHistory(req.params.tableId));
 }));
 
 router.post("/tables/open", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["table_id", "operator_id"]);
   const result = await restaurantStore.openTable({
     table_id: req.body.table_id,
@@ -461,6 +492,7 @@ router.post("/tables/open", asyncHandler(async (req, res) => {
 }));
 
 router.post("/tables/:tableId/items", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["menu_item_id", "operator_id"]);
   const result = await restaurantStore.addItem({
     table_id: req.params.tableId,
@@ -474,6 +506,7 @@ router.post("/tables/:tableId/items", asyncHandler(async (req, res) => {
 }));
 
 router.patch("/tables/:tableId/items/:orderItemId", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["quantity", "operator_id"]);
   const result = await restaurantStore.updateItemQuantity({
     table_id: req.params.tableId,
@@ -486,6 +519,7 @@ router.patch("/tables/:tableId/items/:orderItemId", asyncHandler(async (req, res
 }));
 
 router.delete("/tables/:tableId/items/:orderItemId", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.removeItem({
     table_id: req.params.tableId,
@@ -497,6 +531,7 @@ router.delete("/tables/:tableId/items/:orderItemId", asyncHandler(async (req, re
 }));
 
 router.post("/tables/:tableId/items/:orderItemId/status", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["status", "operator_id"]);
   const result = await restaurantStore.updateOrderItemStatus({
     table_id: req.params.tableId,
@@ -509,6 +544,7 @@ router.post("/tables/:tableId/items/:orderItemId/status", asyncHandler(async (re
 }));
 
 router.post("/tables/:tableId/send-to-kitchen", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.sendTableToKitchen({
     table_id: req.params.tableId,
@@ -520,6 +556,7 @@ router.post("/tables/:tableId/send-to-kitchen", asyncHandler(async (req, res) =>
 }));
 
 router.get("/tables/:tableId/checkout-preview", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   const result = await restaurantStore.getCheckoutPreview({
     table_id: req.params.tableId,
   });
@@ -527,6 +564,7 @@ router.get("/tables/:tableId/checkout-preview", asyncHandler(async (req, res) =>
 }));
 
 router.post("/tables/:tableId/checkout", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id", "payment_type"]);
   const result = await restaurantStore.processCheckout({
     table_id: req.params.tableId,
@@ -539,11 +577,16 @@ router.post("/tables/:tableId/checkout", asyncHandler(async (req, res) => {
     customer_email: req.body.customer_email || "",
     mbway_contact: req.body.mbway_contact || "",
     send_email: req.body.send_email === true,
+    print_invoice: req.body.print_invoice === true,
+    printer_id: req.body.printer_id || "",
+    printer_agent_id: req.body.printer_agent_id || "",
+    printer_name: req.body.printer_name || "",
   });
   res.json(result);
 }));
 
 router.post("/tables/:tableId/transfer-to-takeaway", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.moveTableToTakeaway({
     table_id: req.params.tableId,
@@ -555,6 +598,7 @@ router.post("/tables/:tableId/transfer-to-takeaway", asyncHandler(async (req, re
 }));
 
 router.post("/tables/:tableId/close", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.closeTable({
     table_id: req.params.tableId,
@@ -592,19 +636,19 @@ router.post('/kitchen/items/:orderItemId/note-chat/reply', asyncHandler(async (r
 }));
 
 router.get("/menu-profiles", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   res.json(await restaurantStore.listMenuProfiles());
 }));
 
 router.get("/menu-config", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   const menu_key = String(req.query.menu_key || "sala");
   const day = req.query.day !== undefined ? Number(req.query.day) : undefined;
   res.json(await restaurantStore.getMenuConfig(menu_key, day));
 }));
 
 router.patch("/menu-config/:menuKey/items/:menuItemId", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["operator_id"]);
   let result;
   if (Array.isArray(req.body.days)) {
@@ -634,7 +678,7 @@ router.get("/categories", asyncHandler(async (_req, res) => {
 }));
 
 router.post("/categories", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["name"]);
   const result = await restaurantStore.createCategory({
     name: req.body.name,
@@ -644,7 +688,7 @@ router.post("/categories", asyncHandler(async (req, res) => {
 }));
 
 router.patch("/categories/:categoryId", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   const result = await restaurantStore.updateCategory({
     category_id: req.params.categoryId,
     name: req.body.name,
@@ -654,7 +698,7 @@ router.patch("/categories/:categoryId", asyncHandler(async (req, res) => {
 }));
 
 router.delete("/categories/:categoryId", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   const result = await restaurantStore.deleteCategory({
     category_id: req.params.categoryId,
   });
@@ -662,7 +706,7 @@ router.delete("/categories/:categoryId", asyncHandler(async (req, res) => {
 }));
 
 router.post("/uploads/menu-image", upload.single("image"), asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   if (!req.file) {
     const error = new Error("Imagem obrigatória.");
     error.statusCode = 400;
@@ -681,7 +725,7 @@ router.get("/menu-items", asyncHandler(async (_req, res) => {
 }));
 
 router.post("/menu-items", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["name", "operator_id"]);
   const result = await restaurantStore.createMenuItem({
     name: req.body.name,
@@ -701,7 +745,7 @@ router.post("/menu-items", asyncHandler(async (req, res) => {
 }));
 
 router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.updateMenuItem({
     menu_item_id: req.params.menuItemId,
@@ -721,7 +765,7 @@ router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
   res.json(result);
 }));
 router.delete("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["operator_id"]);
   const result = await restaurantStore.archiveMenuItem({
     menu_item_id: req.params.menuItemId,
@@ -733,7 +777,7 @@ router.delete("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
 
 
 router.post("/menu-items/:menuItemId/reorder", asyncHandler(async (req, res) => {
-  requireAdmin(req);
+  requireMenuManager(req);
   requireBodyFields(req.body, ["direction"]);
   const result = await restaurantStore.reorderMenuItem({
     menu_item_id: req.params.menuItemId,
@@ -742,15 +786,49 @@ router.post("/menu-items/:menuItemId/reorder", asyncHandler(async (req, res) => 
   res.json(result);
 }));
 
-router.get("/invoices/local", asyncHandler(async (_req, res) => {
+
+router.get("/printers", asyncHandler(async (req, res) => {
+  requireRestaurantAuth(req);
+  res.json(await restaurantStore.listRegisteredPrinters());
+}));
+
+router.get("/payment-intents/:intentId", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
+  res.json(await restaurantStore.getCheckoutPaymentIntent(req.params.intentId));
+}));
+
+router.post("/payment-intents/:intentId/refresh", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
+  requireBodyFields(req.body, ["operator_id"]);
+  res.json(await restaurantStore.refreshCheckoutPaymentIntent({
+    intent_id: req.params.intentId,
+    operator_id: req.body.operator_id,
+    terminal_id: req.body.terminal_id || "terminal_main",
+  }));
+}));
+
+router.post("/payment-intents/:intentId/cancel", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
+  requireBodyFields(req.body, ["operator_id"]);
+  res.json(await restaurantStore.cancelCheckoutPaymentIntent({
+    intent_id: req.params.intentId,
+    operator_id: req.body.operator_id,
+    terminal_id: req.body.terminal_id || "terminal_main",
+  }));
+}));
+
+router.get("/invoices/local", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   res.json(await restaurantStore.listLocalInvoices());
 }));
 
-router.get("/invoices", asyncHandler(async (_req, res) => {
+router.get("/invoices", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   res.json(await restaurantStore.listLocalInvoices());
 }));
 
-router.get("/service-board", asyncHandler(async (_req, res) => {
+router.get("/service-board", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
   res.json(await restaurantStore.getServiceBoard());
 }));
 
