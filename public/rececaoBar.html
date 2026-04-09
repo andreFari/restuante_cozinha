@@ -179,7 +179,7 @@
       import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from './js/restaurant-shell.js';
       setTerminalId('terminal_bar');
       const TODAY = new Date().getDay();
-      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, paymentRequests: [] };
+      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, pendingPaymentIntent: null, paymentRequests: [] };
       const tablesList = document.getElementById('tablesList');
       const searchInput = document.getElementById('searchInput');
       const zoneFilters = document.getElementById('zoneFilters');
@@ -456,18 +456,19 @@
         if (!state.selectedTableId) return toast('Seleciona mesa primeiro.', true);
         try {
           state.checkoutPreview = await restaurantApi.checkoutPreview(state.selectedTableId);
+          state.pendingPaymentIntent = state.checkoutPreview.pending_payment_intent || null;
           checkoutTotal.textContent = euro(state.checkoutPreview.total || 0);
           checkoutTableName.textContent = state.checkoutPreview.table_name || '—';
           document.getElementById('checkoutReceived').value = Number(state.checkoutPreview.total || 0).toFixed(2);
-          document.getElementById('checkoutName').value = '';
-          document.getElementById('checkoutNif').value = '';
-          document.getElementById('checkoutEmail').value = '';
-          document.getElementById('checkoutMbway').value = '';
-          document.getElementById('checkoutSendEmail').checked = true;
-          checkoutPaymentType.value = 'dinheiro';
+          document.getElementById('checkoutName').value = state.pendingPaymentIntent?.customer_name || '';
+          document.getElementById('checkoutNif').value = state.pendingPaymentIntent?.customer_nif || '';
+          document.getElementById('checkoutEmail').value = state.pendingPaymentIntent?.customer_email || '';
+          document.getElementById('checkoutMbway').value = state.pendingPaymentIntent?.mbway_contact || '';
+          document.getElementById('checkoutSendEmail').checked = state.pendingPaymentIntent ? state.pendingPaymentIntent.send_email === true : true;
+          checkoutPaymentType.value = state.pendingPaymentIntent ? 'mbway' : 'dinheiro';
           syncPaymentTypeUI();
           updateChangePreview();
-          checkoutPendingBox.innerHTML = state.checkoutPreview.can_close ? '' : `<div class="checkout-summary" style="margin-top:16px"><strong>Itens ainda por fechar</strong><div class="pending-list">${state.checkoutPreview.pending_items.map((item) => `<div class="pending-pill">${escapeHtml(item.name)} · ${item.quantity}x · ${escapeHtml(item.raw_status)}</div>`).join('')}</div></div>`;
+          renderCheckoutPendingState();
           checkoutModal.classList.add('show');
         } catch (error) { toast(error.message, true); }
       }
@@ -476,6 +477,68 @@
         const paymentType = checkoutPaymentType.value;
         cashGrid.style.display = paymentType === 'dinheiro' ? 'grid' : 'none';
         mbwayGrid.style.display = paymentType === 'mbway' ? 'grid' : 'none';
+      }
+
+      function renderCheckoutPendingState() {
+        const pendingItemsHtml = state.checkoutPreview?.can_close
+          ? ''
+          : `<div class="checkout-summary" style="margin-top:16px"><strong>Itens ainda por fechar</strong><div class="pending-list">${(state.checkoutPreview?.pending_items || []).map((item) => `<div class="pending-pill">${escapeHtml(item.name)} · ${item.quantity}x · ${escapeHtml(item.raw_status)}</div>`).join('')}</div></div>`;
+
+        const pendingIntent = state.pendingPaymentIntent && String(state.pendingPaymentIntent.status || '').toLowerCase() === 'pending'
+          ? state.pendingPaymentIntent
+          : null;
+
+        const pendingIntentHtml = pendingIntent
+          ? `<div class="checkout-summary" style="margin-top:16px;border:1px solid #fbbf24;background:#fffbeb"><strong>Pagamento MB WAY pendente</strong><div class="muted" style="margin-top:6px">Referência ${escapeHtml(pendingIntent.provider_reference || pendingIntent.id || '—')}</div><div class="muted">A mesa continua aberta até o pagamento ser confirmado.</div><div class="chip-row" style="margin-top:12px"><button type="button" id="refreshPendingCheckoutBtn" class="secondary-btn">Verificar pagamento</button><button type="button" id="cancelPendingCheckoutBtn" class="secondary-btn tone-danger">Cancelar pedido</button></div></div>`
+          : '';
+
+        checkoutPendingBox.innerHTML = [pendingIntentHtml, pendingItemsHtml].filter(Boolean).join('');
+        document.getElementById('refreshPendingCheckoutBtn')?.addEventListener('click', refreshPendingCheckoutIntent);
+        document.getElementById('cancelPendingCheckoutBtn')?.addEventListener('click', cancelPendingCheckoutIntent);
+        const submitBtn = checkoutForm.querySelector('[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = Boolean(pendingIntent) || !state.checkoutPreview?.can_close;
+          submitBtn.textContent = pendingIntent ? 'MB WAY pendente' : 'Pagar e fechar';
+        }
+      }
+
+      async function refreshPendingCheckoutIntent() {
+        if (!state.pendingPaymentIntent?.id) return toast('Não existe pedido MB WAY pendente.', true);
+        try {
+          const result = await restaurantApi.refreshPaymentIntent(state.pendingPaymentIntent.id);
+          if (result.payment_flow === 'confirmed') {
+            toast(result.message || 'Pagamento MB WAY confirmado.');
+            state.pendingPaymentIntent = null;
+            checkoutModal.classList.remove('show');
+            state.selectedTableId = null;
+            await refreshAll(true);
+            return;
+          }
+          if (['cancelled', 'expired', 'failed'].includes(String(result.payment_intent?.status || '').toLowerCase())) {
+            state.pendingPaymentIntent = null;
+            if (state.checkoutPreview) state.checkoutPreview.pending_payment_intent = null;
+            renderCheckoutPendingState();
+            await renderSelectedTable();
+            toast(result.message || 'Pedido MB WAY já não está ativo.', true);
+            return;
+          }
+          state.pendingPaymentIntent = result.payment_intent || state.pendingPaymentIntent;
+          if (state.checkoutPreview) state.checkoutPreview.pending_payment_intent = state.pendingPaymentIntent;
+          renderCheckoutPendingState();
+          toast(result.message || 'Pagamento MB WAY ainda pendente.');
+        } catch (error) { toast(error.message, true); }
+      }
+
+      async function cancelPendingCheckoutIntent() {
+        if (!state.pendingPaymentIntent?.id) return toast('Não existe pedido MB WAY pendente.', true);
+        try {
+          const result = await restaurantApi.cancelPaymentIntent(state.pendingPaymentIntent.id);
+          state.pendingPaymentIntent = null;
+          if (state.checkoutPreview) state.checkoutPreview.pending_payment_intent = null;
+          renderCheckoutPendingState();
+          await renderSelectedTable();
+          toast(result.message || 'Pedido MB WAY cancelado.');
+        } catch (error) { toast(error.message, true); }
       }
 
       function updateChangePreview() {
@@ -487,6 +550,7 @@
       async function submitCheckout(event) {
         event.preventDefault();
         if (!state.selectedTableId) return;
+        if (state.pendingPaymentIntent?.id && String(state.pendingPaymentIntent.status || '').toLowerCase() === 'pending') return toast('Já existe um pedido MB WAY pendente nesta mesa.', true);
         if (!state.checkoutPreview?.can_close) return toast('Ainda existem itens por entregar/cancelar.', true);
         const payload = {
           payment_type: checkoutPaymentType.value,

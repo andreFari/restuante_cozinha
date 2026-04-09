@@ -966,6 +966,54 @@ async function getStoredInvoiceById(client, invoiceId) {
   return mapStoredInvoice(result.rows[0]);
 }
 
+async function expireStaleCheckoutPaymentIntents(client, { sessionId = null, intentId = null } = {}) {
+  await ensureCheckoutPaymentIntentSchema(client);
+  const clauses = ["status = 'pending'", 'expires_at is not null', 'expires_at <= now()'];
+  const values = [];
+  if (sessionId) {
+    values.push(sessionId);
+    clauses.push(`sessao_id = $${values.length}`);
+  }
+  if (intentId) {
+    values.push(intentId);
+    clauses.push(`id = $${values.length}`);
+  }
+  await client.query(
+    `update public.checkout_payment_intents
+        set status = 'expired',
+            provider_status = coalesce(nullif(provider_status, ''), 'EXPIRED'),
+            failed_at = coalesce(failed_at, now()),
+            updated_at = now()
+      where ${clauses.join(' and ')}`,
+    values
+  );
+}
+
+async function getLatestActiveCheckoutPaymentIntent(client, { sessionId = null, tableId = null } = {}) {
+  if (!sessionId && !tableId) return null;
+  await ensureCheckoutPaymentIntentSchema(client);
+  await expireStaleCheckoutPaymentIntents(client, { sessionId });
+  const clauses = ["status = 'pending'", '(expires_at is null or expires_at > now())'];
+  const values = [];
+  if (sessionId) {
+    values.push(sessionId);
+    clauses.push(`sessao_id = $${values.length}`);
+  }
+  if (tableId) {
+    values.push(tableId);
+    clauses.push(`mesa_id = $${values.length}`);
+  }
+  const result = await client.query(
+    `select *
+       from public.checkout_payment_intents
+      where ${clauses.join(' and ')}
+      order by created_at desc
+      limit 1`,
+    values
+  );
+  return result.rows[0] || null;
+}
+
 function queueInvoicePrint({ invoiceUrl, printer_agent_id = '', printer_id = '', printer_name = '' }) {
   if (!printer_agent_id || !printer_id) {
     return { requested: false, queued: false, reason: 'printer_not_selected' };
@@ -2361,6 +2409,7 @@ export class RestaurantStore {
       if (!table) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
 
       const session = await getActiveSessionRow(client, table_id);
+      const pendingCheckoutPaymentIntent = session ? await getLatestActiveCheckoutPaymentIntent(client, { sessionId: session.id, tableId: table_id }) : null;
       const orderItems = session ? await getSessionItems(client, session.id) : [];
       const visibleOrderItems = orderItems.filter((item) => item.estado !== 'cancelado');
       const kitchenItems = visibleOrderItems.filter((item) => ['enviado', 'em_preparo', 'pronto', 'entregue'].includes(item.estado));
@@ -2430,6 +2479,7 @@ export class RestaurantStore {
           total,
           total_items: visibleOrderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
         },
+        pending_checkout_payment_intent: mapCheckoutPaymentIntent(pendingCheckoutPaymentIntent),
       };
 
       if (includeHistory) {
@@ -2885,10 +2935,12 @@ export class RestaurantStore {
   async getCheckoutPreview({ table_id }) {
     return withTransaction(async (client) => {
       await ensureCheckoutSchema(client);
+      await ensureCheckoutPaymentIntentSchema(client);
       const session = await getActiveSessionRow(client, table_id);
       if (!session) throw makeError('Mesa não aberta.', 409, 'table_not_open');
       const totals = await computeSessionTotals(client, session.id);
       const pendingItems = totals.items.filter((item) => !['entregue', 'cancelado'].includes(item.estado));
+      const pendingPaymentIntent = await getLatestActiveCheckoutPaymentIntent(client, { sessionId: session.id, tableId: table_id });
       return {
         table_id,
         session_id: session.id,
@@ -2903,6 +2955,7 @@ export class RestaurantStore {
           raw_status: item.estado,
           quantity: Number(item.quantity || 0),
         })),
+        pending_payment_intent: mapCheckoutPaymentIntent(pendingPaymentIntent),
         suggested_payment_types: ['dinheiro', 'mbway', 'multibanco'],
       };
     });
@@ -2953,12 +3006,14 @@ export class RestaurantStore {
           throw makeError('NIF inválido. Usa 9 dígitos ou deixa vazio.', 400, 'invalid_nif');
         }
 
+        await expireStaleCheckoutPaymentIntents(client, { sessionId: session.id });
         const existing = await client.query(
           `select *
              from public.checkout_payment_intents
             where sessao_id = $1
               and payment_type = 'mbway'
               and status = 'pending'
+              and (expires_at is null or expires_at > now())
             order by created_at desc
             limit 1`,
           [session.id]
@@ -3075,6 +3130,7 @@ export class RestaurantStore {
   async getCheckoutPaymentIntent(intent_id) {
     return withClient(async (client) => {
       await ensureCheckoutPaymentIntentSchema(client);
+      await expireStaleCheckoutPaymentIntents(client, { intentId: intent_id });
       const result = await client.query(`select * from public.checkout_payment_intents where id = $1 limit 1`, [intent_id]);
       const row = result.rows[0];
       if (!row) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
@@ -3090,6 +3146,7 @@ export class RestaurantStore {
   async refreshCheckoutPaymentIntent({ intent_id, operator_id, terminal_id = 'terminal_main' }) {
     const current = await withClient(async (client) => {
       await ensureCheckoutPaymentIntentSchema(client);
+      await expireStaleCheckoutPaymentIntents(client, { intentId: intent_id });
       const result = await client.query(`select * from public.checkout_payment_intents where id = $1 limit 1`, [intent_id]);
       return result.rows[0] || null;
     });
@@ -4314,6 +4371,7 @@ export class RestaurantStore {
     const visibleItems = items.filter((item) => item.estado !== 'cancelado');
     const menuItems = menuItemsForLocal(await readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => getMenuItemsFromDb(client)), String(table?.local_nome || 'restaurante'));
     const paymentRequest = mapCustomerPaymentRequest(await getLatestCustomerCheckoutRequest(client, session.id));
+    const checkoutPaymentIntent = await getLatestActiveCheckoutPaymentIntent(client, { sessionId: session.id, tableId: session.mesa_id });
     const noteThreadMap = await getCustomerNoteThreadMapForSession(client, session.id);
     return {
       session: {
@@ -4352,6 +4410,7 @@ export class RestaurantStore {
         total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
       },
       payment_request: paymentRequest,
+      checkout_payment_intent: mapCheckoutPaymentIntent(checkoutPaymentIntent),
     };
   }
 
