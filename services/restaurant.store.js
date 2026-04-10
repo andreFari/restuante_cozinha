@@ -1712,6 +1712,8 @@ async function getCategoriesFromDb(client) {
 }
 
 async function listTablesDetailedDb(client) {
+  await ensureCheckoutPaymentIntentSchema(client);
+
   const tablesResult = await client.query(
     `select m.id, m.codigo, m.nome, m.capacidade, m.ativa, m.estado, m.estado_pagamento,
             l.id as local_id, l.nome as local_nome
@@ -1733,7 +1735,21 @@ async function listTablesDetailedDb(client) {
   const sessionIds = sessionsResult.rows.map((row) => row.id);
 
   const itemAggMap = new Map();
+  const pendingCheckoutPaymentMap = new Map();
   if (sessionIds.length) {
+    await client.query(
+      `update public.checkout_payment_intents
+          set status = 'expired',
+              provider_status = coalesce(nullif(provider_status, ''), 'EXPIRED'),
+              failed_at = coalesce(failed_at, now()),
+              updated_at = now()
+        where status = 'pending'
+          and expires_at is not null
+          and expires_at <= now()
+          and sessao_id = any($1::text[])`,
+      [sessionIds]
+    );
+
     const itemAgg = await client.query(
       `select p.sessao_id,
               count(pi.id) as line_count,
@@ -1752,6 +1768,20 @@ async function listTablesDetailedDb(client) {
     for (const row of itemAgg.rows) {
       itemAggMap.set(row.sessao_id, row);
     }
+
+    const pendingCheckoutPayments = await client.query(
+      `select distinct on (sessao_id) *
+         from public.checkout_payment_intents
+        where sessao_id = any($1::text[])
+          and status = 'pending'
+          and (expires_at is null or expires_at > now())
+        order by sessao_id, created_at desc`,
+      [sessionIds]
+    );
+
+    for (const row of pendingCheckoutPayments.rows) {
+      pendingCheckoutPaymentMap.set(String(row.sessao_id), row);
+    }
   }
 
   return tablesResult.rows
@@ -1759,6 +1789,7 @@ async function listTablesDetailedDb(client) {
     .map((row) => {
       const session = sessionMap.get(row.id) || null;
       const agg = session ? itemAggMap.get(session.id) || null : null;
+      const pendingCheckoutPaymentIntent = session ? pendingCheckoutPaymentMap.get(String(session.id)) || null : null;
       const sessionStatus = session
         ? deriveSessionUiStatus({
             closedAt: session.fechada_em,
@@ -1768,6 +1799,9 @@ async function listTablesDetailedDb(client) {
               ...(Number(agg?.draft_items || 0) ? [{ estado: 'rascunho' }] : []),
             ],
           })
+        : null;
+      const paymentPendingLabel = pendingCheckoutPaymentIntent
+        ? `${String(uiPaymentType(pendingCheckoutPaymentIntent.payment_type || 'mbway') || 'mbway').toUpperCase()} pendente`
         : null;
 
       return {
@@ -1782,6 +1816,9 @@ async function listTablesDetailedDb(client) {
         local_id: row.local_id,
         local_nome: row.local_nome,
         estado_pagamento: row.estado_pagamento,
+        has_pending_checkout_payment: Boolean(pendingCheckoutPaymentIntent),
+        payment_pending_label: paymentPendingLabel,
+        pending_checkout_payment_intent: mapCheckoutPaymentIntent(pendingCheckoutPaymentIntent),
         session: session
           ? {
               id: session.id,

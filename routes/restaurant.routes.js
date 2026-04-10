@@ -100,6 +100,8 @@ function filterTablesForTerminal(tables = [], terminalId = "terminal_main", sear
     const zone = String(table?.zone || "").toLowerCase();
     const code = String(table?.codigo || "").toLowerCase();
     const name = String(table?.name || table?.nome || "").toLowerCase();
+    const sessionStatus = String(table?.session?.status || "").toLowerCase();
+    const paymentPending = table?.has_pending_checkout_payment ? String(table?.payment_pending_label || 'pagamento pendente mbway').toLowerCase() : "";
 
     let terminalMatch = true;
     if (normalizedTerminal === "terminal_bar") terminalMatch = localNome === "bar" || zone === "bar";
@@ -109,7 +111,7 @@ function filterTablesForTerminal(tables = [], terminalId = "terminal_main", sear
     if (!terminalMatch) return false;
     if (!normalizedSearch) return true;
 
-    return [name, code, zone, localNome].some((value) => value.includes(normalizedSearch));
+    return [name, code, zone, localNome, sessionStatus, paymentPending].some((value) => value.includes(normalizedSearch));
   });
 
   return filtered;

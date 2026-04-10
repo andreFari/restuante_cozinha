@@ -330,12 +330,22 @@
         document.getElementById('kpiAverage').textContent = euro(average);
       }
 
+      function getPendingPaymentLabel(table) {
+        return table?.payment_pending_label || (table?.has_pending_checkout_payment ? 'MB WAY pendente' : '');
+      }
+
+      function renderPendingPaymentChip(table) {
+        const label = getPendingPaymentLabel(table);
+        if (!label) return '';
+        return `<span class="soft-badge" style="background:#fff1f2;color:#9f1239;border-color:#fecdd3">${escapeHtml(label)}</span>`;
+      }
+
       function renderTables() {
         const term = searchInput.value.trim().toLowerCase();
-        const tables = filteredTables(state.bootstrap?.tables || []).filter((table) => !term || [table.name, table.zone, table.session?.status].some((value) => String(value || '').toLowerCase().includes(term)));
+        const tables = filteredTables(state.bootstrap?.tables || []).filter((table) => !term || [table.name, table.zone, table.session?.status, getPendingPaymentLabel(table)].some((value) => String(value || '').toLowerCase().includes(term)));
         tablesList.innerHTML = tables.length ? tables.map((table) => `
-          <article class="table-card ${state.selectedTableId === table.id ? 'is-active' : ''}" data-table-id="${table.id}">
-            <div class="table-card-head"><strong>${table.name}</strong><span class="badge ${table.session?.status || 'free'}">${table.session?.status || 'livre'}</span></div>
+          <article class="table-card ${state.selectedTableId === table.id ? 'is-active' : ''}" data-table-id="${table.id}" style="${table.has_pending_checkout_payment ? 'border:1px solid #fecdd3;' : ''}">
+            <div class="table-card-head"><strong>${table.name}</strong><div class="chip-row"><span class="badge ${table.session?.status || 'free'}">${table.session?.status || 'livre'}</span>${renderPendingPaymentChip(table)}</div></div>
             <div class="muted">${table.zone} · ${table.capacity} lugares</div>
             <div class="row-between muted"><span>${table.metrics?.total_items || 0} itens</span><span>${table.metrics?.pending_kitchen || 0} cozinha</span><span>${euro(table.metrics?.total || 0)}</span></div>
           </article>`).join('') : `<div class="empty-state">Sem mesas com estes filtros.</div>`;
@@ -398,10 +408,12 @@
         }
         state.details = await restaurantApi.getTable(state.selectedTableId);
         const details = state.details; const session = details.session;
+        const pendingIntent = details.pending_checkout_payment_intent || null;
+        const pendingLabel = pendingIntent ? ((pendingIntent.payment_type || 'mbway').toUpperCase() + ' pendente') : '';
         selectedTableTitle.textContent = details.table?.name || 'Pedido atual';
-        selectedTableBadge.textContent = session?.status || 'livre';
-        selectedTableBadge.className = `badge ${session?.status || ''}`;
-        tableSummary.textContent = session ? `${session.status} · aberta há ${relativeMinutes(session.opened_at)} · total ${euro(details.totals?.total || 0)}` : 'Mesa livre.';
+        selectedTableBadge.textContent = pendingLabel || session?.status || 'livre';
+        selectedTableBadge.className = `badge ${pendingIntent ? 'checkout' : (session?.status || '')}`;
+        tableSummary.textContent = session ? `${session.status}${pendingLabel ? ` · ${pendingLabel}` : ''} · aberta há ${relativeMinutes(session.opened_at)} · total ${euro(details.totals?.total || 0)}` : 'Mesa livre.';
         const kitchenItems = (details.order_items || []).filter((item) => (item.flow || item.station) === 'cozinha');
         const serviceItems = (details.order_items || []).filter((item) => (item.flow || item.station) !== 'cozinha');
         kitchenItemsBox.innerHTML = renderOrderItems(kitchenItems, true);
