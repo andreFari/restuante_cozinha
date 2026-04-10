@@ -271,9 +271,24 @@ router.post('/customer/session/:sessionId/items/:orderItemId/note-chat/reply', a
   res.json(result);
 }));
 
+router.post('/payments/eupago/webhook', asyncHandler(async (req, res) => {
+  const result = await restaurantStore.processEupagoWebhook({
+    payload: req.body || {},
+    headers: req.headers || {},
+  });
+  res.status(200).json(result || { ok: true });
+}));
+
 router.use((req, _res, next) => {
   try {
-    if (req.path.startsWith('/customer') || req.originalUrl?.includes('/customer/')) {
+    const path = String(req.path || '');
+    const originalUrl = String(req.originalUrl || '');
+    if (
+      path.startsWith('/customer') ||
+      originalUrl.includes('/customer/') ||
+      path === '/payments/eupago/webhook' ||
+      path.startsWith('/payments/eupago/webhook/')
+    ) {
       return next();
     }
     requireRestaurantAuth(req);
@@ -678,7 +693,13 @@ router.patch("/menu-config/:menuKey/items/:menuItemId", asyncHandler(async (req,
 router.get("/categories", asyncHandler(async (_req, res) => {
   res.json(await restaurantStore.listCategories());
 }));
+router.post("/payments/eupago/webhook", asyncHandler(async (req, res) => {
+  console.log("[eupago webhook] headers:", req.headers);
+  console.log("[eupago webhook] body:", JSON.stringify(req.body || {}, null, 2));
 
+  // por agora só confirma receção
+  res.status(200).json({ ok: true });
+}));
 router.post("/categories", asyncHandler(async (req, res) => {
   requireMenuManager(req);
   requireBodyFields(req.body, ["name"]);

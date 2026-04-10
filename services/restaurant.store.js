@@ -6,12 +6,16 @@ import { query, withClient, withTransaction } from '../src/db.js';
 import { mbwayService } from './mbway.service.js';
 import { printersService } from './printers.service.js';
 const ACTIVE_DB_SESSION_STATES = ['rascunho', 'enviado', 'em_preparo', 'parcialmente_pronto', 'pronto', 'entregue'];
+
+
 const MENU_PROFILE_DEFS = [
   { id: 'sala', name: 'Restaurante interior', description: 'Menu servido dentro do restaurante.', local_nome: 'restaurante' },
   { id: 'esplanada', name: 'Fora do restaurante', description: 'Menu de exterior / esplanada.', local_nome: 'esplanada' },
   { id: 'takeaway', name: 'Takeaway', description: 'Menu para levar.', local_nome: 'takeaway' },
   { id: 'bar', name: 'Bar', description: 'Menu de bar, bebidas e snacks.', local_nome: 'bar' },
 ];
+
+
 const DAY_SET = [0, 1, 2, 3, 4, 5, 6];
 const KITCHEN_STATUSES = ['new', 'in_progress', 'ready', 'delivered'];
 const WIFI_SECURITY_SET = new Set(['WPA', 'WEP', 'nopass']);
@@ -20,6 +24,49 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const PUBLIC_INVOICES_DIR = path.join(process.cwd(), 'public', 'invoices');
 fs.mkdirSync(PUBLIC_INVOICES_DIR, { recursive: true });
 
+async function httpForm(url, { method = 'POST', headers = {}, form } = {}) {
+  const body =
+    form instanceof URLSearchParams
+      ? form.toString()
+      : new URLSearchParams(form || {}).toString();
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      ...headers,
+    },
+    body,
+  });
+
+  const rawText = await response.text();
+  let data = null;
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { raw: rawText };
+    }
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.detail ||
+      data?.message ||
+      data?.error ||
+      data?.errors?.[0]?.message ||
+      data?.status?.message ||
+      `HTTP ${response.status}`
+    );
+    error.statusCode = response.status;
+    error.payload = data;
+    throw error;
+  }
+
+  return data || {};
+}
 const HOT_CACHE = new Map();
 const HOT_CACHE_TTLS = {
   menuItems: 4000,
@@ -3339,6 +3386,234 @@ export class RestaurantStore {
       payment_intent: mapCheckoutPaymentIntent(pendingUpdated),
       invoice: null,
       message: 'Pagamento MB WAY ainda pendente de confirmação.',
+    };
+  }
+
+
+  async processEupagoWebhook({ payload = {}, headers = {} }) {
+    const transaction = payload?.transactions && typeof payload.transactions === 'object' ? payload.transactions : {};
+    const channel = payload?.channel && typeof payload.channel === 'object' ? payload.channel : {};
+
+    const rawMethod = String(transaction.method || '').trim();
+    const rawStatus = String(transaction.status || '').trim();
+    const identifier = String(transaction.identifier || '').trim();
+    const providerReference = String(transaction.trid || transaction.reference || '').trim();
+
+    const normalizedMethod = rawMethod.toLowerCase();
+    if (normalizedMethod && normalizedMethod !== 'mbway') {
+      return {
+        ok: true,
+        ignored: true,
+        reason: 'not_mbway',
+        method: rawMethod,
+      };
+    }
+
+    const normalizedStatus = (() => {
+      const status = rawStatus.toLowerCase();
+      if (status === 'paid') return 'confirmed';
+      if (status === 'cancel') return 'cancelled';
+      if (status === 'expired') return 'expired';
+      if (status === 'error') return 'failed';
+      if (status === 'refund') return 'refunded';
+      return 'pending';
+    })();
+
+    const current = await withClient(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      await expireStaleCheckoutPaymentIntents(client, { providerReference, merchantTransactionId: identifier });
+      const result = await client.query(
+        `select *
+           from public.checkout_payment_intents
+          where ($1 <> '' and provider_reference = $1)
+             or ($2 <> '' and metadata_json->>'merchantTransactionId' = $2)
+          order by created_at desc
+          limit 1`,
+        [providerReference, identifier]
+      );
+      return result.rows[0] || null;
+    });
+
+    if (!current) {
+      return {
+        ok: true,
+        ignored: true,
+        reason: 'payment_intent_not_found',
+        identifier,
+        provider_reference: providerReference,
+        raw_status: rawStatus,
+      };
+    }
+
+    if (current.status === 'confirmed') {
+      return withClient(async (client) => ({
+        ok: true,
+        payment_flow: 'confirmed',
+        payment_intent: mapCheckoutPaymentIntent(current),
+        invoice: await getStoredInvoiceById(client, current.invoice_id),
+      }));
+    }
+
+    if (normalizedStatus === 'confirmed') {
+      const finalized = await withTransaction(async (client) => {
+        await ensureCheckoutPaymentIntentSchema(client);
+        const lockedRes = await client.query(`select * from public.checkout_payment_intents where id = $1 for update`, [current.id]);
+        const row = lockedRes.rows[0];
+        if (!row) throw makeError('Pedido MB WAY não encontrado.', 404, 'payment_intent_not_found');
+        if (row.status === 'confirmed') {
+          return { row, payload: null, already_done: true };
+        }
+        if (row.status !== 'pending') {
+          return { row, payload: null, already_done: false };
+        }
+
+        const checkoutPayload = await finalizeCheckoutTransaction(client, {
+          session_id: row.sessao_id,
+          operator_id: row.requested_by_user_id || null,
+          terminal_id: row.terminal_id || 'terminal_main',
+          payment_type: 'mbway',
+          amount_received: row.amount_total,
+          customer_nif: row.customer_nif || '',
+          customer_name: row.customer_name || '',
+          customer_email: row.customer_email || '',
+          mbway_contact: row.mbway_contact || '',
+          payment_reference: providerReference || row.provider_reference || row.id,
+        });
+
+        const updated = await client.query(
+          `update public.checkout_payment_intents
+              set status = 'confirmed',
+                  confirmed_at = now(),
+                  confirmed_by_user_id = $2,
+                  invoice_id = $3,
+                  invoice_file_path = $4,
+                  provider_reference = coalesce(nullif($5, ''), provider_reference),
+                  provider_status = $6,
+                  provider_payload_json = $7::jsonb,
+                  updated_at = now()
+            where id = $1
+        returning *`,
+          [
+            row.id,
+            row.requested_by_user_id || null,
+            checkoutPayload.invoice_id,
+            checkoutPayload.invoice_file_path,
+            providerReference,
+            rawStatus || 'Paid',
+            JSON.stringify({ payload, headers, transaction, channel }),
+          ]
+        );
+
+        await insertAuditLog(client, {
+          actor_user_id: row.requested_by_user_id || null,
+          terminal_id: row.terminal_id || 'terminal_main',
+          entity_type: 'table_session',
+          entity_id: row.sessao_id,
+          action_type: 'mbway_checkout_confirmed',
+          payload: {
+            table_session_id: row.sessao_id,
+            invoice_id: checkoutPayload.invoice_id,
+            provider_reference: providerReference || row.provider_reference || row.id,
+            provider_status: rawStatus || 'Paid',
+            webhook_channel: channel?.name || null,
+            webhook_identifier: identifier || null,
+          },
+        });
+
+        return { row: updated.rows[0], payload: checkoutPayload, already_done: false };
+      });
+
+      if (finalized.payload) {
+        const response = await finalizeCheckoutSideEffects({
+          payload: finalized.payload,
+          send_email: finalized.row.send_email === true,
+          print_invoice: Boolean(finalized.row.printer_id && finalized.row.printer_agent_id),
+          printer_agent_id: finalized.row.printer_agent_id || '',
+          printer_id: finalized.row.printer_id || '',
+          printer_name: finalized.row.printer_name || '',
+        });
+        return {
+          ...response,
+          payment_flow: 'confirmed',
+          payment_intent: mapCheckoutPaymentIntent(finalized.row),
+          message: 'Pagamento MB WAY confirmado via webhook.',
+        };
+      }
+
+      return withClient(async (client) => ({
+        ok: true,
+        payment_flow: finalized.row.status === 'confirmed' ? 'confirmed' : finalized.row.status,
+        payment_intent: mapCheckoutPaymentIntent(finalized.row),
+        invoice: await getStoredInvoiceById(client, finalized.row.invoice_id),
+      }));
+    }
+
+    if (['cancelled', 'expired', 'failed'].includes(normalizedStatus)) {
+      const updated = await withTransaction(async (client) => {
+        await ensureCheckoutPaymentIntentSchema(client);
+        const result = await client.query(
+          `update public.checkout_payment_intents
+              set status = $2,
+                  provider_reference = coalesce(nullif($3, ''), provider_reference),
+                  provider_status = $4,
+                  provider_payload_json = $5::jsonb,
+                  cancelled_at = case when $2 = 'cancelled' then now() else cancelled_at end,
+                  failed_at = case when $2 in ('failed','expired') then now() else failed_at end,
+                  updated_at = now()
+            where id = $1
+        returning *`,
+          [current.id, normalizedStatus, providerReference, rawStatus || normalizedStatus, JSON.stringify({ payload, headers, transaction, channel })]
+        );
+        const row = result.rows[0];
+        if (row) {
+          await insertAuditLog(client, {
+            actor_user_id: row.requested_by_user_id || null,
+            terminal_id: row.terminal_id || 'terminal_main',
+            entity_type: 'table_session',
+            entity_id: row.sessao_id,
+            action_type: `mbway_checkout_${normalizedStatus}`,
+            payload: {
+              table_session_id: row.sessao_id,
+              provider_reference: providerReference || row.provider_reference || row.id,
+              provider_status: rawStatus || normalizedStatus,
+              webhook_channel: channel?.name || null,
+              webhook_identifier: identifier || null,
+            },
+          });
+        }
+        return row;
+      });
+
+      return {
+        ok: true,
+        payment_flow: normalizedStatus,
+        payment_intent: mapCheckoutPaymentIntent(updated),
+        invoice: null,
+        message: `Pedido MB WAY ${normalizedStatus} via webhook.`,
+      };
+    }
+
+    const pendingUpdated = await withTransaction(async (client) => {
+      await ensureCheckoutPaymentIntentSchema(client);
+      const result = await client.query(
+        `update public.checkout_payment_intents
+            set provider_reference = coalesce(nullif($2, ''), provider_reference),
+                provider_status = $3,
+                provider_payload_json = $4::jsonb,
+                updated_at = now()
+          where id = $1
+      returning *`,
+        [current.id, providerReference, rawStatus || 'Pending', JSON.stringify({ payload, headers, transaction, channel })]
+      );
+      return result.rows[0];
+    });
+
+    return {
+      ok: true,
+      payment_flow: 'pending_confirmation',
+      payment_intent: mapCheckoutPaymentIntent(pendingUpdated),
+      invoice: null,
+      message: 'Webhook MB WAY recebido, pagamento ainda pendente.',
     };
   }
 
