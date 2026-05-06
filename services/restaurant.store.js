@@ -791,6 +791,10 @@ async function sendCustomerOrderEmailIfNeeded({ customerEmail, customerName, ses
 async function ensureMenuAvailabilitySchema(client) {
   if (menuAvailabilitySchemaReady) return;
 
+  await client.query(`alter table public.artigos add column if not exists descricao_curta text`);
+  await client.query(`alter table public.artigos add column if not exists descricao_produto text`);
+  await client.query(`alter table public.artigos add column if not exists modo_preparo text`);
+
   await client.query(`create table if not exists public.artigo_menu_disponibilidade (
     id text primary key default fn_uuid(),
     artigo_id text not null references public.artigos(id) on delete cascade,
@@ -1674,6 +1678,9 @@ async function getMenuItemsFromDb(client) {
               a.stock_ilimitado,
               a.stock_qtd,
               a.imagem_url,
+              a.descricao_curta,
+              a.descricao_produto,
+              a.modo_preparo,
               json_agg(
                 json_build_object(
                   'local_nome', l.nome,
@@ -1727,6 +1734,12 @@ async function getMenuItemsFromDb(client) {
       price: parseMoney(restaurantPrice?.price ?? fallbackPrice?.price ?? 0),
       image_url: row.imagem_url || null,
       imagem_url: row.imagem_url || null,
+      description: row.descricao_produto || row.descricao_curta || '',
+      descricao_produto: row.descricao_produto || '',
+      short_description: row.descricao_curta || '',
+      descricao_curta: row.descricao_curta || '',
+      preparation_details: row.modo_preparo || '',
+      modo_preparo: row.modo_preparo || '',
       active: row.disponivel !== false,
       stock_ilimitado: row.stock_ilimitado,
       stock_qtd: numberOrNull(row.stock_qtd),
@@ -4128,8 +4141,9 @@ export class RestaurantStore {
     return readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => withClient(async (client) => getMenuItemsFromDb(client)));
   }
 
-  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], image_url = null, imagem_url = null, menu_rules = null }) {
+  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], image_url = null, imagem_url = null, menu_rules = null, description = '', descricao_produto = '', preparation_details = '', modo_preparo = '' }) {
     return withTransaction(async (client) => {
+      await ensureMenuAvailabilitySchema(client);
       let categoriaId = null;
       if (category) {
         const existingCategory = await client.query(`select id from categorias_artigos where nome = $1`, [String(category)]);
@@ -4164,9 +4178,12 @@ export class RestaurantStore {
            stock_ilimitado,
            quem_registou_id,
            imagem_url,
-           sort_order
+           sort_order,
+           descricao_curta,
+           descricao_produto,
+           modo_preparo
          )
-         values ($1, $2, $3::tipo_prato, $4::sitio_preparacao, true, $5, true, null, $6, $7)
+         values ($1, $2, $3::tipo_prato, $4::sitio_preparacao, true, $5, true, null, $6, $7, $8, $9, $10)
          returning id`,
         [
           String(name || 'Novo prato'),
@@ -4176,6 +4193,9 @@ export class RestaurantStore {
           Math.max(0, Number(prep_minutes || 0)),
           effectiveImageUrl ? String(effectiveImageUrl).trim() : null,
           nextSortOrder,
+          String(description || descricao_produto || '').trim() || String(name || '').trim(),
+          String(descricao_produto || description || '').trim() || null,
+          String(modo_preparo || preparation_details || '').trim() || null,
         ]
       );
 
@@ -4207,8 +4227,9 @@ export class RestaurantStore {
     });
   }
 
-  async updateMenuItem({ menu_item_id, name, category, flow, station, prep_minutes, price, channels, active, image_url, imagem_url, menu_rules }) {
+  async updateMenuItem({ menu_item_id, name, category, flow, station, prep_minutes, price, channels, active, image_url, imagem_url, menu_rules, description, descricao_produto, preparation_details, modo_preparo }) {
     return withTransaction(async (client) => {
+      await ensureMenuAvailabilitySchema(client);
       const existing = await client.query(`select id, categoria_id from artigos where id = $1`, [menu_item_id]);
       if (!existing.rows[0]) throw makeError('Prato não encontrado.', 404, 'menu_item_not_found');
 
@@ -4237,6 +4258,9 @@ export class RestaurantStore {
                 prep_minutes = coalesce($6, prep_minutes),
                 disponivel = coalesce($7, disponivel),
                 imagem_url = case when $8 = '__KEEP__' then imagem_url else nullif($8, '') end,
+                descricao_curta = case when $9 = '__KEEP__' then descricao_curta else nullif($9, '') end,
+                descricao_produto = case when $10 = '__KEEP__' then descricao_produto else nullif($10, '') end,
+                modo_preparo = case when $11 = '__KEEP__' then modo_preparo else nullif($11, '') end,
                 updated_at = now()
           where id = $1`,
         [
@@ -4248,6 +4272,9 @@ export class RestaurantStore {
           prep_minutes !== undefined ? Math.max(0, Number(prep_minutes || 0)) : null,
           active !== undefined ? Boolean(active) : null,
           effectiveImageUrl !== undefined ? String(effectiveImageUrl || '').trim() : '__KEEP__',
+          description !== undefined || descricao_produto !== undefined ? String(description ?? descricao_produto ?? '').trim() : '__KEEP__',
+          descricao_produto !== undefined || description !== undefined ? String(descricao_produto ?? description ?? '').trim() : '__KEEP__',
+          modo_preparo !== undefined || preparation_details !== undefined ? String(modo_preparo ?? preparation_details ?? '').trim() : '__KEEP__',
         ]
       );
 
