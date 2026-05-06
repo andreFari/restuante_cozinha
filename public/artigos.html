@@ -171,7 +171,7 @@
                 <label>Ou caminho/URL já existente
                   <input id="itemImageUrl" type="text" placeholder="/imagens/pratos/bife.jpg" />
                 </label>
-                <div class="tiny">Se escolheres imagem do computador, ela será enviada para <code>public/imagens/pratos</code> pelo backend.</div>
+                <div class="tiny">Se escolheres imagem do computador, ela fica guardada na base de dados e é servida pelo backend ao cliente web/mobile.</div>
               </div>
             </div>
           </div>
@@ -269,11 +269,7 @@
         if (!ensureOperatorSelected()) return;
 
         try {
-          let imageUrl = imageUrlInput.value.trim();
-          if (state.pendingFile) {
-            const uploaded = await restaurantApi.uploadMenuImage(state.pendingFile);
-            imageUrl = uploaded?.image_url || imageUrl;
-          }
+          const imageUrl = imageUrlInput.value.trim();
 
           const payload = {
             name: nameInput.value.trim(),
@@ -282,6 +278,9 @@
             prep_minutes: Number(prepInput.value || 0),
             price: Number(priceInput.value || 0),
             image_url: imageUrl,
+            image_data_base64: state.pendingFile ? state.imagePreviewUrl : undefined,
+            image_mime_type: state.pendingFile ? state.pendingFile.type : undefined,
+            image_filename: state.pendingFile ? state.pendingFile.name : undefined,
             description: descriptionInput.value.trim(),
             descricao_produto: descriptionInput.value.trim(),
             preparation_details: preparationInput.value.trim(),

@@ -794,6 +794,11 @@ async function ensureMenuAvailabilitySchema(client) {
   await client.query(`alter table public.artigos add column if not exists descricao_curta text`);
   await client.query(`alter table public.artigos add column if not exists descricao_produto text`);
   await client.query(`alter table public.artigos add column if not exists modo_preparo text`);
+  await client.query(`alter table public.artigos add column if not exists imagem_data bytea`);
+  await client.query(`alter table public.artigos add column if not exists imagem_mime_type text`);
+  await client.query(`alter table public.artigos add column if not exists imagem_filename text`);
+  await client.query(`alter table public.artigos add column if not exists imagem_size integer`);
+  await client.query(`alter table public.artigos add column if not exists imagem_updated_at timestamptz`);
 
   await client.query(`create table if not exists public.artigo_menu_disponibilidade (
     id text primary key default fn_uuid(),
@@ -909,6 +914,52 @@ function numberOrNull(value) {
 function parseMoney(value) {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
+}
+
+function decodeImageBase64Payload({ image_data_base64, image_mime_type, image_filename } = {}) {
+  const raw = String(image_data_base64 || '').trim();
+  if (!raw) return null;
+
+  const match = raw.match(/^data:([^;,]+);base64,(.+)$/i);
+  const mimeType = String(match?.[1] || image_mime_type || 'image/jpeg').trim().toLowerCase();
+  const base64 = String(match?.[2] || raw).replace(/\s+/g, '');
+
+  if (!/^image\/(jpeg|jpg|png|webp|gif)$/i.test(mimeType)) {
+    throw makeError('Formato de imagem inválido. Usa JPG, PNG, WEBP ou GIF.', 400, 'invalid_image_type');
+  }
+
+  let buffer;
+  try {
+    buffer = Buffer.from(base64, 'base64');
+  } catch {
+    throw makeError('Imagem inválida.', 400, 'invalid_image_payload');
+  }
+
+  if (!buffer?.length) throw makeError('Imagem vazia.', 400, 'empty_image_payload');
+  const maxBytes = 5 * 1024 * 1024;
+  if (buffer.length > maxBytes) {
+    throw makeError('Imagem demasiado grande. Limite: 5 MB.', 413, 'image_too_large');
+  }
+
+  return {
+    data: buffer,
+    mime_type: mimeType === 'image/jpg' ? 'image/jpeg' : mimeType,
+    filename: String(image_filename || 'prato').trim().slice(0, 180) || 'prato',
+    size: buffer.length,
+  };
+}
+
+function buildMenuItemImageUrl(row) {
+  if (row?.has_db_image || row?.imagem_data || row?.imagem_mime_type) {
+    const stamp = row?.imagem_updated_at ? new Date(row.imagem_updated_at).getTime() : Date.now();
+    return `/api/restaurant/menu-items/${encodeURIComponent(row.id)}/image?v=${stamp}`;
+  }
+  return row?.imagem_url || null;
+}
+
+function isGeneratedMenuImageUrl(value) {
+  const text = String(value || '').trim();
+  return /(?:^|\/)api\/restaurant\/menu-items\/[^/]+\/image(?:\?|$)/i.test(text);
 }
 
 
@@ -1508,6 +1559,10 @@ async function getSessionItems(client, sessionId) {
             pi.updated_at,
             a.prep_minutes,
             a.imagem_url,
+            a.imagem_mime_type,
+            a.imagem_filename,
+            a.imagem_updated_at,
+            (a.imagem_data is not null) as has_db_image,
             c.nome as category
        from pedido_itens pi
        join pedidos p on p.id = pi.pedido_id
@@ -1520,6 +1575,8 @@ async function getSessionItems(client, sessionId) {
 
   return result.rows.map((row) => ({
     ...row,
+    image_url: buildMenuItemImageUrl(row),
+    imagem_url: buildMenuItemImageUrl(row),
     quantity: Number(row.quantity || 0),
     unit_price: parseMoney(row.unit_price),
     prep_minutes: Number(row.prep_minutes || 0),
@@ -1678,6 +1735,11 @@ async function getMenuItemsFromDb(client) {
               a.stock_ilimitado,
               a.stock_qtd,
               a.imagem_url,
+              a.imagem_mime_type,
+              a.imagem_filename,
+              a.imagem_size,
+              a.imagem_updated_at,
+              (a.imagem_data is not null) as has_db_image,
               a.descricao_curta,
               a.descricao_produto,
               a.modo_preparo,
@@ -1732,8 +1794,13 @@ async function getMenuItemsFromDb(client) {
       sort_order: Number(row.sort_order || 0),
       prep_minutes: Number(row.prep_minutes || 0),
       price: parseMoney(restaurantPrice?.price ?? fallbackPrice?.price ?? 0),
-      image_url: row.imagem_url || null,
-      imagem_url: row.imagem_url || null,
+      image_url: buildMenuItemImageUrl(row),
+      imagem_url: buildMenuItemImageUrl(row),
+      image_source: row.has_db_image ? 'db' : (row.imagem_url ? 'url' : null),
+      imagem_mime_type: row.imagem_mime_type || null,
+      imagem_filename: row.imagem_filename || null,
+      imagem_size: numberOrNull(row.imagem_size),
+      imagem_updated_at: row.imagem_updated_at || null,
       description: row.descricao_produto || row.descricao_curta || '',
       descricao_produto: row.descricao_produto || '',
       short_description: row.descricao_curta || '',
@@ -2547,8 +2614,8 @@ export class RestaurantStore {
           station: item.station,
           flow: item.station,
           category: item.category || 'Sem categoria',
-          image_url: item.imagem_url || null,
-          imagem_url: item.imagem_url || null,
+          image_url: item.image_url || item.imagem_url || null,
+          imagem_url: item.image_url || item.imagem_url || null,
           quantity: item.quantity,
           prep_minutes: Number(item.prep_minutes || 0),
           unit_price: item.unit_price,
@@ -4141,7 +4208,29 @@ export class RestaurantStore {
     return readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => withClient(async (client) => getMenuItemsFromDb(client)));
   }
 
-  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], image_url = null, imagem_url = null, menu_rules = null, description = '', descricao_produto = '', preparation_details = '', modo_preparo = '' }) {
+  async getMenuItemImage({ menu_item_id }) {
+    return withClient(async (client) => {
+      await ensureMenuAvailabilitySchema(client);
+      const result = await client.query(
+        `select id, nome, imagem_data, imagem_mime_type, imagem_filename, imagem_updated_at
+           from artigos
+          where id = $1
+          limit 1`,
+        [menu_item_id]
+      );
+      const row = result.rows[0];
+      if (!row) throw makeError('Prato não encontrado.', 404, 'menu_item_not_found');
+      if (!row.imagem_data) throw makeError('Imagem não encontrada na base de dados.', 404, 'menu_item_image_not_found');
+      return {
+        data: row.imagem_data,
+        mime_type: row.imagem_mime_type || 'image/jpeg',
+        filename: row.imagem_filename || `${String(row.nome || 'prato').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.jpg`,
+        updated_at: row.imagem_updated_at || null,
+      };
+    });
+  }
+
+  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], image_url = null, imagem_url = null, image_data_base64 = '', image_mime_type = '', image_filename = '', menu_rules = null, description = '', descricao_produto = '', preparation_details = '', modo_preparo = '' }) {
     return withTransaction(async (client) => {
       await ensureMenuAvailabilitySchema(client);
       let categoriaId = null;
@@ -4159,7 +4248,8 @@ export class RestaurantStore {
       }
 
       const normalizedFlow = flow || station || 'cozinha';
-      const effectiveImageUrl = image_url ?? imagem_url ?? null;
+      const imagePayload = decodeImageBase64Payload({ image_data_base64, image_mime_type, image_filename });
+      const effectiveImageUrl = imagePayload ? null : (image_url ?? imagem_url ?? null);
       const sortOrderRes = await client.query(
         `select coalesce(max(sort_order), 0) + 1 as next_sort
            from artigos
@@ -4178,12 +4268,17 @@ export class RestaurantStore {
            stock_ilimitado,
            quem_registou_id,
            imagem_url,
+           imagem_data,
+           imagem_mime_type,
+           imagem_filename,
+           imagem_size,
+           imagem_updated_at,
            sort_order,
            descricao_curta,
            descricao_produto,
            modo_preparo
          )
-         values ($1, $2, $3::tipo_prato, $4::sitio_preparacao, true, $5, true, null, $6, $7, $8, $9, $10)
+         values ($1, $2, $3::tipo_prato, $4::sitio_preparacao, true, $5, true, null, $6, $7, $8, $9, $10, case when $7::bytea is null then null else now() end, $11, $12, $13, $14)
          returning id`,
         [
           String(name || 'Novo prato'),
@@ -4192,6 +4287,10 @@ export class RestaurantStore {
           inferPrepSiteFromStation(normalizedFlow),
           Math.max(0, Number(prep_minutes || 0)),
           effectiveImageUrl ? String(effectiveImageUrl).trim() : null,
+          imagePayload?.data || null,
+          imagePayload?.mime_type || null,
+          imagePayload?.filename || null,
+          imagePayload?.size || null,
           nextSortOrder,
           String(description || descricao_produto || '').trim() || String(name || '').trim(),
           String(descricao_produto || description || '').trim() || null,
@@ -4227,7 +4326,7 @@ export class RestaurantStore {
     });
   }
 
-  async updateMenuItem({ menu_item_id, name, category, flow, station, prep_minutes, price, channels, active, image_url, imagem_url, menu_rules, description, descricao_produto, preparation_details, modo_preparo }) {
+  async updateMenuItem({ menu_item_id, name, category, flow, station, prep_minutes, price, channels, active, image_url, imagem_url, image_data_base64, image_mime_type, image_filename, menu_rules, description, descricao_produto, preparation_details, modo_preparo }) {
     return withTransaction(async (client) => {
       await ensureMenuAvailabilitySchema(client);
       const existing = await client.query(`select id, categoria_id from artigos where id = $1`, [menu_item_id]);
@@ -4248,7 +4347,10 @@ export class RestaurantStore {
       }
 
       const normalizedFlow = flow ?? station;
-      const effectiveImageUrl = image_url !== undefined ? image_url : imagem_url;
+      const imagePayload = decodeImageBase64Payload({ image_data_base64, image_mime_type, image_filename });
+      const rawEffectiveImageUrl = imagePayload ? '' : (image_url !== undefined ? image_url : imagem_url);
+      const effectiveImageUrl = isGeneratedMenuImageUrl(rawEffectiveImageUrl) ? undefined : rawEffectiveImageUrl;
+      const shouldClearDbImage = effectiveImageUrl !== undefined;
       await client.query(
         `update artigos
             set nome = coalesce($2, nome),
@@ -4258,6 +4360,31 @@ export class RestaurantStore {
                 prep_minutes = coalesce($6, prep_minutes),
                 disponivel = coalesce($7, disponivel),
                 imagem_url = case when $8 = '__KEEP__' then imagem_url else nullif($8, '') end,
+                imagem_data = case
+                  when $12::boolean then $13::bytea
+                  when $17::boolean then null
+                  else imagem_data
+                end,
+                imagem_mime_type = case
+                  when $12::boolean then $14
+                  when $17::boolean then null
+                  else imagem_mime_type
+                end,
+                imagem_filename = case
+                  when $12::boolean then $15
+                  when $17::boolean then null
+                  else imagem_filename
+                end,
+                imagem_size = case
+                  when $12::boolean then $16
+                  when $17::boolean then null
+                  else imagem_size
+                end,
+                imagem_updated_at = case
+                  when $12::boolean then now()
+                  when $17::boolean then null
+                  else imagem_updated_at
+                end,
                 descricao_curta = case when $9 = '__KEEP__' then descricao_curta else nullif($9, '') end,
                 descricao_produto = case when $10 = '__KEEP__' then descricao_produto else nullif($10, '') end,
                 modo_preparo = case when $11 = '__KEEP__' then modo_preparo else nullif($11, '') end,
@@ -4275,6 +4402,12 @@ export class RestaurantStore {
           description !== undefined || descricao_produto !== undefined ? String(description ?? descricao_produto ?? '').trim() : '__KEEP__',
           descricao_produto !== undefined || description !== undefined ? String(descricao_produto ?? description ?? '').trim() : '__KEEP__',
           modo_preparo !== undefined || preparation_details !== undefined ? String(modo_preparo ?? preparation_details ?? '').trim() : '__KEEP__',
+          Boolean(imagePayload),
+          imagePayload?.data || null,
+          imagePayload?.mime_type || null,
+          imagePayload?.filename || null,
+          imagePayload?.size || null,
+          shouldClearDbImage,
         ]
       );
 
@@ -4691,7 +4824,7 @@ export class RestaurantStore {
           station: item.station,
           flow: item.station,
           category: item.category || 'Sem categoria',
-          image_url: item.imagem_url || null,
+          image_url: item.image_url || item.imagem_url || null,
           quantity: item.quantity,
           prep_minutes: Number(item.prep_minutes || 0),
           unit_price: item.unit_price,
@@ -4735,7 +4868,7 @@ export class RestaurantStore {
         station: item.station,
         flow: item.station,
         category: item.category || 'Sem categoria',
-        image_url: item.imagem_url || null,
+        image_url: item.image_url || item.imagem_url || null,
         quantity: item.quantity,
         prep_minutes: Number(item.prep_minutes || 0),
         unit_price: item.unit_price,

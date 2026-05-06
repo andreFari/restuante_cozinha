@@ -41,6 +41,37 @@ function asyncHandler(fn) {
   };
 }
 
+function getPublicBaseUrl(req) {
+  const configured = String(process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || process.env.RESTAURANT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  if (configured) return configured;
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  return `${proto}://${req.get('host')}`.replace(/\/$/, '');
+}
+
+function toPublicAssetUrls(req, value) {
+  const baseUrl = getPublicBaseUrl(req);
+  const absolutize = (raw) => {
+    const text = String(raw || '').trim();
+    if (!text) return raw;
+    if (/^(data:|https?:|blob:)/i.test(text)) return text;
+    if (text.startsWith('/')) return `${baseUrl}${text}`;
+    return text;
+  };
+
+  const walk = (input) => {
+    if (Array.isArray(input)) return input.map(walk);
+    if (!input || typeof input !== 'object') return input;
+    if (input instanceof Date) return input;
+    const out = {};
+    for (const [key, itemValue] of Object.entries(input)) {
+      out[key] = ['image_url', 'imagem_url', 'logo_url'].includes(key) ? absolutize(itemValue) : walk(itemValue);
+    }
+    return out;
+  };
+
+  return walk(value);
+}
+
 function getSessionAuth(req) {
   return req.session?.restaurantAuth || null;
 }
@@ -184,11 +215,11 @@ router.post('/customer/session/start', asyncHandler(async (req, res) => {
     customer_nif: req.body.customer_nif || '',
     customer_count: req.body.customer_count || 1,
   });
-  res.status(201).json(result);
+  res.status(201).json(toPublicAssetUrls(req, result));
 }));
 
 router.get('/customer/session/:sessionId', asyncHandler(async (req, res) => {
-  res.json(await restaurantStore.getCustomerSession({ session_id: req.params.sessionId }));
+  res.json(toPublicAssetUrls(req, await restaurantStore.getCustomerSession({ session_id: req.params.sessionId })));
 }));
 
 router.post('/customer/session/:sessionId/items', asyncHandler(async (req, res) => {
@@ -199,7 +230,7 @@ router.post('/customer/session/:sessionId/items', asyncHandler(async (req, res) 
     quantity: req.body.quantity || 1,
     note: req.body.note || '',
   });
-  res.status(201).json(result);
+  res.status(201).json(toPublicAssetUrls(req, result));
 }));
 
 router.patch('/customer/session/:sessionId/items/:orderItemId', asyncHandler(async (req, res) => {
@@ -209,7 +240,7 @@ router.patch('/customer/session/:sessionId/items/:orderItemId', asyncHandler(asy
     order_item_id: req.params.orderItemId,
     quantity: req.body.quantity,
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 
 router.delete('/customer/session/:sessionId/items/:orderItemId', asyncHandler(async (req, res) => {
@@ -217,7 +248,7 @@ router.delete('/customer/session/:sessionId/items/:orderItemId', asyncHandler(as
     session_id: req.params.sessionId,
     order_item_id: req.params.orderItemId,
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 
 router.post('/customer/session/:sessionId/submit', asyncHandler(async (req, res) => {
@@ -233,7 +264,7 @@ router.post('/customer/session/:sessionId/submit', asyncHandler(async (req, res)
     venue_type: req.body.venue_type || '',
     send_email: req.body.send_email === true,
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 
 
@@ -242,7 +273,7 @@ router.post('/customer/session/:sessionId/send-to-kitchen', asyncHandler(async (
     session_id: req.params.sessionId,
     items: Array.isArray(req.body?.items) ? req.body.items : [],
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 
 router.post('/customer/session/:sessionId/request-payment', asyncHandler(async (req, res) => {
@@ -258,7 +289,7 @@ router.post('/customer/session/:sessionId/request-payment', asyncHandler(async (
     venue_type: req.body.venue_type || '',
     send_email: req.body.send_email === true,
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 
 router.post('/customer/session/:sessionId/items/:orderItemId/note-chat/reply', asyncHandler(async (req, res) => {
@@ -268,7 +299,18 @@ router.post('/customer/session/:sessionId/items/:orderItemId/note-chat/reply', a
     order_item_id: req.params.orderItemId,
     message: req.body.message || '',
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
+}));
+
+router.get('/menu-items/:menuItemId/image', asyncHandler(async (req, res) => {
+  const image = await restaurantStore.getMenuItemImage({ menu_item_id: req.params.menuItemId });
+  res.setHeader('Content-Type', image.mime_type || 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  if (image.filename) {
+    res.setHeader('Content-Disposition', `inline; filename="${String(image.filename).replace(/"/g, '')}"`);
+  }
+  if (image.updated_at) res.setHeader('Last-Modified', new Date(image.updated_at).toUTCString());
+  res.end(image.data);
 }));
 
 router.post('/payments/eupago/webhook', asyncHandler(async (req, res) => {
@@ -300,7 +342,7 @@ router.use((req, _res, next) => {
 
 router.get("/bootstrap", asyncHandler(async (req, res) => {
   const terminal_id = String(req.query.terminal_id || "terminal_main");
-  res.json(await restaurantStore.getBootstrap(terminal_id));
+  res.json(toPublicAssetUrls(req, await restaurantStore.getBootstrap(terminal_id)));
 }));
 
 router.get("/operators", asyncHandler(async (_req, res) => {
@@ -743,8 +785,8 @@ router.post("/uploads/menu-image", upload.single("image"), asyncHandler(async (r
   });
 }));
 
-router.get("/menu-items", asyncHandler(async (_req, res) => {
-  res.json(await restaurantStore.listMenuItems());
+router.get("/menu-items", asyncHandler(async (req, res) => {
+  res.json(toPublicAssetUrls(req, await restaurantStore.listMenuItems()));
 }));
 
 router.post("/menu-items", asyncHandler(async (req, res) => {
@@ -759,6 +801,9 @@ router.post("/menu-items", asyncHandler(async (req, res) => {
     channels: req.body.channels,
     image_url: req.body.image_url ?? req.body.imagem_url,
     imagem_url: req.body.imagem_url ?? req.body.image_url,
+    image_data_base64: req.body.image_data_base64,
+    image_mime_type: req.body.image_mime_type,
+    image_filename: req.body.image_filename,
     description: req.body.description ?? req.body.descricao_produto,
     descricao_produto: req.body.descricao_produto ?? req.body.description,
     preparation_details: req.body.preparation_details ?? req.body.modo_preparo,
@@ -768,7 +813,7 @@ router.post("/menu-items", asyncHandler(async (req, res) => {
     operator_id: req.body.operator_id,
     terminal_id: req.body.terminal_id || "terminal_main",
   });
-  res.status(201).json(result);
+  res.status(201).json(toPublicAssetUrls(req, result));
 }));
 
 router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
@@ -784,6 +829,9 @@ router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
     channels: req.body.channels,
     image_url: req.body.image_url ?? req.body.imagem_url,
     imagem_url: req.body.imagem_url ?? req.body.image_url,
+    image_data_base64: req.body.image_data_base64,
+    image_mime_type: req.body.image_mime_type,
+    image_filename: req.body.image_filename,
     description: req.body.description ?? req.body.descricao_produto,
     descricao_produto: req.body.descricao_produto ?? req.body.description,
     preparation_details: req.body.preparation_details ?? req.body.modo_preparo,
@@ -793,7 +841,7 @@ router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
     operator_id: req.body.operator_id,
     terminal_id: req.body.terminal_id || "terminal_main",
   });
-  res.json(result);
+  res.json(toPublicAssetUrls(req, result));
 }));
 router.delete("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
   requireMenuManager(req);
