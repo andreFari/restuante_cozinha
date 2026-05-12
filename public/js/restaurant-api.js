@@ -238,6 +238,15 @@ export const restaurantApi = {
   listPrinters() {
     return request(`/api/restaurant/printers`);
   },
+  listAdminPrinters() {
+    return request(`/api/printers/admin`);
+  },
+  updatePrinterConfig(payload) {
+    return request(`/api/printers/config`, {
+      method: "PATCH",
+      body: JSON.stringify(payload || {}),
+    });
+  },
   getPaymentIntent(intentId) {
     return request(`/api/restaurant/payment-intents/${encodeURIComponent(intentId)}`);
   },

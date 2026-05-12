@@ -45,6 +45,8 @@
       .checkout-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
       .checkout-summary{padding:16px;border:1px solid #dbe3ef;border-radius:18px;background:#f8fafc;display:grid;gap:8px}
       .checkout-summary .big{font-size:24px;font-weight:800}
+      .printer-choice{border:1px solid #dbe3ef;background:#fff;border-radius:999px;padding:10px 14px;font-weight:800;cursor:pointer}
+      .printer-choice.active{border-color:#0f766e;background:#ecfdf5;color:#0f766e}
       .pending-list{display:grid;gap:8px;margin-top:10px}
       .pending-pill{padding:10px 12px;border-radius:14px;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;font-size:14px}
       .send-kitchen-list{display:grid;gap:12px;margin-top:16px}.send-kitchen-row{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid #dbe3ef;border-radius:16px;background:#fff}.send-kitchen-row textarea{min-height:82px;border:1px solid #dbe3ef;border-radius:14px;padding:12px;font:inherit;resize:vertical}.tone-danger{background:#fff1f2 !important;color:#9f1239 !important;border:1px solid #fecdd3 !important}.tone-success{background:#e7faf1 !important;color:#0f766e !important;border:1px solid #bbf7d0 !important}.tone-dark{background:#162033 !important;color:#fff !important}.alerts-stack{display:grid;gap:8px;margin-bottom:14px}.alert-pill{padding:10px 12px;border-radius:14px;background:#fff8e8;color:#8a5a12;border:1px solid #f6d58c;font-size:14px}.payment-requests{display:grid;gap:12px;margin-bottom:16px}.payment-request{border:1px solid #f6d58c;background:#fffdf6;border-radius:18px;padding:14px;display:grid;gap:10px}.payment-request .meta{font-size:13px;color:#6b7280}@media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
@@ -160,6 +162,12 @@
             <label style="display:grid;gap:8px">Contacto MBWay<input id="checkoutMbway" type="text" placeholder="9xxxxxxxx" /></label>
           </div>
           <label class="check-pill"><input id="checkoutSendEmail" type="checkbox" />Enviar fatura por email</label>
+          <label class="check-pill"><input id="checkoutPrintInvoice" type="checkbox" />Imprimir fatura</label>
+          <div id="checkoutPrintersBox" class="checkout-summary" style="display:none">
+            <strong>Impressora</strong>
+            <div id="checkoutPrintersList" class="chip-row"></div>
+            <div id="checkoutPrintersHelp" class="muted"></div>
+          </div>
           <div class="chip-row"><button type="submit" class="primary-btn">Pagar e fechar</button></div>
         </form>
       </div>
@@ -190,7 +198,7 @@
       import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from './js/restaurant-shell.js';
       setTerminalId('terminal_main');
       const TODAY = new Date().getDay();
-      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, pendingPaymentIntent: null, paymentRequests: [] };
+      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, pendingPaymentIntent: null, paymentRequests: [], printers: [], selectedPrinter: null };
       const tablesList = document.getElementById('tablesList');
       const searchInput = document.getElementById('searchInput');
       const zoneFilters = document.getElementById('zoneFilters');
@@ -213,6 +221,10 @@
       const checkoutForm = document.getElementById('checkoutForm');
       const checkoutTotal = document.getElementById('checkoutTotal');
       const checkoutTableName = document.getElementById('checkoutTableName');
+      const checkoutPrintInvoice = document.getElementById('checkoutPrintInvoice');
+      const checkoutPrintersBox = document.getElementById('checkoutPrintersBox');
+      const checkoutPrintersList = document.getElementById('checkoutPrintersList');
+      const checkoutPrintersHelp = document.getElementById('checkoutPrintersHelp');
       const checkoutPaymentType = document.getElementById('checkoutPaymentType');
       const checkoutReceived = document.getElementById('checkoutReceived');
       const checkoutChange = document.getElementById('checkoutChange');
@@ -239,6 +251,7 @@
       document.getElementById('closeCheckoutModal').addEventListener('click', () => checkoutModal.classList.remove('show'));
       document.getElementById('calcChangeBtn').addEventListener('click', updateChangePreview);
       checkoutPaymentType.addEventListener('change', syncPaymentTypeUI);
+      checkoutPrintInvoice?.addEventListener('change', renderCheckoutPrinters);
       checkoutReceived.addEventListener('input', updateChangePreview);
       catalogSearch.addEventListener('input', renderCatalog);
       catalogCategoryFilter.addEventListener('change', renderCatalog);
@@ -542,7 +555,12 @@
         if (!ensureOperatorSelected()) return;
         if (!state.selectedTableId) return toast('Seleciona mesa primeiro.', true);
         try {
-          state.checkoutPreview = await restaurantApi.checkoutPreview(state.selectedTableId);
+          const [preview, printersResponse] = await Promise.all([
+            restaurantApi.checkoutPreview(state.selectedTableId),
+            restaurantApi.listPrinters().catch(() => ({ printers: [] })),
+          ]);
+          state.checkoutPreview = preview;
+          state.printers = printersResponse.printers || [];
           state.pendingPaymentIntent = state.checkoutPreview.pending_payment_intent || null;
           checkoutTotal.textContent = euro(state.checkoutPreview.total || 0);
           checkoutTableName.textContent = state.checkoutPreview.table_name || '—';
@@ -552,8 +570,12 @@
           document.getElementById('checkoutEmail').value = state.pendingPaymentIntent?.customer_email || '';
           document.getElementById('checkoutMbway').value = state.pendingPaymentIntent?.mbway_contact || '';
           document.getElementById('checkoutSendEmail').checked = state.pendingPaymentIntent ? state.pendingPaymentIntent.send_email === true : true;
+          const matchedPrinter = state.pendingPaymentIntent ? state.printers.find((printer) => String(printer.id || printer.printer_id) === String(state.pendingPaymentIntent.printer_id || '') && String(printer.agent_id) === String(state.pendingPaymentIntent.printer_agent_id || '')) : null;
+          state.selectedPrinter = matchedPrinter || state.printers.find((printer) => printer.is_default) || state.printers[0] || null;
+          checkoutPrintInvoice.checked = state.pendingPaymentIntent ? Boolean(state.pendingPaymentIntent.printer_id && state.pendingPaymentIntent.printer_agent_id) : Boolean(state.selectedPrinter);
           checkoutPaymentType.value = state.pendingPaymentIntent ? 'mbway' : 'dinheiro';
           syncPaymentTypeUI();
+          renderCheckoutPrinters();
           updateChangePreview();
           renderCheckoutPendingState();
           checkoutModal.classList.add('show');
@@ -564,6 +586,30 @@
         const paymentType = checkoutPaymentType.value;
         cashGrid.style.display = paymentType === 'dinheiro' ? 'grid' : 'none';
         mbwayGrid.style.display = paymentType === 'mbway' ? 'grid' : 'none';
+      }
+
+      function renderCheckoutPrinters() {
+        if (!checkoutPrintersBox || !checkoutPrintersList || !checkoutPrintersHelp) return;
+        const shouldPrint = checkoutPrintInvoice?.checked === true;
+        checkoutPrintersBox.style.display = shouldPrint ? 'grid' : 'none';
+        if (!shouldPrint) return;
+        if (!state.printers.length) {
+          checkoutPrintersList.innerHTML = '';
+          checkoutPrintersHelp.textContent = 'Nenhuma impressora ativa. O admin tem de ativar uma em Gestão Mesas > Wi-Fi / impressão.';
+          return;
+        }
+        checkoutPrintersHelp.textContent = 'Escolhe para que computador/impressora esta fatura deve ir.';
+        checkoutPrintersList.innerHTML = state.printers.map((printer, index) => {
+          const active = state.selectedPrinter && String(state.selectedPrinter.agent_id) === String(printer.agent_id) && String(state.selectedPrinter.id || state.selectedPrinter.printer_id) === String(printer.id || printer.printer_id);
+          const label = printer.name || printer.printer_name || printer.display_name || printer.id || 'Impressora';
+          return `<button type="button" class="printer-choice ${active ? 'active' : ''}" data-printer-index="${index}">${escapeHtml(label)}</button>`;
+        }).join('');
+        checkoutPrintersList.querySelectorAll('[data-printer-index]').forEach((button) => {
+          button.addEventListener('click', () => {
+            state.selectedPrinter = state.printers[Number(button.dataset.printerIndex)] || null;
+            renderCheckoutPrinters();
+          });
+        });
       }
 
       function renderCheckoutPendingState() {
@@ -648,6 +694,13 @@
           mbway_contact: document.getElementById('checkoutMbway').value.trim(),
           send_email: document.getElementById('checkoutSendEmail').checked,
         };
+        const shouldPrint = checkoutPrintInvoice?.checked === true && state.selectedPrinter;
+        if (shouldPrint) {
+          payload.print_invoice = true;
+          payload.printer_id = state.selectedPrinter.id || state.selectedPrinter.printer_id;
+          payload.printer_agent_id = state.selectedPrinter.agent_id;
+          payload.printer_name = state.selectedPrinter.name || state.selectedPrinter.printer_name || state.selectedPrinter.display_name || '';
+        }
         if (payload.send_email && !payload.customer_email) return toast('Preenche o email para enviar a fatura.', true);
         try {
           const result = await restaurantApi.checkoutTable(state.selectedTableId, payload);

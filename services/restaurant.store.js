@@ -1116,19 +1116,19 @@ async function getLatestActiveCheckoutPaymentIntent(client, { sessionId = null, 
   return result.rows[0] || null;
 }
 
-function queueInvoicePrint({ invoiceUrl, printer_agent_id = '', printer_id = '', printer_name = '' }) {
-  if (!printer_agent_id || !printer_id) {
-    return { requested: false, queued: false, reason: 'printer_not_selected' };
-  }
-  if (!String(invoiceUrl || '').startsWith('http')) {
-    return { requested: true, queued: false, reason: 'missing_absolute_invoice_url', printer_agent_id, printer_id, printer_name };
-  }
-  const socket = printersService.getAgentSocket(printer_agent_id);
-  if (!socket) {
-    return { requested: true, queued: false, reason: 'agent_offline', printer_agent_id, printer_id, printer_name };
-  }
-  socket.emit('print_job', { printer_id, pdfUrl: invoiceUrl, title: printer_name || '' });
-  return { requested: true, queued: true, reason: null, printer_agent_id, printer_id, printer_name };
+async function queueInvoicePrint({ invoiceUrl, printer_agent_id = '', printer_id = '', printer_name = '', document_type = 'fatura', source_id = '', requested_by_user_id = '', terminal_id = '' }) {
+  return printersService.createPrintJob({
+    agent_id: printer_agent_id,
+    printer_id,
+    printer_name,
+    pdfUrl: invoiceUrl,
+    document_type,
+    title: printer_name ? `Fatura · ${printer_name}` : 'Fatura',
+    source_type: 'invoice',
+    source_id,
+    requested_by_user_id,
+    terminal_id,
+  });
 }
 
 async function finalizeCheckoutSideEffects({ payload, send_email = false, print_invoice = false, printer_agent_id = '', printer_id = '', printer_name = '' }) {
@@ -1160,7 +1160,16 @@ async function finalizeCheckoutSideEffects({ payload, send_email = false, print_
   }
 
   const printResult = print_invoice
-    ? queueInvoicePrint({ invoiceUrl, printer_agent_id, printer_id, printer_name })
+    ? await queueInvoicePrint({
+        invoiceUrl,
+        printer_agent_id,
+        printer_id,
+        printer_name,
+        document_type: 'fatura',
+        source_id: payload.invoice_id,
+        requested_by_user_id: payload.operator_id || '',
+        terminal_id: payload.terminal_id || '',
+      })
     : { requested: false, queued: false, reason: 'not_requested' };
 
   invalidateCache('tables', 'kitchen', 'serviceBoard', 'history', 'bootstrap');
@@ -1331,6 +1340,8 @@ async function finalizeCheckoutTransaction(client, {
     invoice_file_path: invoiceFilePath,
     invoice_html: invoiceHtml,
     invoice_created_at: fatura.created_at || createdAt,
+    operator_id,
+    terminal_id,
     customer_email: String(customer_email || '').trim().toLowerCase() || null,
     customer_name: String(customer_name || '').trim() || null,
     total: totals.total,
@@ -3126,7 +3137,7 @@ export class RestaurantStore {
   }
 
   async listRegisteredPrinters() {
-    return { printers: printersService.listRegisteredPrinters() };
+    return { printers: await printersService.listRegisteredPrinters() };
   }
 
   async processCheckout({

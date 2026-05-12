@@ -43,6 +43,13 @@
       .qr-panel img{width:min(260px,100%);aspect-ratio:1/1;object-fit:contain;background:#fff;border-radius:18px;border:1px solid #e5edf8;padding:10px}
       .qr-code-text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#475569;word-break:break-all}
       .info-box{padding:14px 16px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0;color:#334155;line-height:1.5}
+      .printer-admin-list{display:grid;gap:12px;margin-top:14px}
+      .printer-admin-card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:18px;background:#fff;padding:14px}
+      .printer-admin-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+      .printer-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      .printer-admin-grid input,.printer-admin-grid select{min-height:44px;border:1px solid #dbe3ef;border-radius:14px;padding:0 12px;background:#fff;font:inherit}
+      .status-dot{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800}
+      .status-dot.ready{background:#e7faf1;color:#047857}.status-dot.offline{background:#fee2e2;color:#991b1b}.status-dot.inactive{background:#eef2f7;color:#475569}
       @media (max-width: 860px){.modal-grid,.qr-preview-grid{grid-template-columns:1fr}}
     </style>
   </head>
@@ -217,6 +224,18 @@
           <div class="info-box" style="margin-top:18px">
             Para a mesa funcionar na app do cliente, o QR da mesa deve conter o token da mesa. Para entrar automaticamente no Wi-Fi, o QR tem de usar o formato Wi-Fi. Por isso, a forma robusta é imprimir <strong>dois QR codes</strong> no mesmo cartão. Um só QR para os dois não é fiável.
           </div>
+
+          <section class="info-box" style="margin-top:18px;background:#fff">
+            <div class="printer-admin-head">
+              <div>
+                <strong>Impressoras para faturas</strong>
+                <div class="tiny">As impressoras aparecem aqui quando o agent está a correr no computador onde a impressora está ligada por cabo. Só as ativas e visíveis aparecem no checkout web/mobile.</div>
+              </div>
+              <button id="refreshPrintersBtn" class="ghost-btn" type="button">Atualizar impressoras</button>
+            </div>
+            <div id="printersAdminBox" class="printer-admin-list"><div class="tiny">A carregar impressoras...</div></div>
+          </section>
+
           <div class="modal-actions">
             <div class="chip-row"><button type="submit" class="primary-btn">Guardar configuração</button></div>
           </div>
@@ -250,7 +269,7 @@
 
       const ZONES_KEY = 'restaurant_zone_catalog';
       const DEFAULT_ZONES = ['Sala', 'Esplanada', 'Bar', 'Takeaway'];
-      const state = { rows: [], selectedTableId: null, zones: [], qrSettings: null, qrTableId: null };
+      const state = { rows: [], selectedTableId: null, zones: [], qrSettings: null, qrTableId: null, printers: [] };
 
       const grid = document.getElementById('tablesGrid');
       const searchInput = document.getElementById('searchInput');
@@ -286,6 +305,7 @@
       document.getElementById('addZoneBtn').addEventListener('click', addZone);
       document.getElementById('regenerateQrBtn').addEventListener('click', regenerateCurrentQr);
       document.getElementById('printQrBtn').addEventListener('click', printCurrentQr);
+      document.getElementById('refreshPrintersBtn')?.addEventListener('click', loadAdminPrinters);
       searchInput.addEventListener('input', renderGrid);
       zoneFilter.addEventListener('change', renderGrid);
       statusFilter.addEventListener('change', renderGrid);
@@ -373,7 +393,93 @@
 
       function openQrSettingsModal() {
         fillQrSettingsForm();
+        loadAdminPrinters();
         qrSettingsModal.classList.add('show');
+      }
+
+      async function loadAdminPrinters() {
+        const box = document.getElementById('printersAdminBox');
+        if (!box) return;
+        box.innerHTML = `<div class="tiny">A procurar impressoras ligadas aos agents...</div>`;
+        try {
+          const result = await restaurantApi.listAdminPrinters();
+          state.printers = result.printers || [];
+          renderAdminPrinters();
+        } catch (error) {
+          box.innerHTML = `<div class="empty-box">${escapeHtml(error.message || 'Não foi possível carregar impressoras.')}</div>`;
+        }
+      }
+
+      function renderAdminPrinters() {
+        const box = document.getElementById('printersAdminBox');
+        if (!box) return;
+        if (!state.printers.length) {
+          box.innerHTML = `<div class="empty-box">Ainda não há impressoras registadas. Corre o <strong>agent.js</strong> no computador onde a impressora está ligada e carrega em atualizar.</div>`;
+          return;
+        }
+        box.innerHTML = state.printers.map((printer, index) => {
+          const statusClass = printer.ready ? 'ready' : printer.online ? 'inactive' : 'offline';
+          const statusText = printer.ready ? 'Pronta' : printer.online ? 'Ligada mas não visível' : 'Agent offline';
+          const supported = Array.isArray(printer.supported_document_types) ? printer.supported_document_types.join(', ') : 'fatura, fatura_recibo, consulta_conta';
+          return `
+            <article class="printer-admin-card" data-printer-index="${index}">
+              <div class="printer-admin-head">
+                <div>
+                  <strong>${escapeHtml(printer.name || printer.display_name || printer.id)}</strong>
+                  <div class="tiny">${escapeHtml(printer.agent_name || printer.agent_id)} · sistema: ${escapeHtml(printer.system_name || printer.id)}</div>
+                  <div class="tiny">${escapeHtml(printer.driver || 'driver não indicado')}</div>
+                </div>
+                <span class="status-dot ${statusClass}">${statusText}</span>
+              </div>
+              <div class="printer-admin-grid">
+                <label>Nome interno
+                  <input data-printer-field="admin_name" value="${escapeAttr(printer.admin_name || printer.display_name || printer.name || '')}" placeholder="Ex: Receção, Bar, Cozinha" />
+                </label>
+                <label>Tipo por defeito
+                  <select data-printer-field="default_document_type">
+                    ${['fatura','fatura_recibo','consulta_conta'].map((type) => `<option value="${type}" ${type === printer.default_document_type ? 'selected' : ''}>${type}</option>`).join('')}
+                  </select>
+                </label>
+                <label>Tipos permitidos
+                  <input data-printer-field="supported_document_types" value="${escapeAttr(supported)}" />
+                </label>
+                <div class="field-stack" style="gap:8px">
+                  <label class="check-pill"><input data-printer-field="active" type="checkbox" ${printer.active ? 'checked' : ''} /> Ativa</label>
+                  <label class="check-pill"><input data-printer-field="show_on_checkout" type="checkbox" ${printer.show_on_checkout ? 'checked' : ''} /> Mostrar no fecho de mesa</label>
+                  <label class="check-pill"><input data-printer-field="is_default" type="checkbox" ${printer.is_default ? 'checked' : ''} /> Predefinida</label>
+                </div>
+              </div>
+              <div class="chip-row"><button type="button" class="primary-btn" data-save-printer="${index}">Guardar impressora</button></div>
+            </article>`;
+        }).join('');
+
+        box.querySelectorAll('[data-save-printer]').forEach((button) => {
+          button.addEventListener('click', () => savePrinterConfig(Number(button.dataset.savePrinter)));
+        });
+      }
+
+      async function savePrinterConfig(index) {
+        const printer = state.printers[index];
+        const card = document.querySelector(`[data-printer-index="${index}"]`);
+        if (!printer || !card) return;
+        const getField = (name) => card.querySelector(`[data-printer-field="${name}"]`);
+        const payload = {
+          agent_id: printer.agent_id,
+          printer_id: printer.printer_id || printer.id,
+          admin_name: getField('admin_name')?.value?.trim() || '',
+          active: getField('active')?.checked === true,
+          show_on_checkout: getField('show_on_checkout')?.checked === true,
+          is_default: getField('is_default')?.checked === true,
+          default_document_type: getField('default_document_type')?.value || 'fatura',
+          supported_document_types: (getField('supported_document_types')?.value || 'fatura').split(',').map((item) => item.trim()).filter(Boolean),
+        };
+        try {
+          await restaurantApi.updatePrinterConfig(payload);
+          toast('Impressora guardada.');
+          await loadAdminPrinters();
+        } catch (error) {
+          toast(error.message || 'Erro a guardar impressora.', true);
+        }
       }
 
       async function refreshTables() {
@@ -581,6 +687,10 @@
           </div>
           ${wifiHtml}
         `;
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replaceAll('\"', '&quot;');
       }
 
       function escapeHtml(value) {
