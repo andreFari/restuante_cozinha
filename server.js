@@ -85,9 +85,40 @@ app.use((req, res, next) => {
   return next();
 });
 
-app.use("/images", express.static(path.join(__dirname, "public", "imagens")));
-app.use("/uploads", express.static(uploadsDir));
-app.use(express.static(path.join(__dirname, "public")));
+const staticCache = {
+  images: { maxAge: "7d", immutable: true },
+  uploads: { maxAge: "1d" },
+  assets: { maxAge: "5m" },
+};
+
+function setPublicStaticCacheHeaders(res, filePath) {
+  const ext = path.extname(filePath || "").toLowerCase();
+  if (ext === ".html") {
+    res.setHeader("Cache-Control", "no-store");
+    return;
+  }
+  if ([".js", ".css", ".json"].includes(ext)) {
+    res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+  }
+}
+
+app.use("/images", express.static(path.join(__dirname, "public", "imagens"), {
+  etag: true,
+  lastModified: true,
+  maxAge: staticCache.images.maxAge,
+  immutable: staticCache.images.immutable,
+}));
+app.use("/uploads", express.static(uploadsDir, {
+  etag: true,
+  lastModified: true,
+  maxAge: staticCache.uploads.maxAge,
+}));
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: true,
+  lastModified: true,
+  maxAge: staticCache.assets.maxAge,
+  setHeaders: setPublicStaticCacheHeaders,
+}));
 
 app.get("/", (req, res) => res.redirect("/login.html"));
 app.get("/login.html", (req, res) => {

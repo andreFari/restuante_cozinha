@@ -69,11 +69,18 @@ async function httpForm(url, { method = 'POST', headers = {}, form } = {}) {
 }
 const HOT_CACHE = new Map();
 const HOT_CACHE_TTLS = {
-  menuItems: 4000,
-  categories: 5000,
-  tables: 1500,
-  kitchen: 1500,
-  operatorContext: 1500,
+  // Leituras pesadas e quase estáticas. Invalidadas quando há escrita; TTL curto protege setups com 2 servidores.
+  menuItems: 15000,
+  categories: 30000,
+  operators: 15000,
+  authUser: 3000,
+
+  // Operação viva. Cache curtíssima para reduzir cliques repetidos sem arriscar cozinha/contas.
+  tables: 1000,
+  kitchen: 1000,
+  operatorContext: 3000,
+  history: 2000,
+  serviceBoard: 1000,
 };
 let menuAvailabilitySchemaReady = false;
 
@@ -2101,7 +2108,7 @@ export class RestaurantStore {
   }
 
   async getAuthUser(userId) {
-    return readCached('authUser', userId, 3000, () => withClient(async (client) => {
+    return readCached('authUser', userId, HOT_CACHE_TTLS.authUser, () => withClient(async (client) => {
       const user = await getUserById(client, userId);
       return mapAuthUser(user);
     }));
@@ -2199,7 +2206,7 @@ export class RestaurantStore {
   }
 
   async listOperators() {
-    return readCached('operators', '', 3000, () => withClient(async (client) => getOperators(client)));
+    return readCached('operators', '', HOT_CACHE_TTLS.operators, () => withClient(async (client) => getOperators(client)));
   }
 
   async selectOperator({ terminal_id = 'terminal_main', operator_id, pin = null }) {
@@ -2698,7 +2705,7 @@ export class RestaurantStore {
     };
 
     if (externalClient) return run(externalClient);
-    return readCached('history', table_id || forcedSessionId || '', 1200, () => withClient(run));
+    return readCached('history', table_id || forcedSessionId || '', HOT_CACHE_TTLS.history, () => withClient(run));
   }
 
   async openTable({ table_id, operator_id, terminal_id = 'terminal_main', note = '' }) {
@@ -4480,7 +4487,7 @@ export class RestaurantStore {
   }
 
   async getServiceBoard() {
-    return readCached('serviceBoard', '', 1500, async () => {
+    return readCached('serviceBoard', '', HOT_CACHE_TTLS.serviceBoard, async () => {
     const [tables, kitchen, closedSessionsRes] = await Promise.all([
       this.listTables(),
       this.getKitchenBoard(),

@@ -27,6 +27,129 @@ export function clearOperatorId() {
   localStorage.removeItem(OPERATOR_KEY);
 }
 
+const CACHE_PREFIX = "restaurant.web.read-cache.v2:";
+const readCache = new Map();
+
+const CACHE_TTL = {
+  bootstrap: 2500,
+  tables: 1200,
+  table: 900,
+  history: 3500,
+  operators: 30000,
+  operatorContext: 5000,
+  workers: 30000,
+  pendingPayments: 1500,
+  managedTables: 15000,
+  qrSettings: 30000,
+  tableQr: 30000,
+  menuItems: 60000,
+  menuProfiles: 300000,
+  menuConfig: 30000,
+  categories: 120000,
+  printers: 20000,
+  kitchen: 1000,
+  serviceBoard: 1000,
+  invoices: 8000,
+};
+
+function cachePart(value) {
+  return encodeURIComponent(String(value ?? ""));
+}
+
+function cacheStorageKey(key) {
+  return `${CACHE_PREFIX}${key}`;
+}
+
+function readPersistedCache(key) {
+  try {
+    const raw = sessionStorage.getItem(cacheStorageKey(key));
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (!entry || typeof entry !== "object" || !("expiresAt" in entry) || !("value" in entry)) return null;
+    readCache.set(key, entry);
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedCache(key, entry) {
+  try {
+    sessionStorage.setItem(cacheStorageKey(key), JSON.stringify(entry));
+  } catch {
+    // Sem espaço/privacidade: a cache em memória continua a funcionar.
+  }
+}
+
+function invalidateReadCache(...prefixes) {
+  if (!prefixes.length) {
+    readCache.clear();
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith(CACHE_PREFIX))
+      .forEach((key) => sessionStorage.removeItem(key));
+    return;
+  }
+
+  const shouldRemove = (key) => prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`));
+  Array.from(readCache.keys()).forEach((key) => {
+    if (shouldRemove(key)) readCache.delete(key);
+  });
+  Object.keys(sessionStorage)
+    .filter((key) => key.startsWith(CACHE_PREFIX))
+    .filter((key) => shouldRemove(key.slice(CACHE_PREFIX.length)))
+    .forEach((key) => sessionStorage.removeItem(key));
+}
+
+async function cachedRequest(key, ttlMs, url, options = {}) {
+  const now = Date.now();
+  const memoryHit = readCache.get(key);
+  if (memoryHit?.expiresAt > now) return memoryHit.value;
+
+  const persistedHit = readPersistedCache(key);
+  if (persistedHit?.expiresAt > now) return persistedHit.value;
+
+  try {
+    const value = await request(url, options);
+    const entry = { value, savedAt: now, expiresAt: now + Math.max(0, ttlMs) };
+    readCache.set(key, entry);
+    writePersistedCache(key, entry);
+    return value;
+  } catch (error) {
+    if (memoryHit) return memoryHit.value;
+    if (persistedHit) return persistedHit.value;
+    throw error;
+  }
+}
+
+function invalidateAfterMutation(url, method) {
+  if (String(method || "GET").toUpperCase() === "GET") return;
+  const prefixes = new Set();
+  const add = (...items) => items.forEach((item) => prefixes.add(item));
+
+  if (url.includes("/demo/") || url.includes("/auth/login") || url.includes("/auth/logout")) {
+    invalidateReadCache();
+    return;
+  }
+  if (url.includes("/operators/")) add("operator-context", "operators", "bootstrap");
+  if (url.includes("/workers")) add("workers", "operators", "operator-context", "bootstrap");
+  if (url.includes("/tables/manage")) add("managed-tables", "tables", "bootstrap", "table-qr");
+  if (url.includes("/settings/qr") || url.includes("/qr/regenerate")) add("qr-settings", "table-qr", "managed-tables");
+  if (url.includes("/categories") || url.includes("/menu-items") || url.includes("/menu-config") || url.includes("/uploads/menu-image")) {
+    add("menu-items", "categories", "menu-profiles", "menu-config", "bootstrap", "kitchen", "service-board");
+  }
+  if (url.includes("/payment-requests") || url.includes("/tables/open") || url.includes("/tables/") || url.includes("/kitchen/items/")) {
+    add("bootstrap", "tables", "kitchen", "service-board", "pending-payments", "history", "invoices");
+    const tableMatch = url.match(/\/api\/restaurant\/tables\/([^/]+)/);
+    if (tableMatch?.[1] && !["manage", "open"].includes(tableMatch[1])) {
+      add(`table:${cachePart(decodeURIComponent(tableMatch[1]))}`);
+    }
+  }
+  if (url.includes("/checkout") || url.includes("/payment-intents/")) add("bootstrap", "tables", "invoices", "printers");
+  if (url.includes("/printers")) add("printers");
+
+  if (prefixes.size) invalidateReadCache(...Array.from(prefixes));
+}
+
 async function request(url, options = {}) {
   const response = await fetch(url, {
     credentials: "same-origin",
@@ -49,6 +172,8 @@ async function request(url, options = {}) {
   if (!response.ok) {
     throw new Error(data?.detail || data?.error || `HTTP ${response.status}`);
   }
+
+  invalidateAfterMutation(url, options.method || "GET");
   return data;
 }
 
@@ -67,14 +192,16 @@ export const restaurantApi = {
     return request(`/api/restaurant/auth/logout`, { method: "POST" });
   },
   bootstrap() {
-    return request(`/api/restaurant/bootstrap?terminal_id=${encodeURIComponent(getTerminalId())}`);
+    const terminalId = getTerminalId();
+    return cachedRequest(`bootstrap:${cachePart(terminalId)}`, CACHE_TTL.bootstrap, `/api/restaurant/bootstrap?terminal_id=${encodeURIComponent(terminalId)}`);
   },
   listTables() {
-    return request(`/api/restaurant/tables`);
+    return cachedRequest(`tables:${cachePart(getTerminalId())}`, CACHE_TTL.tables, `/api/restaurant/tables`);
   },
 
   listPendingPaymentRequests() {
-    return request(`/api/restaurant/payment-requests?terminal_id=${encodeURIComponent(getTerminalId())}`);
+    const terminalId = getTerminalId();
+    return cachedRequest(`pending-payments:${cachePart(terminalId)}`, CACHE_TTL.pendingPayments, `/api/restaurant/payment-requests?terminal_id=${encodeURIComponent(terminalId)}`);
   },
   approvePaymentRequest(requestId) {
     return request(`/api/restaurant/payment-requests/${encodeURIComponent(requestId)}/approve`, {
@@ -124,16 +251,17 @@ export const restaurantApi = {
   },
 
   getTable(tableId) {
-    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}`);
+    return cachedRequest(`table:${cachePart(tableId)}`, CACHE_TTL.table, `/api/restaurant/tables/${encodeURIComponent(tableId)}`);
   },
   getHistory(tableId) {
-    return request(`/api/restaurant/tables/${encodeURIComponent(tableId)}/history`);
+    return cachedRequest(`history:${cachePart(tableId)}`, CACHE_TTL.history, `/api/restaurant/tables/${encodeURIComponent(tableId)}/history`);
   },
   listOperators() {
-    return request(`/api/restaurant/operators`);
+    return cachedRequest("operators", CACHE_TTL.operators, `/api/restaurant/operators`);
   },
   getOperatorContext() {
-    return request(`/api/restaurant/operators/context?terminal_id=${encodeURIComponent(getTerminalId())}`);
+    const terminalId = getTerminalId();
+    return cachedRequest(`operator-context:${cachePart(terminalId)}`, CACHE_TTL.operatorContext, `/api/restaurant/operators/context?terminal_id=${encodeURIComponent(terminalId)}`);
   },
   selectOperator(operatorId, pin = "") {
     return request(`/api/restaurant/operators/select`, {
@@ -146,7 +274,7 @@ export const restaurantApi = {
     });
   },
   listWorkers() {
-    return request(`/api/restaurant/workers`);
+    return cachedRequest("workers", CACHE_TTL.workers, `/api/restaurant/workers`);
   },
   createWorker(payload) {
     return request(`/api/restaurant/workers`, {
@@ -236,7 +364,7 @@ export const restaurantApi = {
   },
 
   listPrinters() {
-    return request(`/api/restaurant/printers`);
+    return cachedRequest("printers", CACHE_TTL.printers, `/api/restaurant/printers`);
   },
   listAdminPrinters() {
     return request(`/api/printers/admin`);
@@ -289,7 +417,7 @@ export const restaurantApi = {
     });
   },
   kitchenBoard() {
-    return request(`/api/restaurant/kitchen/board`);
+    return cachedRequest("kitchen", CACHE_TTL.kitchen, `/api/restaurant/kitchen/board`);
   },
   kitchenStatus(kitchenItemId, status) {
     return request(`/api/restaurant/kitchen/items/${encodeURIComponent(kitchenItemId)}/status`, {
@@ -313,7 +441,7 @@ export const restaurantApi = {
     });
   },
   listTableDefinitions() {
-    return request(`/api/restaurant/tables/manage`);
+    return cachedRequest("managed-tables", CACHE_TTL.managedTables, `/api/restaurant/tables/manage`);
   },
   createTable(payload) {
     return request(`/api/restaurant/tables/manage`, {
@@ -336,7 +464,7 @@ export const restaurantApi = {
     });
   },
   getQrSettings() {
-    return request(`/api/restaurant/settings/qr`);
+    return cachedRequest("qr-settings", CACHE_TTL.qrSettings, `/api/restaurant/settings/qr`);
   },
   updateQrSettings(payload) {
     return request(`/api/restaurant/settings/qr`, {
@@ -345,7 +473,7 @@ export const restaurantApi = {
     });
   },
   getTableQr(tableId) {
-    return request(`/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/qr`);
+    return cachedRequest(`table-qr:${cachePart(tableId)}`, CACHE_TTL.tableQr, `/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/qr`);
   },
   regenerateTableQr(tableId) {
     return request(`/api/restaurant/tables/manage/${encodeURIComponent(tableId)}/qr/regenerate`, {
@@ -366,16 +494,16 @@ export const restaurantApi = {
     });
   },
   listMenuItems() {
-    return request(`/api/restaurant/menu-items`);
+    return cachedRequest("menu-items", CACHE_TTL.menuItems, `/api/restaurant/menu-items`);
   },
   listMenuProfiles() {
-    return request(`/api/restaurant/menu-profiles`);
+    return cachedRequest("menu-profiles", CACHE_TTL.menuProfiles, `/api/restaurant/menu-profiles`);
   },
   getMenuConfig(menuKey, day) {
     const params = new URLSearchParams();
     if (menuKey) params.set("menu_key", menuKey);
     if (day !== undefined && day !== null) params.set("day", String(day));
-    return request(`/api/restaurant/menu-config?${params.toString()}`);
+    return cachedRequest(`menu-config:${cachePart(menuKey)}:${cachePart(day)}`, CACHE_TTL.menuConfig, `/api/restaurant/menu-config?${params.toString()}`);
   },
   updateMenuAvailability(menuKey, menuItemId, payload) {
     return request(`/api/restaurant/menu-config/${encodeURIComponent(menuKey)}/items/${encodeURIComponent(menuItemId)}`, {
@@ -384,7 +512,7 @@ export const restaurantApi = {
     });
   },
   listCategories() {
-    return request(`/api/restaurant/categories`);
+    return cachedRequest("categories", CACHE_TTL.categories, `/api/restaurant/categories`);
   },
   createCategory(payload) {
     return request(`/api/restaurant/categories`, {
@@ -437,10 +565,10 @@ export const restaurantApi = {
     });
   },
   serviceBoard() {
-    return request(`/api/restaurant/service-board`);
+    return cachedRequest("service-board", CACHE_TTL.serviceBoard, `/api/restaurant/service-board`);
   },
   listLocalInvoices() {
-    return request(`/api/restaurant/invoices/local`);
+    return cachedRequest("invoices", CACHE_TTL.invoices, `/api/restaurant/invoices/local`);
   },
   seedDemo() {
     return request(`/api/restaurant/demo/seed`, { method: "POST" });
