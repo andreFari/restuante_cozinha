@@ -505,6 +505,12 @@ export const restaurantApi = {
     if (day !== undefined && day !== null) params.set("day", String(day));
     return cachedRequest(`menu-config:${cachePart(menuKey)}:${cachePart(day)}`, CACHE_TTL.menuConfig, `/api/restaurant/menu-config?${params.toString()}`);
   },
+  getMenuExportUrl(menuKey, day, { autoPrint = true } = {}) {
+    const params = new URLSearchParams();
+    params.set("day", day === undefined || day === null ? "all" : String(day));
+    if (!autoPrint) params.set("autoprint", "0");
+    return `/api/restaurant/menu-export/${encodeURIComponent(menuKey || "sala")}/pdf?${params.toString()}`;
+  },
   updateMenuAvailability(menuKey, menuItemId, payload) {
     return request(`/api/restaurant/menu-config/${encodeURIComponent(menuKey)}/items/${encodeURIComponent(menuItemId)}`, {
       method: "PATCH",
@@ -524,6 +530,12 @@ export const restaurantApi = {
     return request(`/api/restaurant/categories/${encodeURIComponent(categoryId)}`, {
       method: "PATCH",
       body: JSON.stringify({ ...payload }),
+    });
+  },
+  reorderCategory(categoryId, direction) {
+    return request(`/api/restaurant/categories/${encodeURIComponent(categoryId)}/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ direction }),
     });
   },
   deleteCategory(categoryId) {
@@ -561,7 +573,7 @@ export const restaurantApi = {
   reorderMenuItem(menuItemId, direction) {
     return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}/reorder`, {
       method: "POST",
-      body: JSON.stringify({ direction }),
+      body: JSON.stringify({ direction, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
     });
   },
   serviceBoard() {

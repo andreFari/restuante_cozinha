@@ -18,7 +18,7 @@
       .category-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
       .category-head strong{font-size:18px}
       .tiny-muted{font-size:13px;color:#64748b}
-      .category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+      .category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
       .dish-card{display:grid;gap:10px;border:1px solid #dbe3ef;border-radius:18px;background:#fbfcfe;padding:10px;cursor:pointer;box-shadow:0 8px 20px rgba(15,23,42,.04)}
       .dish-card:hover{transform:translateY(-1px)}
       .dish-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px;background:#eef2f7;border:1px solid #dbe3ef}
@@ -33,8 +33,10 @@
       .flow-badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
       .flow-badge.cozinha{background:#fff1f2;color:#be123c}
       .flow-badge.bar{background:#eef5ff;color:#2457d6}
-      .sort-actions{display:flex;gap:6px;justify-content:flex-end}
-      .sort-btn{width:32px;height:32px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font:inherit;font-weight:800;cursor:pointer}
+      .sort-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+      .sort-label{grid-column:1/-1;font-size:12px;color:#64748b;font-weight:700}
+      .sort-btn{min-height:38px;border:1px solid #dbe3ef;border-radius:12px;background:#fff;font:inherit;font-weight:800;cursor:pointer;color:#0f172a}
+      .sort-btn:disabled{opacity:.35;cursor:not-allowed}
       .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
       .modal-backdrop.show{display:flex}
       .modal-card{width:min(1080px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
@@ -209,6 +211,7 @@
         selectedId: null,
         pendingFile: null,
         imagePreviewUrl: "",
+        autoOpenItemId: new URLSearchParams(window.location.search).get("item") || "",
       };
 
       const dishGrid = document.getElementById("dishGrid");
@@ -311,14 +314,25 @@
           restaurantApi.listMenuItems(),
           restaurantApi.listCategories(),
         ]);
-        state.rows = Array.isArray(items) ? items : [];
-        state.categories = Array.isArray(categories) ? categories : [];
+        state.rows = sortMenuRows(Array.isArray(items) ? items : []);
+        state.categories = sortCategoryRows(Array.isArray(categories) ? categories : []);
         hydrateCategorySelects();
         renderGrid();
+        if (state.autoOpenItemId) {
+          const itemId = state.autoOpenItemId;
+          state.autoOpenItemId = "";
+          if (state.rows.some((row) => row.id === itemId)) openModal(itemId);
+        }
       }
 
       function hydrateCategorySelects() {
-        const options = state.categories.length ? state.categories : [];
+        const fallbackCategories = [...new Set(state.rows.map((item) => item.category || 'Sem categoria'))]
+          .map((name, index) => ({ name, sort_order: 100000 + index }));
+        const known = new Set(state.categories.map((category) => category.name));
+        const options = sortCategoryRows([
+          ...state.categories,
+          ...fallbackCategories.filter((category) => !known.has(category.name)),
+        ]);
         categorySelect.innerHTML = options.map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join("");
         categoryFilter.innerHTML = `<option value="">Todas as categorias</option>` + options.map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join("");
       }
@@ -327,12 +341,37 @@
         const term = searchInput.value.trim().toLowerCase();
         const flow = flowFilter.value;
         const category = categoryFilter.value;
-        return state.rows.filter((item) => {
+        return sortMenuRows(state.rows.filter((item) => {
           const matchesTerm = !term || [item.name, item.category, item.flow || item.station, item.description, item.descricao_produto, item.preparation_details, item.modo_preparo].some((value) => String(value || "").toLowerCase().includes(term));
           const matchesFlow = !flow || (item.flow || item.station) === flow;
           const matchesCategory = !category || item.category === category;
           return matchesTerm && matchesFlow && matchesCategory;
-        });
+        }));
+      }
+
+      function sortCategoryRows(rows = []) {
+        return [...rows].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
+      }
+
+      function sortMenuRows(rows = []) {
+        return [...rows].sort((a, b) => Number(a.category_sort_order || 0) - Number(b.category_sort_order || 0) || String(a.category || 'Sem categoria').localeCompare(String(b.category || 'Sem categoria'), 'pt') || Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
+      }
+
+      function applyLocalReorder(itemId, direction) {
+        const current = state.rows.find((row) => String(row.id) === String(itemId));
+        if (!current) return false;
+        const category = current.category || 'Sem categoria';
+        const siblings = sortMenuRows(state.rows.filter((row) => (row.category || 'Sem categoria') === category));
+        const currentIndex = siblings.findIndex((row) => String(row.id) === String(itemId));
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (currentIndex < 0 || targetIndex < 0 || targetIndex >= siblings.length) return false;
+
+        siblings.forEach((row, index) => { row.sort_order = index + 1; });
+        const currentSort = siblings[currentIndex].sort_order;
+        siblings[currentIndex].sort_order = siblings[targetIndex].sort_order;
+        siblings[targetIndex].sort_order = currentSort;
+        state.rows = sortMenuRows(state.rows);
+        return true;
       }
 
       function renderGrid() {
@@ -350,16 +389,25 @@
           groups.get(key).push(item);
         });
 
-        dishGrid.innerHTML = [...groups.entries()].map(([category, items]) => `
+        const orderedGroups = [...groups.entries()].map(([category, items]) => [
+          category,
+          sortMenuRows(items),
+        ]).sort((a, b) => {
+          const aItem = a[1][0] || {};
+          const bItem = b[1][0] || {};
+          return Number(aItem.category_sort_order || 0) - Number(bItem.category_sort_order || 0) || String(a[0]).localeCompare(String(b[0]), 'pt');
+        });
+
+        dishGrid.innerHTML = orderedGroups.map(([category, items]) => `
           <section class="category-section">
             <div class="category-head">
               <div>
                 <strong>${escapeHtml(category)}</strong>
-                <div class="tiny-muted">${items.length} artigo(s) nesta categoria.</div>
+                <div class="tiny-muted">${items.length} artigo(s) nesta categoria. Usa Subir/Descer para definir a ordem no menu.</div>
               </div>
             </div>
             <div class="category-grid">
-              ${items.map((item) => {
+              ${items.map((item, index) => {
                 const image = item.image_url || item.imagem_url || "./imagens/placeholder.jpg";
                 const flow = (item.flow || item.station) === 'bar' ? 'bar' : 'cozinha';
                 return `
@@ -374,8 +422,9 @@
                     <div class="chip-row"><span class="flow-badge ${flow}">${flow === 'bar' ? 'bar / serviço' : 'cozinha'}</span></div>
                     <div class="dish-price">${euro(item.price)}</div>
                     <div class="sort-actions">
-                      <button type="button" class="sort-btn" data-sort-dir="up" data-item-id="${item.id}" title="Subir">↑</button>
-                      <button type="button" class="sort-btn" data-sort-dir="down" data-item-id="${item.id}" title="Descer">↓</button>
+                      <div class="sort-label">Ordem ${index + 1} de ${items.length}</div>
+                      <button type="button" class="sort-btn" data-sort-dir="up" data-item-id="${item.id}" ${index === 0 ? 'disabled' : ''} title="Subir prato">↑ Subir</button>
+                      <button type="button" class="sort-btn" data-sort-dir="down" data-item-id="${item.id}" ${index === items.length - 1 ? 'disabled' : ''} title="Descer prato">↓ Descer</button>
                     </div>
                   </article>
                 `;
@@ -392,10 +441,15 @@
         dishGrid.querySelectorAll('[data-sort-dir]').forEach((btn) => btn.addEventListener('click', async (event) => {
           event.stopPropagation();
           if (!ensureOperatorSelected()) return;
+          const snapshot = state.rows.map((row) => ({ ...row }));
+          const moved = applyLocalReorder(btn.dataset.itemId, btn.dataset.sortDir);
+          if (!moved) return;
+          renderGrid();
           try {
             await restaurantApi.reorderMenuItem(btn.dataset.itemId, btn.dataset.sortDir);
-            await refreshAll();
           } catch (error) {
+            state.rows = snapshot;
+            renderGrid();
             toast(error.message, true);
           }
         }));

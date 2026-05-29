@@ -280,10 +280,18 @@
       }
 
       function renderCatalogFilters() {
-        const categories = [...new Set((state.bootstrap?.menu_items || []).map((item) => item.category).filter(Boolean))];
+        const categories = [];
+        for (const item of sortCatalogItems(state.bootstrap?.menu_items || [])) {
+          const name = item.category || 'Sem categoria';
+          if (name && !categories.includes(name)) categories.push(name);
+        }
         const current = catalogCategoryFilter.value;
         catalogCategoryFilter.innerHTML = `<option value="">Todas as categorias</option>` + categories.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
         if (categories.includes(current)) catalogCategoryFilter.value = current;
+      }
+
+      function sortCatalogItems(items = []) {
+        return [...items].sort((a, b) => Number(a.category_sort_order || 0) - Number(b.category_sort_order || 0) || String(a.category || 'Sem categoria').localeCompare(String(b.category || 'Sem categoria'), 'pt') || Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
       }
 
       function openCatalogModal() {
@@ -297,7 +305,7 @@
         const term = catalogSearch.value.trim().toLowerCase();
         const category = catalogCategoryFilter.value;
         const flow = catalogFlowFilter.value;
-        return (state.bootstrap?.menu_items || [])
+        return sortCatalogItems(state.bootstrap?.menu_items || [])
           .filter((item) => itemAvailableForMenu(item))
           .filter((item) => !term || [item.name, item.category, item.flow || item.station].some((value) => String(value || '').toLowerCase().includes(term)))
           .filter((item) => !category || item.category === category)

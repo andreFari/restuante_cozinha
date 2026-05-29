@@ -197,6 +197,8 @@ async function ensureCheckoutSchema(client) {
   await client.query(`alter table public.faturas add column if not exists cliente_email text`);
   await client.query(`alter table public.faturas add column if not exists enviada_por_email_em timestamptz`);
   await client.query(`alter table public.faturas add column if not exists checkout_origem text`);
+  await client.query(`alter table public.faturas add column if not exists quem_faturou_id text null references public.app_users(id)`);
+  await client.query(`create index if not exists idx_faturas_quem_faturou on public.faturas(quem_faturou_id)`);
 }
 
 
@@ -3861,7 +3863,7 @@ export class RestaurantStore {
   async reorderMenuItem({ menu_item_id, direction = 'up' }) {
     return withTransaction(async (client) => {
       const currentRes = await client.query(
-        `select id, categoria_id, sort_order, nome
+        `select id, categoria_id
            from artigos
           where id = $1`,
         [menu_item_id]
@@ -3869,34 +3871,65 @@ export class RestaurantStore {
       const current = currentRes.rows[0];
       if (!current) throw makeError('Prato não encontrado.', 404, 'menu_item_not_found');
 
-      const isUp = String(direction || 'up').toLowerCase() === 'up';
-      const adjacentRes = await client.query(
+      const siblingsRes = await client.query(
         `select id, sort_order, nome
            from artigos
-          where id <> $1
-            and categoria_id is not distinct from $2
-            and (
-              ($3 = true and (sort_order < $4 or (sort_order = $4 and nome < $5)))
-              or
-              ($3 = false and (sort_order > $4 or (sort_order = $4 and nome > $5)))
-            )
-          order by
-            case when $3 = true then sort_order end desc,
-            case when $3 = true then nome end desc,
-            case when $3 = false then sort_order end asc,
-            case when $3 = false then nome end asc
-          limit 1`,
-        [menu_item_id, current.categoria_id, isUp, Number(current.sort_order || 0), String(current.nome || '')]
+          where categoria_id is not distinct from $1
+          order by coalesce(sort_order, 999999), nome, id
+          for update`,
+        [current.categoria_id]
       );
 
-      const adjacent = adjacentRes.rows[0];
-      if (!adjacent) return { ok: true, moved: false };
+      const siblings = siblingsRes.rows;
+      const currentIndex = siblings.findIndex((row) => String(row.id) === String(menu_item_id));
+      if (currentIndex === -1) throw makeError('Prato não encontrado.', 404, 'menu_item_not_found');
 
-      await client.query(`update artigos set sort_order = -999999 where id = $1`, [current.id]);
-      await client.query(`update artigos set sort_order = $2, updated_at = now() where id = $1`, [adjacent.id, Number(current.sort_order || 0)]);
-      await client.query(`update artigos set sort_order = $2, updated_at = now() where id = $1`, [current.id, Number(adjacent.sort_order || 0)]);
+      const needsNormalize = siblings.some((row, index) => Number(row.sort_order || 0) !== index + 1);
+      if (needsNormalize) {
+        await client.query(
+          `update artigos a
+              set sort_order = src.sort_order,
+                  updated_at = now()
+             from unnest($1::text[], $2::int[]) as src(id, sort_order)
+            where a.id::text = src.id`,
+          [siblings.map((row) => String(row.id)), siblings.map((_, index) => index + 1)]
+        );
+        siblings.forEach((row, index) => { row.sort_order = index + 1; });
+      }
 
-      return { ok: true, moved: true };
+      const isUp = String(direction || 'up').toLowerCase() === 'up';
+      const targetIndex = isUp ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= siblings.length) {
+        return { ok: true, moved: false, sort_order: currentIndex + 1 };
+      }
+
+      const currentRow = siblings[currentIndex];
+      const targetRow = siblings[targetIndex];
+      const currentSort = Number(currentRow.sort_order || currentIndex + 1);
+      const targetSort = Number(targetRow.sort_order || targetIndex + 1);
+
+      await client.query(
+        `update artigos
+            set sort_order = case
+                  when id = $1 then $4
+                  when id = $2 then $3
+                  else sort_order
+                end,
+                updated_at = now()
+          where id in ($1, $2)`,
+        [currentRow.id, targetRow.id, currentSort, targetSort]
+      );
+
+      invalidateCache('menuItems', 'menuConfig', 'bootstrap', 'serviceBoard');
+      return {
+        ok: true,
+        moved: true,
+        sort_order: targetSort,
+        changed_items: [
+          { id: currentRow.id, sort_order: targetSort },
+          { id: targetRow.id, sort_order: currentSort },
+        ],
+      };
     });
   }
 
@@ -4113,6 +4146,40 @@ export class RestaurantStore {
       if (!result.rows[0]) throw makeError('Categoria não encontrada.', 404, 'category_not_found');
       invalidateCache('categories', 'menuItems', 'bootstrap');
       return { category: { id: result.rows[0].id, name: result.rows[0].nome, sort_order: Number(result.rows[0].sort_order || 0) } };
+    });
+  }
+
+  async reorderCategory({ category_id, direction = 'up' }) {
+    return withTransaction(async (client) => {
+      const rowsRes = await client.query(
+        `select id, nome, sort_order
+           from categorias_artigos
+          order by coalesce(sort_order, 999999), nome, id
+          for update`
+      );
+      const rows = rowsRes.rows;
+      const currentIndex = rows.findIndex((row) => row.id === category_id);
+      if (currentIndex === -1) throw makeError('Categoria não encontrada.', 404, 'category_not_found');
+
+      const isUp = String(direction || 'up').toLowerCase() === 'up';
+      const targetIndex = isUp ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= rows.length) {
+        return { ok: true, moved: false, sort_order: currentIndex + 1 };
+      }
+
+      [rows[currentIndex], rows[targetIndex]] = [rows[targetIndex], rows[currentIndex]];
+      for (let index = 0; index < rows.length; index += 1) {
+        await client.query(
+          `update categorias_artigos
+              set sort_order = $2,
+                  updated_at = now()
+            where id = $1`,
+          [rows[index].id, index + 1]
+        );
+      }
+
+      invalidateCache('categories', 'menuItems', 'menuConfig', 'bootstrap');
+      return { ok: true, moved: true, sort_order: targetIndex + 1 };
     });
   }
 

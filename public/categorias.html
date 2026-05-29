@@ -13,6 +13,8 @@
       .card{display:grid;gap:12px;border:1px solid #dbe3ef;border-radius:20px;background:#fff;padding:16px}
       .card input{min-height:44px;border:1px solid #dbe3ef;border-radius:14px;padding:0 12px;font:inherit}
       .actions{display:flex;gap:10px;flex-wrap:wrap}
+      .order-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .order-actions button:disabled{opacity:.35;cursor:not-allowed}
     </style>
   </head>
   <body>
@@ -52,15 +54,27 @@
       await refresh();
       async function refresh() {
         const rows = await restaurantApi.listCategories();
-        grid.innerHTML = rows.length ? rows.map((row) => `
+        grid.innerHTML = rows.length ? rows.map((row, index) => `
           <article class="card" data-id="${row.id}">
             <input value="${escapeHtml(row.name)}" data-field="name" />
-            <div class="helper-text">${row.items_count || 0} artigo(s)</div>
+            <div class="helper-text">Ordem ${index + 1} de ${rows.length} · ${row.items_count || 0} artigo(s)</div>
+            <div class="order-actions">
+              <button class="ghost-btn" data-action="up" ${index === 0 ? 'disabled' : ''}>↑ Subir</button>
+              <button class="ghost-btn" data-action="down" ${index === rows.length - 1 ? 'disabled' : ''}>↓ Descer</button>
+            </div>
             <div class="actions">
               <button class="primary-btn" data-action="save">Guardar</button>
               <button class="ghost-btn" data-action="delete">Apagar</button>
             </div>
           </article>`).join("") : `<div class="empty-state">Sem categorias.</div>`;
+        grid.querySelectorAll("[data-action='up'], [data-action='down']").forEach((btn) => btn.addEventListener("click", async () => {
+          const card = btn.closest("[data-id]");
+          try {
+            await restaurantApi.reorderCategory(card.dataset.id, btn.dataset.action === 'up' ? 'up' : 'down');
+            toast("Ordem atualizada.");
+            await refresh();
+          } catch (error) { toast(error.message, true); }
+        }));
         grid.querySelectorAll("[data-action='save']").forEach((btn) => btn.addEventListener("click", async () => {
           const card = btn.closest("[data-id]");
           try {

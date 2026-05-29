@@ -14,6 +14,7 @@
       .invoice-table th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
       .invoice-card{display:grid;gap:10px;padding:14px;border:1px solid #dbe3ef;border-radius:18px;background:#fff}
       .tiny{font-size:13px;color:#64748b}
+      .invoice-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#eef7ff;color:#2457d6;font-size:12px;font-weight:800}
       @media (max-width:1000px){.page-grid{grid-template-columns:1fr}}
     </style>
   </head>
@@ -80,21 +81,30 @@
         invoicesBox.innerHTML = `
           <table class="invoice-table">
             <thead>
-              <tr><th>Número</th><th>Data</th><th>Mesa/slot</th><th>Pagamento</th><th>Total</th><th>Email</th><th>Ficheiro</th></tr>
+              <tr><th>Número</th><th>Data</th><th>Emitida por</th><th>Mesa/slot</th><th>Pagamento</th><th>Total</th><th>Email</th><th>Ficheiro</th></tr>
             </thead>
             <tbody>
               ${rows.map((row) => `
                 <tr>
-                  <td><strong>${row.number}</strong><div class="tiny">${row.customer_name || 'Consumidor final'}</div></td>
+                  <td><strong>${escapeHtml(row.number)}</strong><div class="tiny">${escapeHtml(row.customer_name || 'Consumidor final')}</div></td>
                   <td>${new Date(row.created_at).toLocaleString('pt-PT')}</td>
-                  <td>${row.table_name || '—'}</td>
-                  <td>${row.payment_type || '—'}</td>
+                  <td><span class="invoice-badge">${escapeHtml(row.invoiced_by || '—')}</span><div class="tiny">Registo interno</div></td>
+                  <td>${escapeHtml(row.table_name || '—')}</td>
+                  <td>${escapeHtml(row.payment_type || '—')}</td>
                   <td>${euro(row.total || 0)}</td>
-                  <td>${row.customer_email ? `${row.customer_email}<div class="tiny">${row.emailed_at ? 'Enviada' : 'Não enviada'}</div>` : '—'}</td>
-                  <td>${row.file_path ? `<a href="${row.file_path}" target="_blank" rel="noopener">Abrir</a>` : '—'}</td>
+                  <td>${row.customer_email ? `${escapeHtml(row.customer_email)}<div class="tiny">${row.emailed_at ? `Enviada por ${escapeHtml(row.invoiced_by || '—')}` : 'Não enviada'}</div>` : '—'}</td>
+                  <td>${row.file_path ? `<a href="${escapeHtml(row.file_path)}" target="_blank" rel="noopener">Abrir</a>` : '—'}</td>
                 </tr>`).join('')}
             </tbody>
           </table>`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
       }
     </script>
   </body>

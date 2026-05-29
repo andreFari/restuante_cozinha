@@ -694,6 +694,127 @@ router.post('/kitchen/items/:orderItemId/note-chat/reply', asyncHandler(async (r
   res.json(result);
 }));
 
+
+const MENU_EXPORT_DAY_LABELS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatEuro(value) {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(Number.isFinite(amount) ? amount : 0);
+}
+
+function sortMenuExportItems(items = []) {
+  return [...items].sort((a, b) =>
+    Number(a.category_sort_order || 0) - Number(b.category_sort_order || 0) ||
+    String(a.category || 'Sem categoria').localeCompare(String(b.category || 'Sem categoria'), 'pt') ||
+    Number(a.sort_order || 0) - Number(b.sort_order || 0) ||
+    String(a.name || '').localeCompare(String(b.name || ''), 'pt')
+  );
+}
+
+function groupedMenuExportItems(items = []) {
+  const groups = new Map();
+  for (const item of sortMenuExportItems(items)) {
+    const category = item.category || 'Sem categoria';
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category).push(item);
+  }
+  return [...groups.entries()];
+}
+
+function renderMenuExportDaySection({ day, items }) {
+  const groups = groupedMenuExportItems(items);
+  const count = items.length;
+  return `
+    <section class="day-section">
+      <div class="day-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(MENU_EXPORT_DAY_LABELS[day] || 'Menu')}</p>
+          <h2>${escapeHtml(MENU_EXPORT_DAY_LABELS[day] || 'Menu')}</h2>
+        </div>
+        <span>${count} prato${count === 1 ? '' : 's'}</span>
+      </div>
+      ${groups.length ? groups.map(([category, categoryItems]) => `
+        <section class="category-section">
+          <h3>${escapeHtml(category)}</h3>
+          <div class="items-grid">
+            ${categoryItems.map((item) => {
+              const image = item.image_url || item.imagem_url || '';
+              const description = item.description || item.descricao_produto || '';
+              return `
+                <article class="menu-item">
+                  ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.name)}" />` : '<div class="image-placeholder"></div>'}
+                  <div class="item-body">
+                    <div class="item-top">
+                      <strong>${escapeHtml(item.name || '—')}</strong>
+                      <span>${formatEuro(item.price)}</span>
+                    </div>
+                    ${description ? `<p>${escapeHtml(description)}</p>` : ''}
+                    <small>${escapeHtml(item.flow || item.station || 'cozinha')}${item.prep_minutes ? ` · ${Number(item.prep_minutes)} min` : ''}</small>
+                  </div>
+                </article>`;
+            }).join('')}
+          </div>
+        </section>`).join('') : '<div class="empty-export">Sem pratos ativos neste menu/dia.</div>'}
+    </section>`;
+}
+
+function renderPrintableMenuHtml({ profile, sections, generatedAt, baseUrl, autoPrint }) {
+  const totalItems = sections.reduce((sum, section) => sum + section.items.length, 0);
+  return `<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(profile.name)} - menu</title>
+  <style>
+    :root{--ink:#111827;--muted:#64748b;--line:#dbe3ef;--accent:#0f766e;--soft:#ecfdf5;--paper:#fffdf8}
+    *{box-sizing:border-box}
+    body{margin:0;background:#eef2f7;color:var(--ink);font-family:Arial,Helvetica,sans-serif;line-height:1.35}
+    .toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 18px;background:#0f172a;color:#fff;box-shadow:0 10px 30px rgba(15,23,42,.18)}
+    .toolbar strong{font-size:15px}.toolbar button{border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer}.toolbar .primary{background:#14b8a6;color:#06201d}.toolbar .ghost{background:#fff;color:#0f172a}
+    .page{width:min(1040px,100%);margin:24px auto;padding:28px;background:var(--paper);border:1px solid var(--line);border-radius:28px;box-shadow:0 24px 80px rgba(15,23,42,.12)}
+    .cover{display:grid;gap:10px;text-align:center;padding:22px 16px 26px;border:2px solid var(--accent);border-radius:28px;background:linear-gradient(180deg,#ffffff 0%,#f8fffd 100%)}
+    .eyebrow{margin:0;color:var(--accent);font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:12px}.cover h1{margin:0;font-size:42px;line-height:1}.cover p{margin:0;color:var(--muted)}
+    .cover .count{display:inline-flex;justify-self:center;margin-top:8px;padding:8px 14px;border-radius:999px;background:var(--soft);color:var(--accent);font-weight:900}
+    .day-section{break-inside:avoid;margin-top:28px}.day-head{display:flex;justify-content:space-between;align-items:end;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:10px}.day-head h2{margin:0;font-size:28px}.day-head span{font-weight:900;color:var(--accent)}
+    .category-section{margin-top:22px;break-inside:avoid}.category-section h3{margin:0 0 12px;font-size:20px;color:#0f172a;border-left:6px solid var(--accent);padding-left:10px}
+    .items-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.menu-item{display:grid;grid-template-columns:118px minmax(0,1fr);gap:12px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:10px;break-inside:avoid;min-height:120px}.menu-item img,.image-placeholder{width:118px;height:96px;object-fit:cover;border-radius:14px;background:#eef2f7;border:1px solid var(--line)}
+    .item-body{display:grid;gap:6px;align-content:start}.item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.item-top strong{font-size:17px}.item-top span{font-weight:900;white-space:nowrap;color:#0f766e}.item-body p{margin:0;color:#334155;font-size:13px}.item-body small{color:var(--muted)}
+    .empty-export{border:1px dashed var(--line);border-radius:18px;padding:18px;color:var(--muted);margin-top:14px;background:#fff}.footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;flex-wrap:wrap}
+    @page{size:A4;margin:12mm}
+    @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;margin:0;padding:0;border:0;box-shadow:none;border-radius:0}.cover{break-inside:avoid}.items-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.menu-item{box-shadow:none}.day-section{page-break-inside:auto}}
+    @media (max-width:760px){.items-grid{grid-template-columns:1fr}.menu-item{grid-template-columns:96px minmax(0,1fr)}.menu-item img,.image-placeholder{width:96px;height:82px}.cover h1{font-size:34px}}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>Pré-visualização para PDF · usa “Guardar como PDF”</strong>
+    <div><button class="ghost" onclick="window.close()">Fechar</button> <button class="primary" onclick="window.print()">Imprimir / Guardar PDF</button></div>
+  </div>
+  <main class="page">
+    <section class="cover">
+      <p class="eyebrow">Menu</p>
+      <h1>${escapeHtml(profile.name)}</h1>
+      <p>${escapeHtml(profile.description || '')}</p>
+      <span class="count">${totalItems} prato${totalItems === 1 ? '' : 's'} no documento</span>
+    </section>
+    ${sections.map((section) => renderMenuExportDaySection(section)).join('')}
+    <div class="footer"><span>Gerado em ${escapeHtml(generatedAt)}</span><span>${escapeHtml(baseUrl)}</span></div>
+  </main>
+  ${autoPrint ? '<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),450));</script>' : ''}
+</body>
+</html>`;
+}
+
 router.get("/menu-profiles", asyncHandler(async (req, res) => {
   requireMenuManager(req);
   res.json(await restaurantStore.listMenuProfiles());
@@ -703,7 +824,51 @@ router.get("/menu-config", asyncHandler(async (req, res) => {
   requireMenuManager(req);
   const menu_key = String(req.query.menu_key || "sala");
   const day = req.query.day !== undefined ? Number(req.query.day) : undefined;
-  res.json(await restaurantStore.getMenuConfig(menu_key, day));
+  res.json(toPublicAssetUrls(req, await restaurantStore.getMenuConfig(menu_key, day)));
+}));
+
+
+router.get("/menu-export/:menuKey/pdf", asyncHandler(async (req, res) => {
+  requireMenuManager(req);
+  const menuKey = String(req.params.menuKey || 'sala');
+  const profiles = await restaurantStore.listMenuProfiles();
+  const profile = profiles.find((row) => row.id === menuKey);
+  if (!profile) {
+    const error = new Error('Menu inválido.');
+    error.statusCode = 400;
+    error.code = 'invalid_menu_key';
+    throw error;
+  }
+
+  const dayRaw = String(req.query.day ?? new Date().getDay()).toLowerCase();
+  const days = dayRaw === 'all'
+    ? [0, 1, 2, 3, 4, 5, 6]
+    : [Number(dayRaw)].filter((value) => Number.isInteger(value) && value >= 0 && value <= 6);
+
+  if (!days.length) {
+    const error = new Error('Dia inválido.');
+    error.statusCode = 400;
+    error.code = 'invalid_day';
+    throw error;
+  }
+
+  const sections = await Promise.all(days.map(async (day) => {
+    const config = toPublicAssetUrls(req, await restaurantStore.getMenuConfig(menuKey, day));
+    return {
+      day,
+      items: sortMenuExportItems(config.enabled_items || []),
+    };
+  }));
+
+  const generatedAt = new Date().toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(renderPrintableMenuHtml({
+    profile,
+    sections,
+    generatedAt,
+    baseUrl: getPublicBaseUrl(req),
+    autoPrint: String(req.query.autoprint || '1') !== '0',
+  }));
 }));
 
 router.patch("/menu-config/:menuKey/items/:menuItemId", asyncHandler(async (req, res) => {
@@ -758,6 +923,16 @@ router.patch("/categories/:categoryId", asyncHandler(async (req, res) => {
     category_id: req.params.categoryId,
     name: req.body.name,
     sort_order: req.body.sort_order,
+  });
+  res.json(result);
+}));
+
+router.post("/categories/:categoryId/reorder", asyncHandler(async (req, res) => {
+  requireMenuManager(req);
+  requireBodyFields(req.body, ["direction"]);
+  const result = await restaurantStore.reorderCategory({
+    category_id: req.params.categoryId,
+    direction: req.body.direction,
   });
   res.json(result);
 }));
