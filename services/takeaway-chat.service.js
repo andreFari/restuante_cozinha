@@ -1,13 +1,11 @@
 import { withClient, withTransaction } from '../src/db.js';
 
-const APP_TIMEZONE = process.env.TZ || process.env.APP_TIMEZONE || 'Europe/Lisbon';
-process.env.TZ = APP_TIMEZONE;
-
 const ACTIVE_STATUSES = ['pending_staff_confirmation', 'confirmed_by_staff'];
 const FINAL_STATUSES = ['rejected_by_staff', 'cancelled_by_customer', 'completed'];
 const STAFF_ALLOWED_STATUSES = new Set([...ACTIVE_STATUSES, ...FINAL_STATUSES]);
 
 let schemaReady = false;
+const APP_TIMEZONE = process.env.APP_TIMEZONE || process.env.TZ || 'Europe/Lisbon';
 
 function makeError(message, statusCode = 400, code = 'takeaway_chat_error') {
   const error = new Error(message);
@@ -55,14 +53,54 @@ function looksLikeNo(text) {
   return /^(nao|não|n|cancelar|cancela|errado|alterar|mudar)$/i.test(normalized);
 }
 
+function stripPhoneFragments(text) {
+  return String(text || '')
+    .replace(/(?:\+\d{1,3}[\s.-]*)?(?:\d[\s.-]*){9,14}/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function hasItemSignal(text) {
+  const normalized = normalizeText(text);
+  return /\b(\d+|uma|um|duas|dois|tres|três|dose|doses|prato|pratos|menu|menus|sopa|arroz|batata|salada|carne|peixe|salmao|salmão|dourada|bacalhau|bife|frango|hamburguer|hambúrguer|robalo|polvo|lulas|picanha|bitoque|febras|costeleta)\b/.test(normalized);
+}
+
+function hasPickupSignal(text) {
+  const normalized = normalizeText(text);
+  return /\b(hoje|amanha|amanhã|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|levantar|recolher|buscar|apanhar|as|às|pelas)\b/.test(normalized) || /\b\d{1,2}[:h]\d{2}\b/.test(normalized);
+}
+
+function isGenericOrderIntent(text) {
+  const normalized = normalizeText(text).replace(/[.!?,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) return true;
+  if (hasItemSignal(normalized) || extractPhone(normalized) || parsePickupAt(normalized)) return false;
+  return /^(ola|olá|bom dia|boa tarde|boa noite)?\s*(eu\s+)?(queria|quero|gostava|pretendo|desejava|era para|podia|posso)\s+(fazer\s+)?(uma\s+)?(encomenda|pedido|takeaway|take away|para levar)(\s+takeaway|\s+para levar)?$/.test(normalized);
+}
+
+function cleanupNameCandidate(value) {
+  return stripPhoneFragments(value)
+    .replace(/^[,\s:.-]+|[,\s:.-]+$/g, '')
+    .replace(/\b(?:obrigado|obrigada|sff|por favor)\b.*$/i, '')
+    .trim();
+}
+
 function extractName(text) {
-  const clean = safeText(text, 120).trim();
+  const clean = safeText(text, 240).trim();
+  if (!clean) return '';
   const normalized = normalizeText(clean);
-  const prefixed = clean.match(/(?:chamo-me|sou|nome(?:\s+e|\s+é)?|em nome de)\s+(.+)/i);
-  const candidate = (prefixed?.[1] || clean).replace(/[.!?]+$/g, '').trim();
+  let candidate = '';
+
+  const prefixed = clean.match(/(?:chamo-me|sou|nome(?:\s+e|\s+é)?|em nome de|(?:é|e)\s+para)\s+([^,.!?\n\r]+(?:\s+[^,.!?\n\r]+){0,5})/i);
+  if (prefixed?.[1]) candidate = prefixed[1];
+  else candidate = clean;
+
+  candidate = cleanupNameCandidate(candidate);
+  const candidateNormalized = normalizeText(candidate);
   if (!candidate || extractPhone(candidate)) return '';
-  if (normalizeText(candidate).split(/\s+/).length > 6) return '';
-  if (/\b(dose|doses|prato|pratos|sopa|arroz|batata|levantar|takeaway|encomenda|hoje|amanha|amanhã)\b/i.test(normalized)) return '';
+  if (candidateNormalized.split(/\s+/).length > 6) return '';
+  if (/\b(dose|doses|prato|pratos|sopa|arroz|batata|levantar|takeaway|encomenda|pedido|hoje|amanha|amanhã|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|para levar)\b/i.test(normalized) && !prefixed?.[1]) return '';
+  if (/\b(dose|doses|prato|pratos|sopa|arroz|batata|takeaway|encomenda|pedido|hoje|amanha|amanhã)\b/i.test(candidateNormalized)) return '';
+  if (!/[a-zA-ZÀ-ÿ]{2,}/.test(candidate)) return '';
   return candidate.slice(0, 120);
 }
 
@@ -110,30 +148,80 @@ function parsePickupAt(text, now = new Date()) {
   return date;
 }
 
+function formatTimeFromMatch(hour, minute = '') {
+  const cleanHour = String(hour || '').padStart(2, '0');
+  const cleanMinute = String(minute || '00').padEnd(2, '0').slice(0, 2);
+  return `${cleanHour}:${cleanMinute}`;
+}
+
 function extractPickupText(text) {
   const raw = safeText(text, 500).trim();
   if (!raw) return '';
   const normalized = normalizeText(raw);
-  if (/\b(hoje|amanha|amanhã|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|levantar|recolher|buscar|apanhar)\b/.test(normalized)) return raw;
-  if (/\b\d{1,2}[:h]\d{2}\b/.test(normalized)) return raw;
+
+  const dayTime = raw.match(/\b(hoje|amanh[ãa]|domingo|segunda(?:-feira)?|ter[cç]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado)\b\s*(?:,?\s*(?:às|as|pelas|para\s+as|para)?\s*)?(\d{1,2})(?:[:h](\d{2}))?/i);
+  if (dayTime) return `${dayTime[1]} às ${formatTimeFromMatch(dayTime[2], dayTime[3])}`;
+
+  const pickupVerbTime = raw.match(/\b(?:levantar|recolher|buscar|apanhar|pronto|para|às|as|pelas)\b\s*(?:às|as|pelas|para)?\s*(\d{1,2})(?:[:h](\d{2}))\b/i);
+  if (pickupVerbTime) return `às ${formatTimeFromMatch(pickupVerbTime[1], pickupVerbTime[2])}`;
+
+  const onlyTime = raw.match(/^\s*(\d{1,2})(?:[:h](\d{2}))\s*$/i);
+  if (onlyTime) return `às ${formatTimeFromMatch(onlyTime[1], onlyTime[2])}`;
+
+  if (/\b(hoje|amanha|amanhã|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b/.test(normalized) && !hasItemSignal(raw) && !extractPhone(raw)) return raw;
   return '';
+}
+
+function removePickupFragments(text) {
+  return String(text || '')
+    .replace(/\b(?:para\s+)?(?:hoje|amanh[ãa]|domingo|segunda(?:-feira)?|ter[cç]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado)\b\s*(?:,?\s*(?:às|as|pelas|para\s+as|para)?\s*)?\d{1,2}(?:[:h]\d{2})?/ig, ' ')
+    .replace(/\b(?:levantar|recolher|buscar|apanhar|pronto|para|às|as|pelas)\b\s*(?:às|as|pelas|para)?\s*\d{1,2}(?:[:h]\d{2})\b/ig, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function stripLeadingOrderWords(text) {
+  return String(text || '')
+    .replace(/^\s*(?:ol[áa]|bom dia|boa tarde|boa noite)[,!\s.-]*/i, '')
+    .replace(/^\s*(?:eu\s+)?(?:queria|quero|gostava\s+de|pretendo|desejava|era\s+para|vou\s+querer|podia|posso)\s+(?:fazer\s+)?(?:uma\s+)?(?:encomenda\s+de\s+|encomendar\s+|pedir\s+|pedido\s+de\s+|takeaway\s+de\s+|take\s*away\s+de\s+|para\s+levar\s+)?/i, '')
+    .replace(/^\s*(?:encomendar|pedido\s+de|takeaway\s+de|take\s*away\s+de)\s+/i, '')
+    .trim();
+}
+
+function removeNameFragments(text) {
+  return String(text || '')
+    .replace(/\b(?:é|e)\s+para\s+[^,.!?\n\r]{2,80}(?=$|[,.!?])/ig, ' ')
+    .replace(/\b(?:em\s+nome\s+de|nome\s+(?:é|e)|chamo-me|sou)\s+[^,.!?\n\r]{2,80}(?=$|[,.!?])/ig, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function cleanItemCandidate(value) {
+  return stripLeadingOrderWords(removeNameFragments(removePickupFragments(stripPhoneFragments(value))))
+    .replace(/^[,\s:.-]+|[,\s:.-]+$/g, '')
+    .replace(/\b(?:sff|por favor|obrigado|obrigada)\b.*$/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 function extractItemsText(text) {
   const raw = safeText(text, 2500).trim();
-  if (!raw) return '';
-  const lines = raw
+  if (!raw || isGenericOrderIntent(raw)) return '';
+  const cleanedRaw = cleanItemCandidate(raw);
+  if (!cleanedRaw || isGenericOrderIntent(cleanedRaw)) return '';
+
+  const lines = cleanedRaw
     .split(/\n|\r|\.|;|,/)
-    .map((line) => line.trim())
+    .map((line) => cleanItemCandidate(line))
     .filter(Boolean);
 
   const itemLines = lines.filter((line) => {
     const normalized = normalizeText(line);
-    if (/^(bom dia|boa tarde|boa noite|ola|olá|obrigado|obrigada|sim|nao|não)$/.test(normalized)) return false;
-    if (/\b(gostava|queria|pretendo|possivel|possível|encomenda|takeaway|levar)\b/.test(normalized) && !/\b(dose|doses|prato|salmao|salmão|dourada|bacalhau|bife|sopa|arroz|batata|salada)\b/.test(normalized)) return false;
-    if (extractPickupText(line) && !/\b(dose|doses|prato|salmao|salmão|dourada|bacalhau|bife|sopa|arroz|batata|salada)\b/.test(normalized)) return false;
+    if (/^(bom dia|boa tarde|boa noite|ola|olá|obrigado|obrigada|sim|nao|não|ok|okay|confirmo)$/.test(normalized)) return false;
+    if (isGenericOrderIntent(line)) return false;
     if (extractPhone(line)) return false;
-    return /\b(\d+|uma|um|duas|dois|tres|três|dose|doses|prato|menu|sopa|arroz|batata|salada|carne|peixe|salmao|salmão|dourada|bacalhau|bife|frango|hamburguer|hambúrguer)\b/.test(normalized);
+    if (extractPickupText(line) && !hasItemSignal(line)) return false;
+    return hasItemSignal(line);
   });
 
   return itemLines.join('\n').slice(0, 2500);
@@ -145,10 +233,12 @@ function mergeDraftFromMessage(draft, message, stage) {
   const phone = extractPhone(text);
   const pickupText = extractPickupText(text);
   const pickupAt = parsePickupAt(text);
+  const hintedName = extractName(text);
 
   if (phone && !next.customer_phone) next.customer_phone = phone;
-  if (pickupText && !next.pickup_text) next.pickup_text = pickupText;
+  if (pickupText && (!next.pickup_text || (hasItemSignal(next.pickup_text) && !hasItemSignal(pickupText)))) next.pickup_text = pickupText;
   if (pickupAt && !next.pickup_at) next.pickup_at = pickupAt.toISOString();
+  if (hintedName && !next.customer_name) next.customer_name = hintedName;
 
   if (stage === 'ask_name') {
     const name = extractName(text);
@@ -164,7 +254,7 @@ function mergeDraftFromMessage(draft, message, stage) {
   } else {
     const maybeName = extractName(text);
     const itemsText = extractItemsText(text);
-    if (itemsText && (!next.items_text || itemsText.length > String(next.items_text || '').length)) next.items_text = itemsText;
+    if (itemsText && (!next.items_text || isGenericOrderIntent(next.items_text) || hasPickupSignal(next.items_text) || itemsText.length > String(next.items_text || '').length)) next.items_text = itemsText;
     if (maybeName && !next.customer_name) next.customer_name = maybeName;
   }
 
@@ -183,7 +273,7 @@ function formatPickupForSummary(draft) {
   if (draft?.pickup_at) {
     const date = new Date(draft.pickup_at);
     if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleString('pt-PT', { timeZone: APP_TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
+      return date.toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short', timeZone: APP_TIMEZONE });
     }
   }
   return String(draft?.pickup_text || '—');
@@ -278,66 +368,7 @@ async function ensureSchema(client) {
   schemaReady = true;
 }
 
-const AI_EXTRACTION_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    items_text: { type: 'string' },
-    pickup_text: { type: 'string' },
-    customer_name: { type: 'string' },
-    customer_phone: { type: 'string' },
-    confirmation: { type: 'string', enum: ['yes', 'no', 'unknown'] },
-  },
-  required: ['items_text', 'pickup_text', 'customer_name', 'customer_phone', 'confirmation'],
-};
-
-const FOOD_ITEM_SIGNAL_RE = /\b(\d+|uma|um|duas|dois|tres|três|dose|doses|meia|prato|pratos|menu|menus|sopa|arroz|batata|salada|carne|peixe|salmao|salmão|dourada|bacalhau|bife|frango|hamburguer|hambúrguer|bitoque|prego|francesinha|lasanha|massa|pizza|cozido|feijoada|picanha|posta|robalo|filete|polvo|lulas|panado|panados|costeleta|costeletas|febras|entremeada|alheira|omelete)\b/i;
-const GENERIC_TAKEAWAY_INTENT_RE = /\b(queria|gostava|pretendo|posso|podia|pode|possivel|possível|fazer|encomendar|encomenda|pedido|takeaway|take away|levar|comida)\b/i;
-
-function isGenericTakeawayIntent(text) {
-  const normalized = normalizeText(text);
-  if (!normalized) return false;
-  const hasGenericIntent = GENERIC_TAKEAWAY_INTENT_RE.test(normalized);
-  const hasItemSignal = FOOD_ITEM_SIGNAL_RE.test(normalized);
-  return hasGenericIntent && !hasItemSignal;
-}
-
-function isOnlyGreetingOrAck(text) {
-  const normalized = normalizeText(text);
-  return /^(bom dia|boa tarde|boa noite|ola|olá|obrigado|obrigada|sim|s|nao|não|ok|okay|certo)$/i.test(normalized);
-}
-
-function isValidAiItemsText(value, stage = '') {
-  const candidate = safeText(value, 2500).trim();
-  if (!candidate) return false;
-  if (isOnlyGreetingOrAck(candidate)) return false;
-  if (isGenericTakeawayIntent(candidate)) return false;
-  if (extractPhone(candidate)) return false;
-  if (extractPickupText(candidate) && !FOOD_ITEM_SIGNAL_RE.test(normalizeText(candidate))) return false;
-  if (FOOD_ITEM_SIGNAL_RE.test(normalizeText(candidate))) return true;
-
-  const words = normalizeText(candidate).split(/\s+/).filter(Boolean);
-  if (stage === 'ask_items' && words.length >= 2 && words.length <= 18 && !extractName(candidate)) return true;
-  return false;
-}
-
-function parseAiJson(raw) {
-  const text = String(raw || '').trim();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return null;
-    }
-  }
-}
-
-async function callOllamaExtractor(message, draft, stage) {
+async function callOllamaExtractor(message, draft) {
   if (process.env.TAKEAWAY_AI_ENABLED !== 'true') return null;
   const baseUrl = String(process.env.TAKEAWAY_OLLAMA_URL || process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
   const model = process.env.TAKEAWAY_OLLAMA_MODEL || process.env.OLLAMA_MODEL || 'qwen3:1.7b';
@@ -346,41 +377,32 @@ async function callOllamaExtractor(message, draft, stage) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const prompt = [
-      'És um extrator de dados para chat de takeaway de restaurante em Portugal.',
-      'Tarefa: ler UMA mensagem do cliente e devolver apenas JSON válido.',
-      'Nunca inventes pratos, nomes, datas, horas ou telefones.',
-      'Mensagens genéricas como "queria encomendar takeaway", "queria fazer uma encomenda" ou cumprimentos NÃO são pratos.',
-      'Só coloca items_text quando existir comida/prato/dose/menu explícito.',
-      'Só coloca pickup_text quando existir dia/hora/recolha explícita.',
-      'Só coloca customer_phone quando existir telefone.',
-      'Só coloca customer_name quando existir nome claro do cliente.',
-      'confirmation deve ser yes, no ou unknown.',
-      '',
-      `Etapa atual: ${stage || 'unknown'}`,
-      `Draft atual: ${JSON.stringify(draft || {})}`,
-      `Mensagem do cliente: ${JSON.stringify(message)}`,
-    ].join('\n');
+    const prompt = `És um extrator de campos para encomendas takeaway de um restaurante em Portugal. Devolve apenas JSON válido, sem texto extra.
 
+Regras obrigatórias:
+- items_text: só pratos/quantidades/acompanhamentos. Nunca incluir saudação, telefone, nome, nem data/hora.
+- pickup_text: só data/hora de levantamento, por exemplo "hoje às 19:30". Nunca copiar a mensagem inteira.
+- customer_name: nome da pessoa, especialmente depois de "é para", "e para", "nome é", "sou".
+- customer_phone: telefone normalizado se existir.
+- confirmation: "yes", "no" ou "unknown".
+- Não inventes dados. Campo desconhecido deve ser string vazia, exceto confirmation.
+
+JSON esperado: {"items_text":"","pickup_text":"","customer_name":"","customer_phone":"","confirmation":"unknown"}
+
+Draft atual: ${JSON.stringify(draft || {})}
+Mensagem: ${JSON.stringify(message)}`;
     const response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        prompt,
-        stream: false,
-        format: AI_EXTRACTION_SCHEMA,
-        think: false,
-        options: {
-          temperature: 0,
-          num_predict: 180,
-        },
-      }),
+      body: JSON.stringify({ model, prompt, stream: false, format: 'json', options: { temperature: 0 } }),
       signal: controller.signal,
     });
     if (!response.ok) return null;
     const data = await response.json().catch(() => null);
-    return parseAiJson(data?.response);
+    const raw = String(data?.response || '').trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    return JSON.parse(match[0]);
   } catch {
     return null;
   } finally {
@@ -388,33 +410,38 @@ async function callOllamaExtractor(message, draft, stage) {
   }
 }
 
-function mergeAiDraft(draft, ai, stage = '') {
+function mergeAiDraft(draft, ai) {
   if (!ai || typeof ai !== 'object') return draft;
   const next = { ...draft };
+  const aiItems = extractItemsText(ai.items_text || '');
+  const aiPickupText = extractPickupText(ai.pickup_text || '');
+  const aiPickupAt = parsePickupAt(aiPickupText || ai.pickup_text || '');
+  const aiName = extractName(ai.customer_name || '');
+  const aiPhone = normalizePhone(ai.customer_phone || '');
 
-  const aiItems = safeText(ai.items_text, 2500).trim();
-  if (aiItems && !next.items_text && isValidAiItemsText(aiItems, stage)) {
-    next.items_text = aiItems;
-  }
+  if (aiItems && (!next.items_text || isGenericOrderIntent(next.items_text) || hasPickupSignal(next.items_text))) next.items_text = aiItems;
+  if (aiPickupText && (!next.pickup_text || hasItemSignal(next.pickup_text) || extractPhone(next.pickup_text))) next.pickup_text = aiPickupText;
+  if (aiPickupAt && !next.pickup_at) next.pickup_at = aiPickupAt.toISOString();
+  if (aiName && !next.customer_name) next.customer_name = aiName;
+  if (aiPhone && !next.customer_phone) next.customer_phone = aiPhone;
+  return next;
+}
 
-  const aiPickup = safeText(ai.pickup_text, 500).trim();
-  if (aiPickup && !next.pickup_text && (extractPickupText(aiPickup) || parsePickupAt(aiPickup))) {
-    next.pickup_text = aiPickup;
-    const pickupAt = parsePickupAt(aiPickup);
-    if (pickupAt) next.pickup_at = pickupAt.toISOString();
-  }
+function sanitizeDraft(draft) {
+  const next = { ...(draft || {}) };
+  const cleanedItems = extractItemsText(next.items_text || '');
+  if (cleanedItems) next.items_text = cleanedItems;
+  else if (isGenericOrderIntent(next.items_text || '') || extractPhone(next.items_text || '') || (!hasItemSignal(next.items_text || '') && hasPickupSignal(next.items_text || ''))) next.items_text = '';
 
-  const aiName = safeText(ai.customer_name, 120).trim();
-  if (aiName && !next.customer_name) {
-    const name = extractName(aiName);
-    if (name) next.customer_name = name;
-  }
+  const cleanedPickup = extractPickupText(next.pickup_text || '');
+  if (cleanedPickup) next.pickup_text = cleanedPickup;
+  else if (hasItemSignal(next.pickup_text || '') || extractPhone(next.pickup_text || '')) next.pickup_text = '';
 
-  const aiPhone = normalizePhone(ai.customer_phone);
-  if (aiPhone && !next.customer_phone && extractPhone(aiPhone)) {
-    next.customer_phone = aiPhone;
-  }
+  const cleanedName = extractName(next.customer_name || '');
+  if (cleanedName) next.customer_name = cleanedName;
+  else if (hasItemSignal(next.customer_name || '') || hasPickupSignal(next.customer_name || '') || extractPhone(next.customer_name || '')) next.customer_name = '';
 
+  if (next.customer_phone) next.customer_phone = normalizePhone(next.customer_phone);
   return next;
 }
 
@@ -453,8 +480,8 @@ export const takeawayChatService = {
 
       const currentStage = nextStageForDraft(draft);
       let nextDraft = mergeDraftFromMessage(draft, cleanMessage, currentStage);
-      const aiExtraction = await callOllamaExtractor(cleanMessage, nextDraft, currentStage);
-      nextDraft = mergeAiDraft(nextDraft, aiExtraction, currentStage);
+      const aiExtraction = await callOllamaExtractor(cleanMessage, nextDraft);
+      nextDraft = sanitizeDraft(mergeAiDraft(nextDraft, aiExtraction));
 
       let nextStatus = row.status || 'draft';
       let nextStage = nextStageForDraft(nextDraft);
