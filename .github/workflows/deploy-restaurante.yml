@@ -1,0 +1,57 @@
+name: Deploy Restaurante Cozinha
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: restaurante-cozinha-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - restaurante-cozinha
+      - ubuntu2204
+      - deploy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show deploy info
+        run: |
+          echo "Deploying restaurante-cozinha"
+          whoami
+          pwd
+          node -v || true
+          npm -v || true
+
+      - name: Sync files to server project
+        run: |
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='storage' \
+            --exclude='uploads' \
+            --exclude='logs' \
+            --exclude='*.log' \
+            ./ /opt/restaurante-cozinha/
+
+      - name: Install production dependencies
+        working-directory: /opt/restaurante-cozinha
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --omit=dev
+          else
+            npm install --omit=dev
+          fi
+
+      - name: Restart restaurante service
+        run: |
+          sudo systemctl restart restaurante-cozinha.service
+          sudo systemctl status restaurante-cozinha.service --no-pager

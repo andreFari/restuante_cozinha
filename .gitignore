@@ -1,3 +1,10 @@
 .env
 .env.*
 !.env.example
+node_modules/
+.env
+.env.*
+logs/
+storage/
+uploads/
+.DS_Store
