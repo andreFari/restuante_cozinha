@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { restaurantStore } from "../services/restaurant.store.js";
+import { takeawayChatService } from "../services/takeaway-chat.service.js";
 import { requireBodyFields } from "../services/restaurant.helpers.js";
 
 const router = express.Router();
@@ -656,6 +657,35 @@ router.post("/tables/:tableId/transfer-to-takeaway", asyncHandler(async (req, re
   res.json(result);
 }));
 
+router.post("/customer/takeaway-chat/message", asyncHandler(async (req, res) => {
+  requireBodyFields(req.body, ["message"]);
+  const result = await takeawayChatService.handleCustomerMessage({
+    conversation_id: req.body.conversation_id || null,
+    message: req.body.message || "",
+  });
+  res.json(result);
+}));
+
+router.get("/takeaway-chat/orders", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
+  const result = await takeawayChatService.listOrders({
+    status: req.query.status || "active",
+  });
+  res.json(result);
+}));
+
+router.post("/takeaway-chat/orders/:orderId/status", asyncHandler(async (req, res) => {
+  requireOperationalAccess(req);
+  requireBodyFields(req.body, ["status", "operator_id"]);
+  const result = await takeawayChatService.updateOrderStatus({
+    order_id: req.params.orderId,
+    status: req.body.status,
+    operator_id: req.body.operator_id || "",
+    staff_notes: req.body.staff_notes || "",
+  });
+  res.json(result);
+}));
+
 router.post("/tables/:tableId/close", asyncHandler(async (req, res) => {
   requireOperationalAccess(req);
   requireBodyFields(req.body, ["operator_id"]);
@@ -961,7 +991,12 @@ router.post("/uploads/menu-image", upload.single("image"), asyncHandler(async (r
 }));
 
 router.get("/menu-items", asyncHandler(async (req, res) => {
-  res.json(toPublicAssetUrls(req, await restaurantStore.listMenuItems()));
+  const localNome = String(req.query.local_nome || req.query.local || '').trim();
+  const availableToday = ['1', 'true', 'yes', 'sim'].includes(String(req.query.available_today || req.query.today || '').toLowerCase());
+  const items = localNome && availableToday
+    ? await restaurantStore.listMenuItemsForLocal({ local_nome: localNome })
+    : await restaurantStore.listMenuItems();
+  res.json(toPublicAssetUrls(req, items));
 }));
 
 router.post("/menu-items", asyncHandler(async (req, res) => {

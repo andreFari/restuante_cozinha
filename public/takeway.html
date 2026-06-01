@@ -47,7 +47,18 @@
       .checkout-summary .big{font-size:24px;font-weight:800}
       .pending-list{display:grid;gap:8px;margin-top:10px}
       .pending-pill{padding:10px 12px;border-radius:14px;background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;font-size:14px}
-      @media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}}
+
+      .external-takeaway-panel{margin-bottom:16px;border:1px solid #fed7aa;background:#fff7ed}
+      .external-takeaway-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+      .external-takeaway-toolbar select{min-height:40px;border:1px solid #dbe3ef;border-radius:12px;padding:0 12px;background:#fff;font:inherit}
+      .external-takeaway-list{display:grid;gap:10px;margin-top:14px}
+      .external-takeaway-card{display:grid;gap:10px;border:1px solid #fdba74;border-radius:18px;background:#fff;padding:14px}
+      .external-takeaway-card.confirmed{border-color:#86efac;background:#f0fdf4}
+      .external-takeaway-card.rejected{border-color:#fecaca;background:#fff1f2}
+      .external-takeaway-body{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.65fr);gap:12px}
+      .external-takeaway-text{white-space:pre-wrap;line-height:1.45;color:#334155}
+      .external-takeaway-meta{display:grid;gap:6px;color:#475569;font-size:14px}
+      @media (max-width:1100px){.service-layout{grid-template-columns:1fr}.item-card-main{grid-template-columns:72px 1fr}.item-card img{width:72px;height:54px}.checkout-grid{grid-template-columns:1fr}.external-takeaway-body{grid-template-columns:1fr}}
     </style>
   </head>
   <body>
@@ -75,6 +86,24 @@
         <button id="refreshBtn" class="ghost-btn">Atualizar</button>
         <button id="openTableBtn" class="primary-btn">Abrir slot</button>
       </div>
+      <section class="panel external-takeaway-panel">
+        <div class="row-between">
+          <div>
+            <strong>Encomendas web por confirmar</strong>
+            <div class="helper-text">Entram pelo chat público e ficam pendentes até a equipa confirmar disponibilidade.</div>
+          </div>
+          <div class="external-takeaway-toolbar">
+            <select id="externalTakeawayStatus">
+              <option value="active">Ativas</option>
+              <option value="pending_staff_confirmation">Pendentes</option>
+              <option value="confirmed_by_staff">Confirmadas</option>
+              <option value="all">Últimos 30 dias</option>
+            </select>
+            <button id="refreshExternalTakeaways" class="ghost-btn">Atualizar chat</button>
+          </div>
+        </div>
+        <div id="externalTakeawayList" class="external-takeaway-list"></div>
+      </section>
       <div class="filter-chips" id="zoneFilters" style="margin-bottom:16px"></div>
       <div class="service-layout">
         <section class="panel">
@@ -155,7 +184,7 @@
       import { mountOperatorShell, ensureOperatorSelected, euro, toast, relativeMinutes } from './js/restaurant-shell.js';
       setTerminalId('terminal_takeaway');
       const TODAY = new Date().getDay();
-      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, pendingPaymentIntent: null };
+      const state = { bootstrap: null, selectedTableId: null, zone: 'Todas', details: null, checkoutPreview: null, pendingPaymentIntent: null, externalTakeaways: [] };
       const tablesList = document.getElementById('tablesList');
       const searchInput = document.getElementById('searchInput');
       const zoneFilters = document.getElementById('zoneFilters');
@@ -177,6 +206,8 @@
       const checkoutTotal = document.getElementById('checkoutTotal');
       const checkoutTableName = document.getElementById('checkoutTableName');
       const checkoutPaymentType = document.getElementById('checkoutPaymentType');
+      const externalTakeawayList = document.getElementById('externalTakeawayList');
+      const externalTakeawayStatus = document.getElementById('externalTakeawayStatus');
       const checkoutReceived = document.getElementById('checkoutReceived');
       const checkoutChange = document.getElementById('checkoutChange');
       const cashGrid = document.getElementById('cashGrid');
@@ -186,6 +217,8 @@
       await mountOperatorShell({ title: 'Takeaway', eyebrow: 'Encomendas externas' });
       await refreshAll();
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+      document.getElementById('refreshExternalTakeaways').addEventListener('click', refreshExternalTakeaways);
+      externalTakeawayStatus.addEventListener('change', refreshExternalTakeaways);
       document.getElementById('openTableBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.openTable(id), 'Slot aberta.'));
       document.getElementById('sendKitchenBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.sendToKitchen(id), 'Enviar produção concluído.'));
       document.getElementById('historyBtn').addEventListener('click', openHistory);
@@ -238,7 +271,99 @@
         const preferred = currentTables.find((table) => table.session) || currentTables[0] || null;
         if ((forcePreferred || !state.selectedTableId) && preferred) state.selectedTableId = preferred.id;
         if (state.selectedTableId && !currentTables.some((table) => table.id === state.selectedTableId)) state.selectedTableId = preferred?.id || null;
-        renderZoneFilters(); renderTables(); renderCatalogFilters(); await renderSelectedTable(); renderKpis();
+        renderZoneFilters(); renderTables(); renderCatalogFilters(); await renderSelectedTable(); renderKpis(); await refreshExternalTakeaways(false);
+      }
+
+      async function refreshExternalTakeaways(showToast = true) {
+        try {
+          const result = await restaurantApi.listTakeawayChatOrders(externalTakeawayStatus.value || 'active');
+          state.externalTakeaways = result.orders || [];
+          renderExternalTakeaways();
+          if (showToast) toast('Encomendas web atualizadas.');
+        } catch (error) {
+          externalTakeawayList.innerHTML = `<div class="empty-state">Não foi possível carregar encomendas web: ${escapeHtml(error.message || error)}</div>`;
+          if (showToast) toast(error.message || 'Erro ao carregar encomendas web.', true);
+        }
+      }
+
+      function takeawayStatusLabel(status) {
+        switch (status) {
+          case 'pending_staff_confirmation': return 'Pendente equipa';
+          case 'confirmed_by_staff': return 'Confirmada';
+          case 'rejected_by_staff': return 'Recusada';
+          case 'cancelled_by_customer': return 'Cancelada cliente';
+          case 'completed': return 'Concluída';
+          default: return status || '—';
+        }
+      }
+
+      function formatTakeawayPickup(order) {
+        if (order.pickup_at) {
+          const date = new Date(order.pickup_at);
+          if (!Number.isNaN(date.getTime())) return date.toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' });
+        }
+        return order.pickup_text || '—';
+      }
+
+      function renderExternalTakeaways() {
+        const orders = state.externalTakeaways || [];
+        if (!orders.length) {
+          externalTakeawayList.innerHTML = '<div class="empty-state">Sem encomendas web neste filtro.</div>';
+          return;
+        }
+        externalTakeawayList.innerHTML = orders.map((order) => {
+          const cardClass = order.status === 'confirmed_by_staff' ? 'confirmed' : (order.status === 'rejected_by_staff' ? 'rejected' : '');
+          const canConfirm = order.status === 'pending_staff_confirmation';
+          const canReject = ['pending_staff_confirmation', 'confirmed_by_staff'].includes(order.status);
+          const canComplete = order.status === 'confirmed_by_staff';
+          return `
+            <article class="external-takeaway-card ${cardClass}" data-order-id="${escapeHtml(order.id)}">
+              <div class="row-between">
+                <div><strong>${escapeHtml(order.customer_name || 'Cliente sem nome')}</strong><div class="helper-text">${escapeHtml(order.customer_phone || 'Sem telefone')} · ${escapeHtml(takeawayStatusLabel(order.status))}</div></div>
+                <span class="status-badge">${escapeHtml(formatTakeawayPickup(order))}</span>
+              </div>
+              <div class="external-takeaway-body">
+                <div>
+                  <div class="muted">Pratos</div>
+                  <div class="external-takeaway-text">${escapeHtml(order.items_text || '—')}</div>
+                </div>
+                <div class="external-takeaway-meta">
+                  <div><strong>Criada:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</div>
+                  <div><strong>Mensagens:</strong> ${Number(order.message_count || 0)}</div>
+                  ${order.staff_notes ? `<div><strong>Nota:</strong> ${escapeHtml(order.staff_notes)}</div>` : ''}
+                </div>
+              </div>
+              <div class="chip-row">
+                ${canConfirm ? `<button class="secondary-btn" data-takeaway-action="confirm">Confirmar disponibilidade</button>` : ''}
+                ${canReject ? `<button class="secondary-btn tone-danger" data-takeaway-action="reject">Recusar</button>` : ''}
+                ${canComplete ? `<button class="primary-btn" data-takeaway-action="complete">Concluir</button>` : ''}
+              </div>
+            </article>`;
+        }).join('');
+        externalTakeawayList.querySelectorAll('[data-takeaway-action]').forEach((btn) => btn.addEventListener('click', handleExternalTakeawayAction));
+      }
+
+      async function handleExternalTakeawayAction(event) {
+        if (!ensureOperatorSelected()) return;
+        const card = event.currentTarget.closest('[data-order-id]');
+        const orderId = card?.dataset?.orderId;
+        const action = event.currentTarget.dataset.takeawayAction;
+        if (!orderId || !action) return;
+        let status = 'pending_staff_confirmation';
+        let note = '';
+        if (action === 'confirm') status = 'confirmed_by_staff';
+        if (action === 'reject') {
+          status = 'rejected_by_staff';
+          note = window.prompt('Motivo/nota para a recusa? Opcional.') || '';
+        }
+        if (action === 'complete') status = 'completed';
+        try {
+          await restaurantApi.updateTakeawayChatOrderStatus(orderId, status, note);
+          toast('Estado da encomenda atualizado.');
+          await refreshExternalTakeaways(false);
+        } catch (error) {
+          toast(error.message || 'Não foi possível atualizar a encomenda.', true);
+        }
       }
 
       function renderZoneFilters() {

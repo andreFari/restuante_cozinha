@@ -17,7 +17,9 @@ import moloniCoreRoutes from "./routes/moloni.core.routes.js";
 import printingRoutes from "./routes/printing.routes.js";
 import restaurantRoutes from "./routes/restaurant.routes.js";
 import { printersService } from "./services/printers.service.js";
+import { ensureRestaurantPerformanceIndexes } from "./services/restaurant.performance.js";
 dotenv.config();
+process.env.TZ = process.env.TZ || process.env.APP_TIMEZONE || 'Europe/Lisbon';
 
 const PORT = Number(process.env.PORT || 10000);
 const SESSION_SECRET = process.env.SESSION_SECRET || "chave-super-secreta";
@@ -137,4 +139,7 @@ app.use("/api/restaurant", restaurantRoutes);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  ensureRestaurantPerformanceIndexes().catch((error) => {
+    console.warn('[restaurant-performance] bootstrap falhou:', error?.message || error);
+  });
 });

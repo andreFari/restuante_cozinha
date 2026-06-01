@@ -29,6 +29,8 @@ export function clearOperatorId() {
 
 const CACHE_PREFIX = "restaurant.web.read-cache.v2:";
 const readCache = new Map();
+const inFlightReadCache = new Map();
+let readCacheVersion = 0;
 
 const CACHE_TTL = {
   bootstrap: 2500,
@@ -50,6 +52,7 @@ const CACHE_TTL = {
   kitchen: 1000,
   serviceBoard: 1000,
   invoices: 8000,
+  takeawayChatOrders: 3000,
 };
 
 function cachePart(value) {
@@ -82,8 +85,10 @@ function writePersistedCache(key, entry) {
 }
 
 function invalidateReadCache(...prefixes) {
+  readCacheVersion += 1;
   if (!prefixes.length) {
     readCache.clear();
+    inFlightReadCache.clear();
     Object.keys(sessionStorage)
       .filter((key) => key.startsWith(CACHE_PREFIX))
       .forEach((key) => sessionStorage.removeItem(key));
@@ -93,6 +98,9 @@ function invalidateReadCache(...prefixes) {
   const shouldRemove = (key) => prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`));
   Array.from(readCache.keys()).forEach((key) => {
     if (shouldRemove(key)) readCache.delete(key);
+  });
+  Array.from(inFlightReadCache.keys()).forEach((key) => {
+    if (shouldRemove(key)) inFlightReadCache.delete(key);
   });
   Object.keys(sessionStorage)
     .filter((key) => key.startsWith(CACHE_PREFIX))
@@ -108,17 +116,30 @@ async function cachedRequest(key, ttlMs, url, options = {}) {
   const persistedHit = readPersistedCache(key);
   if (persistedHit?.expiresAt > now) return persistedHit.value;
 
-  try {
-    const value = await request(url, options);
-    const entry = { value, savedAt: now, expiresAt: now + Math.max(0, ttlMs) };
-    readCache.set(key, entry);
-    writePersistedCache(key, entry);
-    return value;
-  } catch (error) {
-    if (memoryHit) return memoryHit.value;
-    if (persistedHit) return persistedHit.value;
-    throw error;
-  }
+  const existing = inFlightReadCache.get(key);
+  if (existing) return existing;
+
+  const cacheVersionAtStart = readCacheVersion;
+  const promise = request(url, options)
+    .then((value) => {
+      if (cacheVersionAtStart === readCacheVersion) {
+        const entry = { value, savedAt: Date.now(), expiresAt: Date.now() + Math.max(0, ttlMs) };
+        readCache.set(key, entry);
+        writePersistedCache(key, entry);
+      }
+      return value;
+    })
+    .catch((error) => {
+      if (memoryHit) return memoryHit.value;
+      if (persistedHit) return persistedHit.value;
+      throw error;
+    })
+    .finally(() => {
+      inFlightReadCache.delete(key);
+    });
+
+  inFlightReadCache.set(key, promise);
+  return promise;
 }
 
 function invalidateAfterMutation(url, method) {
@@ -146,6 +167,7 @@ function invalidateAfterMutation(url, method) {
   }
   if (url.includes("/checkout") || url.includes("/payment-intents/")) add("bootstrap", "tables", "invoices", "printers");
   if (url.includes("/printers")) add("printers");
+  if (url.includes("/takeaway-chat/orders")) add("takeaway-chat-orders", "bootstrap", "tables");
 
   if (prefixes.size) invalidateReadCache(...Array.from(prefixes));
 }
@@ -196,7 +218,8 @@ export const restaurantApi = {
     return cachedRequest(`bootstrap:${cachePart(terminalId)}`, CACHE_TTL.bootstrap, `/api/restaurant/bootstrap?terminal_id=${encodeURIComponent(terminalId)}`);
   },
   listTables() {
-    return cachedRequest(`tables:${cachePart(getTerminalId())}`, CACHE_TTL.tables, `/api/restaurant/tables`);
+    const terminalId = getTerminalId();
+    return cachedRequest(`tables:${cachePart(terminalId)}`, CACHE_TTL.tables, `/api/restaurant/tables?terminal_id=${encodeURIComponent(terminalId)}`);
   },
 
   listPendingPaymentRequests() {
@@ -411,6 +434,21 @@ export const restaurantApi = {
       method: "POST",
       body: JSON.stringify({
         ...payload,
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  listTakeawayChatOrders(status = "active") {
+    const normalized = status || "active";
+    return cachedRequest(`takeaway-chat-orders:${cachePart(normalized)}`, CACHE_TTL.takeawayChatOrders, `/api/restaurant/takeaway-chat/orders?status=${encodeURIComponent(normalized)}`);
+  },
+  updateTakeawayChatOrderStatus(orderId, status, staffNotes = "") {
+    return request(`/api/restaurant/takeaway-chat/orders/${encodeURIComponent(orderId)}/status`, {
+      method: "POST",
+      body: JSON.stringify({
+        status,
+        staff_notes: staffNotes,
         operator_id: getOperatorId(),
         terminal_id: getTerminalId(),
       }),

@@ -68,15 +68,27 @@ async function httpForm(url, { method = 'POST', headers = {}, form } = {}) {
   return data || {};
 }
 const HOT_CACHE = new Map();
+const HOT_IN_FLIGHT = new Map();
+let HOT_CACHE_VERSION = 0;
 const HOT_CACHE_TTLS = {
   // Leituras pesadas e quase estáticas. Invalidadas quando há escrita; TTL curto protege setups com 2 servidores.
   menuItems: 15000,
   categories: 30000,
   operators: 15000,
+  workers: 30000,
   authUser: 3000,
+  bootstrap: 1200,
+  managedTables: 15000,
+  qrSettings: 30000,
+  tableQr: 30000,
+  printers: 20000,
 
   // Operação viva. Cache curtíssima para reduzir cliques repetidos sem arriscar cozinha/contas.
   tables: 1000,
+  tableDetail: 900,
+  customerSession: 900,
+  resolveTable: 30000,
+  paymentRequests: 1200,
   kitchen: 1000,
   operatorContext: 3000,
   history: 2000,
@@ -88,22 +100,77 @@ function cacheKey(prefix, extra = '') {
   return extra ? `${prefix}:${extra}` : prefix;
 }
 
+function expandCachePrefixes(prefixes = []) {
+  const expanded = new Set(prefixes);
+  if (expanded.has('tables')) {
+    expanded.add('tableDetail');
+    expanded.add('managedTables');
+    expanded.add('resolveTable');
+    expanded.add('customerSession');
+    expanded.add('paymentRequests');
+  }
+  if (expanded.has('history')) {
+    expanded.add('tableDetail');
+    expanded.add('customerSession');
+  }
+  if (expanded.has('kitchen') || expanded.has('serviceBoard')) {
+    expanded.add('customerSession');
+  }
+  if (expanded.has('menuItems') || expanded.has('menuConfig') || expanded.has('categories')) {
+    expanded.add('customerSession');
+    expanded.add('bootstrap');
+  }
+  if (expanded.has('paymentRequests')) {
+    expanded.add('customerSession');
+  }
+  return [...expanded];
+}
+
 async function readCached(prefix, extra, ttl, loader) {
+  const normalizedTtl = Number(ttl || 0);
+  if (normalizedTtl <= 0) return loader();
+
   const key = cacheKey(prefix, extra);
   const hit = HOT_CACHE.get(key);
   const now = Date.now();
   if (hit && hit.expires_at > now) return hit.value;
-  const value = await loader();
-  HOT_CACHE.set(key, { value, expires_at: now + ttl });
-  return value;
+
+  const existing = HOT_IN_FLIGHT.get(key);
+  if (existing) return existing;
+
+  const cacheVersionAtStart = HOT_CACHE_VERSION;
+  const promise = Promise.resolve()
+    .then(loader)
+    .then((value) => {
+      if (cacheVersionAtStart === HOT_CACHE_VERSION) {
+        HOT_CACHE.set(key, { value, expires_at: Date.now() + normalizedTtl });
+      }
+      return value;
+    })
+    .finally(() => {
+      HOT_IN_FLIGHT.delete(key);
+    });
+
+  HOT_IN_FLIGHT.set(key, promise);
+  return promise;
 }
 
 function invalidateCache(...prefixes) {
-  if (!prefixes.length) { HOT_CACHE.clear(); return; }
+  HOT_CACHE_VERSION += 1;
+  if (!prefixes.length) {
+    HOT_CACHE.clear();
+    HOT_IN_FLIGHT.clear();
+    return;
+  }
+
+  const expandedPrefixes = expandCachePrefixes(prefixes);
+  const shouldRemove = (key) => expandedPrefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`));
+
   for (const key of [...HOT_CACHE.keys()]) {
-    if (prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))) {
-      HOT_CACHE.delete(key);
-    }
+    if (shouldRemove(key)) HOT_CACHE.delete(key);
+  }
+  for (const key of [...HOT_IN_FLIGHT.keys()]) {
+    if (shouldRemove(key)) HOT_IN_FLIGHT.delete(key);
   }
 }
 
@@ -2117,7 +2184,7 @@ export class RestaurantStore {
   }
 
   async listWorkers() {
-    return withTransaction(async (client) => {
+    return readCached('workers', '', HOT_CACHE_TTLS.workers, () => withClient(async (client) => {
       const result = await client.query(
         `select id, name, email, role, is_active, created_at, updated_at
            from app_users
@@ -2135,7 +2202,7 @@ export class RestaurantStore {
         created_at: row.created_at,
         updated_at: row.updated_at,
       }));
-    });
+    }));
   }
 
   async createWorker({ name, email, password, role = 'employee', active = true }) {
@@ -2154,6 +2221,7 @@ export class RestaurantStore {
         [String(name || '').trim(), normalizedEmail, String(password), role, active !== false]
       );
 
+      invalidateCache('workers', 'operators', 'operatorContext', 'bootstrap', 'authUser');
       return { worker: mapAuthUser(result.rows[0]) };
     });
   }
@@ -2182,29 +2250,32 @@ export class RestaurantStore {
         [worker_id, name !== undefined ? String(name || '').trim() : null, normalizedEmail, password ?? null, role ?? null, active !== undefined ? Boolean(active) : null]
       );
 
+      invalidateCache('workers', 'operators', 'operatorContext', 'bootstrap', 'authUser');
       return { worker: mapAuthUser(result.rows[0]) };
     });
   }
 
   async getBootstrap(terminalId = 'terminal_main') {
+    const normalizedTerminalId = String(terminalId || 'terminal_main');
+    return readCached('bootstrap', normalizedTerminalId, HOT_CACHE_TTLS.bootstrap, async () => {
+      const [operators, tables, menuItems, kitchen, terminalContext] = await Promise.all([
+        this.listOperators(),
+        this.listTables(),
+        this.listMenuItems(),
+        this.getKitchenBoard(),
+        this.getOperatorContext(normalizedTerminalId),
+      ]);
 
-    const [operators, tables, menuItems, kitchen, terminalContext] = await Promise.all([
-      this.listOperators(),
-      this.listTables(),
-      this.listMenuItems(),
-      this.getKitchenBoard(),
-      this.getOperatorContext(terminalId),
-    ]);
-
-    return {
-      restaurant: { id: 'local_db', name: 'Restaurante Local', currency: 'EUR', timezone: 'Europe/Lisbon' },
-      operators,
-      terminal: terminalContext.terminal,
-      menu_profiles: MENU_PROFILE_DEFS,
-      tables,
-      menu_items: menuItems,
-      kitchen,
-    };
+      return {
+        restaurant: { id: 'local_db', name: 'Restaurante Local', currency: 'EUR', timezone: 'Europe/Lisbon' },
+        operators,
+        terminal: terminalContext.terminal,
+        menu_profiles: MENU_PROFILE_DEFS,
+        tables,
+        menu_items: menuItems,
+        kitchen,
+      };
+    });
   }
 
   async listOperators() {
@@ -2274,7 +2345,7 @@ export class RestaurantStore {
   }
 
   async listTableDefinitions() {
-    return withClient(async (client) => {
+    return readCached('managedTables', '', HOT_CACHE_TTLS.managedTables, () => withClient(async (client) => {
       await ensureQrSchema(client);
       const tables = await listTablesDetailedDb(client);
       const qrRows = await client.query(
@@ -2290,7 +2361,7 @@ export class RestaurantStore {
         has_qr_token: qrByTable.has(String(table.id)),
         qr_token_created_at: qrByTable.get(String(table.id))?.created_at || null,
       }));
-    });
+    }));
   }
 
   async getTableQrAdminSettings() {
@@ -2588,7 +2659,8 @@ export class RestaurantStore {
 
   async getTableDetails(table_id, options = {}) {
     const includeHistory = options?.includeHistory === true;
-    return withClient(async (client) => {
+    const cacheExtra = `${table_id}:${includeHistory ? 'withHistory' : 'detail'}`;
+    return readCached('tableDetail', cacheExtra, HOT_CACHE_TTLS.tableDetail, () => withClient(async (client) => {
       const table = await getTableRow(client, table_id);
       if (!table) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
 
@@ -2599,7 +2671,6 @@ export class RestaurantStore {
       const kitchenItems = visibleOrderItems.filter((item) => ['enviado', 'em_preparo', 'pronto', 'entregue'].includes(item.estado));
       const total = visibleOrderItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0);
 
-      invalidateCache('tables', 'bootstrap', 'serviceBoard');
       const response = {
         table: {
           id: table.id,
@@ -2671,7 +2742,7 @@ export class RestaurantStore {
       }
 
       return response;
-    });
+    }));
   }
 
   async getHistory(table_id, externalClient = null, forcedSessionId = null) {
@@ -4293,6 +4364,14 @@ export class RestaurantStore {
     return readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => withClient(async (client) => getMenuItemsFromDb(client)));
   }
 
+  async listMenuItemsForLocal({ local_nome = 'restaurante' } = {}) {
+    const localNome = String(local_nome || 'restaurante');
+    return readCached('menuItemsForLocal', localNome, HOT_CACHE_TTLS.menuItems, async () => {
+      const items = await this.listMenuItems();
+      return menuItemsForLocal(items, localNome);
+    });
+  }
+
   async getMenuItemImage({ menu_item_id }) {
     return withClient(async (client) => {
       await ensureMenuAvailabilitySchema(client);
@@ -4816,11 +4895,12 @@ export class RestaurantStore {
 
 
   async resolveCustomerTable({ table_code, venue_type = '' }) {
-    return withClient(async (client) => {
-      const table = await getTableRowByCode(client, table_code);
+    const normalizedCode = String(table_code || '').trim();
+    const normalizedVenue = String(venue_type || '').trim().toLowerCase();
+    return readCached('resolveTable', `${normalizedVenue}:${normalizedCode}`, HOT_CACHE_TTLS.resolveTable, () => withClient(async (client) => {
+      const table = await getTableRowByCode(client, normalizedCode);
       if (!table || table.ativa === false) throw makeError('Mesa não encontrada.', 404, 'table_not_found');
       const localNome = String(table.local_nome || 'restaurante');
-      const normalizedVenue = String(venue_type || '').trim().toLowerCase();
       if (normalizedVenue === 'bar' && !['bar', 'esplanada'].includes(localNome)) {
         throw makeError('Este QR não pertence ao bar.', 409, 'venue_table_mismatch');
       }
@@ -4839,7 +4919,7 @@ export class RestaurantStore {
           menu_key: mapLocalToMenuKey(localNome),
         }
       };
-    });
+    }));
   }
 
   async startCustomerSession({ table_code, venue_type = '', customer_name = '', customer_phone = '', customer_email = '', customer_nif = '', customer_count = 1 }) {
@@ -4877,13 +4957,14 @@ export class RestaurantStore {
           where id = $1`,
         [session.id, String(customer_name || '').trim(), Math.max(1, Number(customer_count || 1)), String(customer_phone || '').trim(), String(customer_email || '').trim().toLowerCase(), digitsOnly(customer_nif)]
       );
-      const menuItems = menuItemsForLocal(await getMenuItemsFromDb(client), localNome);
+      const menuItems = menuItemsForLocal(await readCached('menuItems', '', HOT_CACHE_TTLS.menuItems, () => getMenuItemsFromDb(client)), localNome);
       const items = await getSessionItems(client, session.id);
       const visibleItems = items.filter((item) => item.estado !== 'cancelado');
       const totals = {
         total: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0),
         total_items: visibleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
       };
+      invalidateCache('tables', 'history', 'bootstrap', 'serviceBoard', 'paymentRequests');
       return {
         session: {
           id: session.id,
@@ -4972,12 +5053,12 @@ export class RestaurantStore {
   }
 
   async getCustomerSession({ session_id }) {
-    return withClient(async (client) => {
+    return readCached('customerSession', session_id, HOT_CACHE_TTLS.customerSession, () => withClient(async (client) => {
       await ensureCustomerFlowSchema(client);
       const session = await getSessionRowById(client, session_id);
       if (!session || session.fechada_em) throw makeError('Sessão não encontrada.', 404, 'session_not_found');
       return this.buildCustomerSessionPayload(client, session);
-    });
+    }));
   }
 
   async addCustomerItem({ session_id, menu_item_id, quantity = 1, note = '' }) {
@@ -5529,7 +5610,8 @@ if (normalizedVenue && normalizedVenue !== 'bar') {
   }
 
   async listPendingPaymentRequests({ terminal_id = 'terminal_main' } = {}) {
-    return withClient(async (client) => {
+    const normalizedTerminal = String(terminal_id || 'terminal_main').toLowerCase();
+    return readCached('paymentRequests', normalizedTerminal, HOT_CACHE_TTLS.paymentRequests, () => withClient(async (client) => {
       await ensureCustomerFlowSchema(client);
       const rows = await client.query(
         `select ccr.*, m.nome as table_name, m.codigo as table_code, l.nome as local_nome
@@ -5539,7 +5621,6 @@ if (normalizedVenue && normalizedVenue !== 'bar') {
           where ccr.status in ('awaiting_confirmation')
           order by ccr.requested_at asc`
       );
-      const normalizedTerminal = String(terminal_id || 'terminal_main').toLowerCase();
       const items = rows.rows.filter((row) => {
         const localNome = String(row.local_nome || '').toLowerCase();
         if (normalizedTerminal === 'terminal_bar') return ['bar', 'esplanada'].includes(localNome);
@@ -5550,7 +5631,7 @@ if (normalizedVenue && normalizedVenue !== 'bar') {
         local_nome: row.local_nome,
       }));
       return { items, total: items.length };
-    });
+    }));
   }
 
   async approvePaymentRequest({ request_id, operator_id, terminal_id = 'terminal_main' }) {
