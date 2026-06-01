@@ -174,8 +174,8 @@ function extractPickupText(text) {
 
 function removePickupFragments(text) {
   return String(text || '')
-    .replace(/\b(?:para\s+)?(?:hoje|amanh[ãa]|domingo|segunda(?:-feira)?|ter[cç]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado)\b\s*(?:,?\s*(?:às|as|pelas|para\s+as|para)?\s*)?\d{1,2}(?:[:h]\d{2})?/ig, ' ')
-    .replace(/\b(?:levantar|recolher|buscar|apanhar|pronto|para|às|as|pelas)\b\s*(?:às|as|pelas|para)?\s*\d{1,2}(?:[:h]\d{2})\b/ig, ' ')
+    .replace(/\b(?:para\s+)?(?:hoje|amanh[ãa]|domingo|segunda(?:-feira)?|ter[cç]a(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[áa]bado)\b\s*(?:,?\s*(?:às|as|pelas|para\s+as|para)?\s*)?\d{1,2}(?:(?:[:h]\d{2})|h)?\b/ig, ' ')
+    .replace(/\b(?:levantar|recolher|buscar|apanhar|pronto|para|às|as|pelas)\b\s*(?:às|as|pelas|para)?\s*\d{1,2}(?:(?:[:h]\d{2})|h)?\b/ig, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
