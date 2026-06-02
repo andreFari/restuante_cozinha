@@ -168,6 +168,7 @@ function invalidateAfterMutation(url, method) {
   if (url.includes("/checkout") || url.includes("/payment-intents/")) add("bootstrap", "tables", "invoices", "printers");
   if (url.includes("/printers")) add("printers");
   if (url.includes("/takeaway-chat/orders")) add("takeaway-chat-orders", "bootstrap", "tables");
+  if (url.includes("/assistant/actions/confirm")) add("menu-items", "menu-profiles", "menu-config", "bootstrap", "kitchen", "service-board");
 
   if (prefixes.size) invalidateReadCache(...Array.from(prefixes));
 }
@@ -293,6 +294,27 @@ export const restaurantApi = {
         terminal_id: getTerminalId(),
         operator_id: operatorId,
         pin,
+      }),
+    });
+  },
+
+  ownerAssistantMessage(message) {
+    return request(`/api/restaurant/assistant/message`, {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
+      }),
+    });
+  },
+  confirmOwnerAssistantAction(action) {
+    return request(`/api/restaurant/assistant/actions/confirm`, {
+      method: "POST",
+      body: JSON.stringify({
+        action,
+        operator_id: getOperatorId(),
+        terminal_id: getTerminalId(),
       }),
     });
   },

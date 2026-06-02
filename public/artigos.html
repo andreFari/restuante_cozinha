@@ -70,6 +70,7 @@
           <a href="./faturas.html" class="protected">Ver Faturas</a>
           <a href="./artigos.html" class="protected active">Gerir Pratos</a>
           <a href="./menu.html" class="protected">Gestão Menu</a>
+          <a href="./assistente.html" class="protected">Assistente</a>
           <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
           <a href="./trabalhadores.html" class="protected">Trabalhadores</a>
         </nav>
@@ -161,7 +162,8 @@
                 <div class="checks-grid" id="menuBaseChecks"></div>
               </div>
 
-              <label class="check-pill"><input id="itemActive" type="checkbox" checked />Ativo</label>
+              <label class="check-pill"><input id="itemActive" type="checkbox" checked />Ativo / com stock</label>
+              <div class="tiny">Quando desativas, o prato sai dos menus e deixa de aparecer para adicionar em mesas, bar, takeaway e cliente QR.</div>
             </div>
 
             <div class="field-stack">
@@ -181,7 +183,7 @@
           <div class="modal-actions">
             <div class="chip-row">
               <button type="submit" class="primary-btn">Guardar</button>
-              <button type="button" id="archiveBtn" class="ghost-btn">Ocultar</button>
+              <button type="button" id="archiveBtn" class="ghost-btn">Marcar sem stock</button>
             </div>
             <div class="chip-row">
               <button type="button" id="clearImageBtn" class="ghost-btn">Limpar imagem</button>
@@ -498,7 +500,7 @@
         if (!state.selectedId) return toast("Seleciona um prato primeiro.", true);
         try {
           await restaurantApi.archiveMenuItem(state.selectedId);
-          toast("Prato ocultado.");
+          toast("Prato marcado como sem stock/desativado.");
           closeModal();
           await refreshAll();
         } catch (error) {

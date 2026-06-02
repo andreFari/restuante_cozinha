@@ -19,7 +19,6 @@ import restaurantRoutes from "./routes/restaurant.routes.js";
 import { printersService } from "./services/printers.service.js";
 import { ensureRestaurantPerformanceIndexes } from "./services/restaurant.performance.js";
 dotenv.config();
-process.env.TZ = process.env.TZ || process.env.APP_TIMEZONE || 'Europe/Lisbon';
 
 const PORT = Number(process.env.PORT || 10000);
 const SESSION_SECRET = process.env.SESSION_SECRET || "chave-super-secreta";
@@ -69,8 +68,9 @@ const protectedPages = new Set([
   "/menu.html",
   "/gest_mesas.html",
   "/trabalhadores.html",
+  "/assistente.html",
 ]);
-const adminOnlyPages = new Set(["/menu.html", "/gest_mesas.html", "/trabalhadores.html"]);
+const adminOnlyPages = new Set(["/menu.html", "/gest_mesas.html", "/trabalhadores.html", "/assistente.html"]);
 
 app.use((req, res, next) => {
   if (!protectedPages.has(req.path)) return next();

@@ -4,6 +4,7 @@ import path from "path";
 import multer from "multer";
 import { restaurantStore } from "../services/restaurant.store.js";
 import { takeawayChatService } from "../services/takeaway-chat.service.js";
+import { ownerAssistantService } from "../services/restaurant-owner-assistant.service.js";
 import { requireBodyFields } from "../services/restaurant.helpers.js";
 
 const router = express.Router();
@@ -373,6 +374,27 @@ router.post("/operators/active", asyncHandler(async (req, res) => {
 router.get("/operators/context", asyncHandler(async (req, res) => {
   const terminal_id = String(req.query.terminal_id || "terminal_main");
   res.json(await restaurantStore.getOperatorContext(terminal_id));
+}));
+
+
+router.post("/assistant/message", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const result = await ownerAssistantService.handleMessage({
+    message: req.body.message || '',
+    operator_id: req.body.operator_id || req.restaurantAuth?.user_id || null,
+    terminal_id: req.body.terminal_id || 'terminal_main',
+  });
+  res.json(result);
+}));
+
+router.post("/assistant/actions/confirm", asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const result = await ownerAssistantService.confirmAction({
+    action: req.body.action || {},
+    operator_id: req.body.operator_id || req.restaurantAuth?.user_id || null,
+    terminal_id: req.body.terminal_id || 'terminal_main',
+  });
+  res.json(result);
 }));
 
 router.get("/workers", asyncHandler(async (req, res) => {

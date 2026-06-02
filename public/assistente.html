@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assistente do Restaurante</title>
+    <link rel="stylesheet" href="./css/header.css" />
+    <link rel="stylesheet" href="./css/restaurant-shell.css" />
+    <script type="module" src="./js/restaurant-auth.js"></script>
+    <style>
+      .assistant-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+      .chat-panel{border:1px solid #dbe3ef;border-radius:24px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.05);overflow:hidden}
+      .chat-head{padding:18px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+      .chat-stream{height:min(62vh,680px);overflow:auto;padding:18px;display:grid;align-content:start;gap:14px;background:#f8fafc}
+      .bubble{max-width:920px;border:1px solid #dbe3ef;border-radius:20px;padding:14px 16px;box-shadow:0 8px 22px rgba(15,23,42,.04);white-space:pre-wrap;line-height:1.45}
+      .bubble.user{justify-self:end;background:#0f766e;color:#fff;border-color:#0f766e}
+      .bubble.assistant{justify-self:start;background:#fff;color:#0f172a}
+      .chat-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:14px;border-top:1px solid #e2e8f0;background:#fff}
+      .chat-form input{min-height:48px;border:1px solid #cbd5e1;border-radius:16px;padding:0 14px;font:inherit}
+      .side-card{border:1px solid #dbe3ef;border-radius:22px;background:#fff;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.04);display:grid;gap:12px}
+      .suggestion-list{display:grid;gap:8px}
+      .suggestion-btn{border:1px solid #dbe3ef;background:#fff;border-radius:14px;padding:11px 12px;text-align:left;cursor:pointer;font-weight:700;color:#0f172a}
+      .suggestion-btn:hover{border-color:#0f766e;background:#ecfdf5}
+      .assistant-cards{display:grid;gap:10px;margin-top:12px}
+      .assistant-card{border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc;padding:12px;display:grid;gap:6px;white-space:normal}
+      .assistant-card strong{font-size:15px}
+      .assistant-card ul{margin:4px 0 0 18px;padding:0;display:grid;gap:4px}
+      .assistant-card li{white-space:normal}
+      .action-box{border:1px solid #f59e0b;background:#fffbeb;border-radius:18px;padding:12px;display:grid;gap:10px;margin-top:12px;white-space:normal}
+      .action-row{display:flex;gap:10px;flex-wrap:wrap}
+      .tiny-muted{font-size:13px;color:#64748b}
+      .status-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#ecfdf5;color:#0f766e;font-weight:900;font-size:12px}
+      @media(max-width:1000px){.assistant-layout{grid-template-columns:1fr}.chat-stream{height:58vh}}
+      @media(max-width:650px){.chat-form{grid-template-columns:1fr}.chat-form button{width:100%}}
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
+      <div class="links-container">
+        <nav id="navLinks">
+          <a href="./takeway.html" class="protected">Takeway</a>
+          <a href="./rececaoBar.html" class="protected">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected">Cozinha</a>
+          <a href="./faturas.html" class="protected">Ver Faturas</a>
+          <a href="./artigos.html" class="protected">Gerir Pratos</a>
+          <a href="./menu.html" class="protected">Gestão Menu</a>
+          <a href="./assistente.html" class="protected active">Assistente</a>
+          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
+          <a href="./trabalhadores.html" class="protected">Trabalhadores</a>
+        </nav>
+      </div>
+      <div id="tokenDisplay" class="token-status">Assistente</div>
+    </header>
+
+    <div class="page-shell">
+      <div id="operatorShell"></div>
+
+      <div class="assistant-layout">
+        <section class="chat-panel">
+          <div class="chat-head">
+            <div>
+              <div class="shell-eyebrow">ASSISTENTE DO DONO</div>
+              <h1 class="shell-title" style="margin:0">Situação do restaurante</h1>
+              <div class="helper-text">Consulta menus, mesas, pagamentos, faturas, vendas e stock. Ações críticas pedem confirmação.</div>
+            </div>
+            <span class="status-pill">Backend é fonte da verdade</span>
+          </div>
+          <div id="chatStream" class="chat-stream"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="messageInput" type="text" placeholder="Ex.: Há mesas abertas ou pagamentos por fazer?" autocomplete="off" />
+            <button class="primary-btn" type="submit">Perguntar</button>
+          </form>
+        </section>
+
+        <aside class="side-card">
+          <div>
+            <strong>Perguntas rápidas</strong>
+            <div class="tiny-muted">Carrega numa sugestão ou escreve livremente.</div>
+          </div>
+          <div id="suggestionList" class="suggestion-list"></div>
+          <div class="tiny-muted">A IA não aceita disponibilidade, não fecha pagamentos e não muda stock sem confirmação.</div>
+        </aside>
+      </div>
+    </div>
+
+    <script type="module">
+      import { restaurantApi, setTerminalId } from './js/restaurant-api.js';
+      import { mountOperatorShell, ensureOperatorSelected, toast } from './js/restaurant-shell.js';
+
+      setTerminalId('terminal_main');
+      await mountOperatorShell({ title: 'Assistente', eyebrow: 'Dono / admin' });
+
+      const chatStream = document.getElementById('chatStream');
+      const chatForm = document.getElementById('chatForm');
+      const messageInput = document.getElementById('messageInput');
+      const suggestionList = document.getElementById('suggestionList');
+      let pendingAction = null;
+
+      const initialSuggestions = [
+        'Quais são os pratos ativos hoje?',
+        'Há mesas abertas ou pagamentos por fazer?',
+        'Quais foram os pratos mais vendidos hoje?',
+        'Quantos takeaways entraram pelo chat online?',
+        'Quantos pagamentos MB WAY foram feitos hoje e quantas faturas foram por email?',
+        'Quem registou a última fatura?',
+        'Mostra pratos desativados / sem stock.',
+      ];
+
+      renderSuggestions(initialSuggestions);
+      addAssistantMessage({
+        answer: 'Estou pronto. Pergunta-me pela situação do dia, menus, mesas, pagamentos, faturas, takeaways ou stock dos pratos.',
+        cards: [{ title: 'Exemplo', lines: ['“Quais são os pratos ativos hoje?”', '“Desativar arroz de pato”', '“Quem registou a última fatura?”'] }],
+      });
+
+      chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) return;
+        messageInput.value = '';
+        await askAssistant(message);
+      });
+
+      async function askAssistant(message) {
+        if (!ensureOperatorSelected()) return;
+        addUserMessage(message);
+        setBusy(true);
+        try {
+          const response = await restaurantApi.ownerAssistantMessage(message);
+          pendingAction = response.pending_action || null;
+          addAssistantMessage(response);
+          renderSuggestions(response.suggestions || initialSuggestions);
+        } catch (error) {
+          toast(error.message || 'Falha no assistente.', true);
+          addAssistantMessage({ answer: `Erro: ${error.message || 'falha desconhecida'}` });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      function addUserMessage(text) {
+        const node = document.createElement('div');
+        node.className = 'bubble user';
+        node.textContent = text;
+        chatStream.appendChild(node);
+        scrollBottom();
+      }
+
+      function addAssistantMessage(payload = {}) {
+        const node = document.createElement('div');
+        node.className = 'bubble assistant';
+        const answer = document.createElement('div');
+        answer.textContent = payload.answer || 'Sem resposta.';
+        node.appendChild(answer);
+
+        if (Array.isArray(payload.cards) && payload.cards.length) {
+          const cardsWrap = document.createElement('div');
+          cardsWrap.className = 'assistant-cards';
+          payload.cards.forEach((card) => cardsWrap.appendChild(renderCard(card)));
+          node.appendChild(cardsWrap);
+        }
+
+        if (payload.pending_action) {
+          node.appendChild(renderAction(payload.pending_action));
+        }
+
+        chatStream.appendChild(node);
+        scrollBottom();
+      }
+
+      function renderCard(card = {}) {
+        const box = document.createElement('div');
+        box.className = 'assistant-card';
+        const title = document.createElement('strong');
+        title.textContent = card.title || 'Resultado';
+        box.appendChild(title);
+        if (card.subtitle) {
+          const subtitle = document.createElement('div');
+          subtitle.className = 'tiny-muted';
+          subtitle.textContent = card.subtitle;
+          box.appendChild(subtitle);
+        }
+        const lines = Array.isArray(card.lines) ? card.lines : [];
+        if (lines.length) {
+          const ul = document.createElement('ul');
+          lines.slice(0, 40).forEach((line) => {
+            const li = document.createElement('li');
+            li.textContent = line;
+            ul.appendChild(li);
+          });
+          box.appendChild(ul);
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'tiny-muted';
+          empty.textContent = 'Sem linhas para mostrar.';
+          box.appendChild(empty);
+        }
+        return box;
+      }
+
+      function renderAction(action) {
+        const box = document.createElement('div');
+        box.className = 'action-box';
+        const title = document.createElement('strong');
+        title.textContent = action.label || 'Confirmar ação';
+        box.appendChild(title);
+        if (action.warning) {
+          const warning = document.createElement('div');
+          warning.className = 'tiny-muted';
+          warning.textContent = action.warning;
+          box.appendChild(warning);
+        }
+        const row = document.createElement('div');
+        row.className = 'action-row';
+        const confirm = document.createElement('button');
+        confirm.type = 'button';
+        confirm.className = 'primary-btn';
+        confirm.textContent = 'Confirmar alteração';
+        confirm.addEventListener('click', () => confirmAction(action));
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'ghost-btn';
+        cancel.textContent = 'Cancelar';
+        cancel.addEventListener('click', () => {
+          pendingAction = null;
+          addAssistantMessage({ answer: 'Ação cancelada. Não alterei nada.' });
+        });
+        row.appendChild(confirm);
+        row.appendChild(cancel);
+        box.appendChild(row);
+        return box;
+      }
+
+      async function confirmAction(action) {
+        if (!ensureOperatorSelected()) return;
+        setBusy(true);
+        try {
+          const response = await restaurantApi.confirmOwnerAssistantAction(action || pendingAction);
+          pendingAction = null;
+          addAssistantMessage({ answer: response.answer || 'Ação confirmada.', cards: response.item ? [{ title: 'Prato atualizado', lines: [`${response.item.name} · ${response.item.active !== false ? 'ativo/com stock' : 'desativado/sem stock'}`] }] : [] });
+        } catch (error) {
+          toast(error.message || 'Não foi possível confirmar ação.', true);
+          addAssistantMessage({ answer: `Não alterei nada. Erro: ${error.message || 'falha desconhecida'}` });
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      function renderSuggestions(suggestions = []) {
+        suggestionList.innerHTML = '';
+        suggestions.slice(0, 10).forEach((text) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'suggestion-btn';
+          btn.textContent = text;
+          btn.addEventListener('click', () => askAssistant(text));
+          suggestionList.appendChild(btn);
+        });
+      }
+
+      function setBusy(isBusy) {
+        chatForm.querySelector('button').disabled = isBusy;
+        messageInput.disabled = isBusy;
+      }
+
+      function scrollBottom() {
+        requestAnimationFrame(() => { chatStream.scrollTop = chatStream.scrollHeight; });
+      }
+    </script>
+  </body>
+</html>

@@ -117,6 +117,7 @@ function expandCachePrefixes(prefixes = []) {
     expanded.add('customerSession');
   }
   if (expanded.has('menuItems') || expanded.has('menuConfig') || expanded.has('categories')) {
+    expanded.add('menuItemsForLocal');
     expanded.add('customerSession');
     expanded.add('bootstrap');
   }
@@ -894,10 +895,9 @@ async function ensureMenuAvailabilitySchema(client) {
 async function getAvailabilityMap(client) {
   await ensureMenuAvailabilitySchema(client);
   const result = await client.query(
-    `select amd.artigo_id, l.nome as local_nome, amd.local_id, amd.dia_semana
+    `select amd.artigo_id, l.nome as local_nome, amd.local_id, amd.dia_semana, amd.enabled
        from public.artigo_menu_disponibilidade amd
-       join public.locais l on l.id = amd.local_id
-      where amd.enabled = true`,
+       join public.locais l on l.id = amd.local_id`,
     []
   );
 
@@ -908,7 +908,9 @@ async function getAvailabilityMap(client) {
     if (!map.has(articleKey)) map.set(articleKey, new Map());
     const localMap = map.get(articleKey);
     if (!localMap.has(localKey)) localMap.set(localKey, []);
-    localMap.get(localKey).push(Number(row.dia_semana));
+    // Importante: a existência da chave local significa que há configuração explícita.
+    // Se todos os dias estiverem enabled=false, devolve [] e NÃO cai no fallback de todos os dias.
+    if (row.enabled !== false) localMap.get(localKey).push(Number(row.dia_semana));
   }
 
   for (const localMap of map.values()) {
@@ -4294,21 +4296,13 @@ export class RestaurantStore {
 
       await materializeDefaultAvailabilityForLocal(client, menu_item_id, localId);
 
-      if (Boolean(enabled)) {
-        await client.query(
-          `insert into public.artigo_menu_disponibilidade (artigo_id, local_id, dia_semana, enabled)
-           values ($1, $2, $3, true)
-           on conflict (artigo_id, local_id, dia_semana)
-           do update set enabled = excluded.enabled, updated_at = now()`,
-          [menu_item_id, localId, targetDay]
-        );
-      } else {
-        await client.query(
-          `delete from public.artigo_menu_disponibilidade
-            where artigo_id = $1 and local_id = $2 and dia_semana = $3`,
-          [menu_item_id, localId, targetDay]
-        );
-      }
+      await client.query(
+        `insert into public.artigo_menu_disponibilidade (artigo_id, local_id, dia_semana, enabled)
+         values ($1, $2, $3, $4)
+         on conflict (artigo_id, local_id, dia_semana)
+         do update set enabled = excluded.enabled, updated_at = now()`,
+        [menu_item_id, localId, targetDay, Boolean(enabled)]
+      );
 
       await insertAuditLog(client, {
         actor_user_id: operator_id,
@@ -4335,12 +4329,20 @@ export class RestaurantStore {
       const normalizedDays = [...new Set((Array.isArray(days) ? days : []).map((value) => Number(value)).filter((value) => Number.isInteger(value) && value >= 0 && value <= 6))].sort((a, b) => a - b);
 
       await materializeDefaultAvailabilityForLocal(client, menu_item_id, localId);
-      await client.query(`delete from public.artigo_menu_disponibilidade where artigo_id = $1 and local_id = $2`, [menu_item_id, localId]);
+      await client.query(
+        `update public.artigo_menu_disponibilidade
+            set enabled = false,
+                updated_at = now()
+          where artigo_id = $1 and local_id = $2`,
+        [menu_item_id, localId]
+      );
       if (normalizedDays.length) {
         await client.query(
           `insert into public.artigo_menu_disponibilidade (artigo_id, local_id, dia_semana, enabled)
            select $1, $2, x.day, true
-             from unnest($3::smallint[]) as x(day)`,
+             from unnest($3::smallint[]) as x(day)
+           on conflict (artigo_id, local_id, dia_semana)
+           do update set enabled = excluded.enabled, updated_at = now()`,
           [menu_item_id, localId, normalizedDays]
         );
       }
