@@ -10,7 +10,7 @@
     <style>
       .page-actions.compact{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
       .page-actions.compact input{min-width:280px;flex:1}
-      .service-layout{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(520px,1.55fr);gap:18px}
+      .service-layout{display:grid;grid-template-columns:1fr;gap:18px}
       .table-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
       .table-card{border:1px solid #dbe3ef;border-radius:20px;background:#fff;padding:14px;display:grid;gap:10px;cursor:pointer;box-shadow:0 10px 24px rgba(15,23,42,.05)}
       .table-card.is-active{border-color:#0f766e;background:#ecfdf5}
@@ -34,6 +34,8 @@
       .modal-backdrop.show{display:flex}
       .modal-card{width:min(1180px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:26px;border:1px solid #dbe3ef;box-shadow:0 30px 80px rgba(15,23,42,.25);padding:22px}
       .modal-card.small-modal{width:min(620px,100%)}
+      .modal-card.table-detail-modal{width:min(1280px,100%)}
+      .detail-modal-top{display:flex;justify-content:flex-end;margin-bottom:12px}
       .catalog-filters{margin:16px 0}
       .catalog-filters input,.catalog-filters select,.checkout-form input,.checkout-form select{min-height:46px;border:1px solid #dbe3ef;border-radius:14px;padding:0 14px;background:#fff;font:inherit}
       .catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
@@ -115,8 +117,13 @@
           </div>
           <div id="tablesList" class="table-map"></div>
         </section>
-        <section class="panel">
-          <div class="row-between"><div><strong id="selectedTableTitle">Pedido atual</strong><div id="tableSummary" class="helper-text">Nenhuma seleção.</div></div><span id="selectedTableBadge" class="badge">Sem seleção</span></div>
+      </div>
+    </div>
+
+    <div id="tableDetailsModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card table-detail-modal">
+        <div class="detail-modal-top"><button id="closeTableDetailsModal" class="ghost-btn" type="button">Fechar detalhes</button></div>
+        <div class="row-between"><div><strong id="selectedTableTitle">Pedido atual</strong><div id="tableSummary" class="helper-text">Nenhuma seleção.</div></div><span id="selectedTableBadge" class="badge">Sem seleção</span></div>
           <div class="detail-actions" style="margin-top:14px;margin-bottom:16px">
             <button id="addArticleBtn" class="primary-btn">Adicionar artigo</button>
             <button id="historyBtn" class="ghost-btn">Ver histórico</button>
@@ -126,7 +133,6 @@
           </div>
           <div class="flow-section"><h3>Cozinha</h3><div class="helper-text">Só artigos com fluxo cozinha entram aqui e seguem para o painel da cozinha.</div><div id="kitchenItems" class="flow-row"></div></div>
           <div class="flow-section"><h3>Bar / serviço</h3><div class="helper-text">Não vai para cozinha. Ficas aqui a marcar preparado ou entregue dentro da slot.</div><div id="serviceItems" class="flow-row"></div></div>
-        </section>
       </div>
     </div>
 
@@ -193,6 +199,8 @@
       const selectedTableTitle = document.getElementById('selectedTableTitle');
       const selectedTableBadge = document.getElementById('selectedTableBadge');
       const tableSummary = document.getElementById('tableSummary');
+      const tableDetailsModal = document.getElementById('tableDetailsModal');
+      const closeTableDetailsBtn = document.getElementById('closeTableDetailsModal');
       const catalogModal = document.getElementById('catalogModal');
       const catalogGrid = document.getElementById('catalogGrid');
       const catalogSearch = document.getElementById('catalogSearch');
@@ -219,6 +227,8 @@
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
       document.getElementById('refreshExternalTakeaways').addEventListener('click', refreshExternalTakeaways);
       externalTakeawayStatus.addEventListener('change', refreshExternalTakeaways);
+      closeTableDetailsBtn.addEventListener('click', closeTableDetails);
+      tableDetailsModal.addEventListener('click', (event) => { if (event.target === tableDetailsModal) closeTableDetails(); });
       document.getElementById('openTableBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.openTable(id), 'Slot aberta.'));
       document.getElementById('sendKitchenBtn').addEventListener('click', async () => runTableAction((id) => restaurantApi.sendToKitchen(id), 'Enviar produção concluído.'));
       document.getElementById('historyBtn').addEventListener('click', openHistory);
@@ -272,6 +282,17 @@
         if ((forcePreferred || !state.selectedTableId) && preferred) state.selectedTableId = preferred.id;
         if (state.selectedTableId && !currentTables.some((table) => table.id === state.selectedTableId)) state.selectedTableId = preferred?.id || null;
         renderZoneFilters(); renderTables(); renderCatalogFilters(); await renderSelectedTable(); renderKpis(); await refreshExternalTakeaways(false);
+      }
+
+      function openTableDetails() {
+        if (!state.selectedTableId) return;
+        tableDetailsModal.classList.add('show');
+        tableDetailsModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeTableDetails() {
+        tableDetailsModal.classList.remove('show');
+        tableDetailsModal.setAttribute('aria-hidden', 'true');
       }
 
       async function refreshExternalTakeaways(showToast = true) {
@@ -401,7 +422,7 @@
             <div class="muted">${table.zone} · ${table.capacity} lugares</div>
             <div class="row-between muted"><span>${table.metrics?.total_items || 0} itens</span><span>${table.metrics?.pending_kitchen || 0} cozinha</span><span>${euro(table.metrics?.total || 0)}</span></div>
           </article>`).join('') : `<div class="empty-state">Sem slots com estes filtros.</div>`;
-        tablesList.querySelectorAll('[data-table-id]').forEach((node) => node.addEventListener('click', async () => { state.selectedTableId = node.dataset.tableId; renderTables(); await renderSelectedTable(); }));
+        tablesList.querySelectorAll('[data-table-id]').forEach((node) => node.addEventListener('click', async () => { state.selectedTableId = node.dataset.tableId; renderTables(); await renderSelectedTable(); openTableDetails(); }));
       }
 
       function renderCatalogFilters() {
@@ -597,7 +618,7 @@
             toast(result.message || 'Pagamento MB WAY confirmado.');
             state.pendingPaymentIntent = null;
             checkoutModal.classList.remove('show');
-            state.selectedTableId = null;
+            state.selectedTableId = null; closeTableDetails();
             await refreshAll(true);
             return;
           }
@@ -660,7 +681,7 @@
           }
           toast(result.message || 'Pagamento registado.');
           checkoutModal.classList.remove('show');
-          state.selectedTableId = null;
+          state.selectedTableId = null; closeTableDetails();
           await refreshAll(true);
         } catch (error) { toast(error.message, true); }
       }
