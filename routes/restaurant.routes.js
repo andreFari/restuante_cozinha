@@ -1061,6 +1061,18 @@ router.post("/menu-items", asyncHandler(async (req, res) => {
   res.status(201).json(toPublicAssetUrls(req, result));
 }));
 
+router.patch("/menu-items/:menuItemId/stock", asyncHandler(async (req, res) => {
+  requireMenuManager(req);
+  requireBodyFields(req.body, ["operator_id", "active"]);
+  const result = await restaurantStore.setMenuItemStock({
+    menu_item_id: req.params.menuItemId,
+    active: req.body.active,
+    operator_id: req.body.operator_id,
+    terminal_id: req.body.terminal_id || "terminal_main",
+  });
+  res.json(toPublicAssetUrls(req, result));
+}));
+
 router.patch("/menu-items/:menuItemId", asyncHandler(async (req, res) => {
   requireMenuManager(req);
   requireBodyFields(req.body, ["operator_id"]);

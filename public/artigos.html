@@ -301,15 +301,22 @@
           };
 
           let mutationResult = null;
+          let targetItemId = state.selectedId;
           if (state.selectedId) {
             mutationResult = await restaurantApi.updateMenuItem(state.selectedId, payload);
             if (mutationResult?.item) mergeItemIntoState(mutationResult.item);
-            toast(activeInput.checked ? "Prato atualizado como ativo/com stock." : "Prato marcado como sem stock/desativado.");
+            targetItemId = mutationResult?.item?.id || state.selectedId;
           } else {
             mutationResult = await restaurantApi.createMenuItem(payload);
             if (mutationResult?.item) mergeItemIntoState(mutationResult.item);
-            toast(activeInput.checked ? "Prato criado." : "Prato criado sem stock/desativado.");
+            targetItemId = mutationResult?.item?.id || null;
           }
+
+          if (targetItemId) {
+            const stockResult = await restaurantApi.setMenuItemStock(targetItemId, activeInput.checked);
+            if (stockResult?.item) mergeItemIntoState(stockResult.item);
+          }
+          toast(activeInput.checked ? "Prato atualizado como ativo/com stock." : "Prato marcado como sem stock/desativado.");
 
           closeModal();
           renderGrid();
@@ -520,7 +527,7 @@
         if (!ensureOperatorSelected()) return;
         if (!state.selectedId) return toast("Seleciona um prato primeiro.", true);
         try {
-          const result = await restaurantApi.updateMenuItem(state.selectedId, { active: false });
+          const result = await restaurantApi.setMenuItemStock(state.selectedId, false);
           if (result?.item) mergeItemIntoState(result.item);
           toast("Prato marcado como sem stock/desativado.");
           closeModal();

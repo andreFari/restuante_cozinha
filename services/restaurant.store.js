@@ -4592,6 +4592,16 @@ export class RestaurantStore {
         ]
       );
 
+      if (normalizedActive !== null) {
+        await client.query(
+          `update artigos
+              set disponivel = $2::boolean,
+                  updated_at = now()
+            where id = $1`,
+          [menu_item_id, normalizedActive]
+        );
+      }
+
       if (price !== undefined || channels !== undefined || menu_rules !== undefined) {
         const derivedMenuKeys = menu_rules && typeof menu_rules === 'object'
           ? Object.entries(menu_rules).filter(([, days]) => Array.isArray(days) && days.length).map(([key]) => key)
@@ -4629,6 +4639,35 @@ export class RestaurantStore {
       const item = items.find((row) => row.id === menu_item_id);
       invalidateCache('menuItems', 'bootstrap', 'serviceBoard');
       return { item };
+    });
+  }
+
+  async setMenuItemStock({ menu_item_id, active }) {
+    return withTransaction(async (client) => {
+      await ensureMenuAvailabilitySchema(client);
+      const normalizedActive = normalizeOptionalBoolean(active);
+      if (normalizedActive === null) {
+        throw makeError('Estado de stock inválido.', 400, 'invalid_stock_state');
+      }
+
+      const result = await client.query(
+        `update artigos
+            set disponivel = $2::boolean,
+                updated_at = now()
+          where id = $1
+        returning id, disponivel`,
+        [menu_item_id, normalizedActive]
+      );
+
+      if (!result.rows[0]) throw makeError('Prato não encontrado.', 404, 'menu_item_not_found');
+
+      const items = await getMenuItemsFromDb(client);
+      const item = items.find((row) => row.id === menu_item_id) || {
+        id: menu_item_id,
+        active: result.rows[0].disponivel !== false,
+      };
+      invalidateCache('menuItems', 'menuConfig', 'bootstrap', 'serviceBoard');
+      return { item, active: result.rows[0].disponivel !== false };
     });
   }
 

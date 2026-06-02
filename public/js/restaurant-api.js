@@ -635,6 +635,12 @@ export const restaurantApi = {
       body: JSON.stringify({ ...payload, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
     });
   },
+  setMenuItemStock(menuItemId, active) {
+    return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}/stock`, {
+      method: "PATCH",
+      body: JSON.stringify({ active, operator_id: getOperatorId(), terminal_id: getTerminalId() }),
+    });
+  },
   archiveMenuItem(menuItemId) {
     return request(`/api/restaurant/menu-items/${encodeURIComponent(menuItemId)}`, {
       method: "DELETE",
