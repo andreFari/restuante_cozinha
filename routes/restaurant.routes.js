@@ -344,7 +344,20 @@ router.use((req, _res, next) => {
 
 router.get("/bootstrap", asyncHandler(async (req, res) => {
   const terminal_id = String(req.query.terminal_id || "terminal_main");
-  res.json(toPublicAssetUrls(req, await restaurantStore.getBootstrap(terminal_id)));
+  const [bootstrap, pendingPaymentRequests, takeawayChatOrders] = await Promise.all([
+    restaurantStore.getBootstrap(terminal_id),
+    restaurantStore.listPendingPaymentRequests({ terminal_id }).catch(() => ({ items: [], total: 0 })),
+    String(terminal_id).toLowerCase() === "terminal_takeaway"
+      ? takeawayChatService.listOrders({ status: "active" }).catch(() => ({ orders: [] }))
+      : Promise.resolve(null),
+  ]);
+
+  res.json(toPublicAssetUrls(req, {
+    ...bootstrap,
+    pending_payment_requests: pendingPaymentRequests?.items || [],
+    pending_payment_requests_total: Number(pendingPaymentRequests?.total || 0),
+    ...(takeawayChatOrders ? { takeaway_chat_orders: takeawayChatOrders.orders || [] } : {}),
+  }));
 }));
 
 router.get("/operators", asyncHandler(async (_req, res) => {

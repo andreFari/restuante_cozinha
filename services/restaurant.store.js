@@ -5615,20 +5615,27 @@ if (normalizedVenue && normalizedVenue !== 'bar') {
     const normalizedTerminal = String(terminal_id || 'terminal_main').toLowerCase();
     return readCached('paymentRequests', normalizedTerminal, HOT_CACHE_TTLS.paymentRequests, () => withClient(async (client) => {
       await ensureCustomerFlowSchema(client);
+      let localFilterSql = `and lower(l.nome) <> all($1::text[])`;
+      let params = [['bar']];
+      if (normalizedTerminal === 'terminal_bar') {
+        localFilterSql = `and lower(l.nome) = any($1::text[])`;
+        params = [['bar', 'esplanada']];
+      } else if (normalizedTerminal === 'terminal_takeaway') {
+        localFilterSql = `and lower(l.nome) = any($1::text[])`;
+        params = [['takeaway']];
+      }
+
       const rows = await client.query(
         `select ccr.*, m.nome as table_name, m.codigo as table_code, l.nome as local_nome
            from public.customer_checkout_requests ccr
            join public.mesas m on m.id = ccr.mesa_id
            join public.locais l on l.id = m.local_id
           where ccr.status in ('awaiting_confirmation')
-          order by ccr.requested_at asc`
+            ${localFilterSql}
+          order by ccr.requested_at asc`,
+        params
       );
-      const items = rows.rows.filter((row) => {
-        const localNome = String(row.local_nome || '').toLowerCase();
-        if (normalizedTerminal === 'terminal_bar') return ['bar', 'esplanada'].includes(localNome);
-        if (normalizedTerminal === 'terminal_takeaway') return localNome === 'takeaway';
-        return !['bar'].includes(localNome);
-      }).map((row) => ({
+      const items = rows.rows.map((row) => ({
         ...mapCustomerPaymentRequest({ ...row, table_name: row.table_name, table_code: row.table_code }),
         local_nome: row.local_nome,
       }));

@@ -170,7 +170,14 @@ function invalidateAfterMutation(url, method) {
   if (url.includes("/takeaway-chat/orders")) add("takeaway-chat-orders", "bootstrap", "tables");
   if (url.includes("/assistant/actions/confirm")) add("menu-items", "menu-profiles", "menu-config", "bootstrap", "kitchen", "service-board");
 
-  if (prefixes.size) invalidateReadCache(...Array.from(prefixes));
+  if (prefixes.size) {
+    invalidateReadCache(...Array.from(prefixes));
+    return;
+  }
+
+  // Segurança primeiro: qualquer POST/PATCH/DELETE não reconhecido limpa cache toda.
+  // Assim endpoints novos nunca deixam a UI presa a dados antigos depois de uma escrita.
+  invalidateReadCache();
 }
 
 async function request(url, options = {}) {

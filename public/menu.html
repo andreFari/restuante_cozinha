@@ -12,7 +12,7 @@
       .menu-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;align-items:start}
       .side-panel{display:grid;gap:14px;position:sticky;top:20px}
       .summary-card{border:1px solid #dbe3ef;border-radius:20px;padding:14px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.04)}
-      .guide-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+      .guide-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
       .guide-step{border:1px solid #dbe3ef;background:#fff;border-radius:18px;padding:12px;display:grid;gap:4px}
       .guide-step span{width:28px;height:28px;border-radius:999px;background:#0f766e;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
       .menu-tabs{display:grid;gap:10px}
@@ -54,7 +54,16 @@
       .modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
       .modal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
       .modal-actions button{min-height:48px}
-      @media (max-width:1100px){.menu-layout{grid-template-columns:1fr}.side-panel{position:static}.guide-strip{grid-template-columns:1fr}}
+
+      .menu-open-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
+      .menu-open-card{border:1px solid #dbe3ef;background:#fff;border-radius:20px;padding:18px;text-align:left;cursor:pointer;display:grid;gap:8px;box-shadow:0 10px 28px rgba(15,23,42,.04);transition:.15s ease}
+      .menu-open-card:hover{transform:translateY(-1px);box-shadow:0 16px 32px rgba(15,23,42,.08);border-color:#0f766e}
+      .menu-open-card.is-active{background:#ecfdf5;border-color:#0f766e;box-shadow:0 0 0 2px rgba(15,118,110,.10)}
+      .menu-workspace-card{width:min(1380px,100%);height:min(92vh,980px);max-height:92vh;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr)}
+      .menu-workspace-body{overflow:auto;padding-top:16px}
+      .menu-workspace-body .menu-layout{grid-template-columns:280px minmax(0,1fr)}
+      .menu-workspace-body .side-panel{top:0}
+      @media (max-width:1100px){.menu-layout{grid-template-columns:1fr}.side-panel{position:static}.guide-strip{grid-template-columns:1fr}.menu-workspace-body .menu-layout{grid-template-columns:1fr}}
       @media (max-width:700px){.modal-actions,.card-actions{grid-template-columns:1fr}.cards-grid{grid-template-columns:1fr}.day-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
     </style>
   </head>
@@ -100,18 +109,36 @@
           </div>
         </div>
 
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <strong>Escolhe o menu para editar</strong>
+              <div class="tiny-muted">A gestão abre numa janela própria para separar menus, dias, categorias e pratos.</div>
+            </div>
+          </div>
+          <div id="menuOpenGrid" class="menu-open-grid"></div>
+        </section>
+      </section>
+    </div>
+
+    <div id="menuWorkspaceModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card menu-workspace-card">
+        <div class="modal-header">
+          <div>
+            <div class="shell-eyebrow">GESTÃO DO MENU</div>
+            <h2 id="workspaceTitle" style="margin:0">Editar menu</h2>
+            <div id="workspaceSubtitle" class="tiny-muted">Janela separada para gerir apenas este menu.</div>
+          </div>
+          <button id="closeWorkspaceBtn" class="ghost-btn" type="button">Fechar gestão</button>
+        </div>
+        <div class="menu-workspace-body">
         <div class="guide-strip">
-          <div class="guide-step"><span>1</span><strong>Menu</strong><div class="tiny-muted">Interior, fora, takeaway ou bar.</div></div>
-          <div class="guide-step"><span>2</span><strong>Dia</strong><div class="tiny-muted">Define o que aparece nesse dia.</div></div>
-          <div class="guide-step"><span>3</span><strong>Pratos</strong><div class="tiny-muted">Liga/desliga pratos e organiza categorias.</div></div>
+          <div class="guide-step"><span>1</span><strong>Dia</strong><div class="tiny-muted">Define o que aparece neste menu por dia.</div></div>
+          <div class="guide-step"><span>2</span><strong>Categorias e pratos</strong><div class="tiny-muted">Liga/desliga pratos e organiza categorias.</div></div>
         </div>
 
         <div class="menu-layout">
           <aside class="side-panel">
-            <div class="summary-card">
-              <strong>Menu ativo</strong>
-              <div id="profileTabs" class="menu-tabs" style="margin-top:12px"></div>
-            </div>
             <div class="summary-card">
               <strong>Dia</strong>
               <div id="dayTabs" class="day-tabs" style="margin-top:12px"></div>
@@ -156,7 +183,9 @@
             </section>
           </div>
         </div>
-      </section>
+
+        </div>
+      </div>
     </div>
 
     <div id="itemModal" class="modal-backdrop" aria-hidden="true">
@@ -196,7 +225,10 @@
         selectedItemId: null,
       };
 
-      const profileTabs = document.getElementById('profileTabs');
+      const menuOpenGrid = document.getElementById('menuOpenGrid');
+      const menuWorkspaceModal = document.getElementById('menuWorkspaceModal');
+      const workspaceTitle = document.getElementById('workspaceTitle');
+      const workspaceSubtitle = document.getElementById('workspaceSubtitle');
       const dayTabs = document.getElementById('dayTabs');
       const categoryList = document.getElementById('categoryList');
       const categoryCount = document.getElementById('categoryCount');
@@ -211,6 +243,7 @@
       const exportSummary = document.getElementById('exportSummary');
 
       document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+      document.getElementById('closeWorkspaceBtn').addEventListener('click', closeMenuWorkspace);
       document.getElementById('exportDayBtn').addEventListener('click', () => openMenuExport(state.selectedDay));
       document.getElementById('exportWeekBtn').addEventListener('click', () => openMenuExport('all'));
       document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -224,6 +257,7 @@
       menuSearchInput.addEventListener('input', renderCards);
       statusFilter.addEventListener('change', renderCards);
       modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+      menuWorkspaceModal.addEventListener('click', (event) => { if (event.target === menuWorkspaceModal) closeMenuWorkspace(); });
       document.addEventListener('restaurant:operator-changed', refreshAll);
 
       await refreshAll();
@@ -245,7 +279,7 @@
           if (!categoriesOrdered.some((category) => category.name === state.selectedCategory)) {
             state.selectedCategory = categoriesOrdered[0]?.name || '';
           }
-          renderProfiles();
+          renderMenuOpenGrid();
           renderDays();
           renderCategories();
           renderCards();
@@ -268,22 +302,35 @@
         return [...fromDb, ...missing];
       }
 
-      function renderProfiles() {
-        profileTabs.innerHTML = state.profiles.map((profile) => {
-          const count = getEnabledItems(profile.id, state.selectedDay).length;
-          return `<button class="menu-tab ${state.selectedMenuKey === profile.id ? 'is-active' : ''}" data-menu-key="${escapeHtml(profile.id)}">
+      function renderMenuOpenGrid() {
+        menuOpenGrid.innerHTML = state.profiles.map((profile) => {
+          const todayCount = getEnabledItems(profile.id, state.selectedDay).length;
+          const weekCount = [0,1,2,3,4,5,6].reduce((sum, day) => sum + getEnabledItems(profile.id, day).length, 0);
+          return `<button class="menu-open-card ${state.selectedMenuKey === profile.id ? 'is-active' : ''}" type="button" data-open-menu="${escapeHtml(profile.id)}">
             <strong>${escapeHtml(profile.name)}</strong>
-            <div class="tiny-muted">${escapeHtml(profile.description || '')}</div>
-            <div class="tiny-muted" style="margin-top:8px">${count} prato(s) ativos no dia escolhido</div>
+            <div class="tiny-muted">${escapeHtml(profile.description || 'Abrir gestão deste menu')}</div>
+            <div class="tiny-muted">${todayCount} ativo(s) hoje · ${weekCount} na semana</div>
+            <span class="menu-badge">Abrir gestão</span>
           </button>`;
         }).join('') || `<div class="empty-box">Sem menus configurados.</div>`;
-        profileTabs.querySelectorAll('[data-menu-key]').forEach((btn) => btn.addEventListener('click', () => {
-          state.selectedMenuKey = btn.dataset.menuKey;
-          renderProfiles();
-          renderCategories();
-          renderCards();
-          renderExportSummary();
-        }));
+        menuOpenGrid.querySelectorAll('[data-open-menu]').forEach((btn) => btn.addEventListener('click', () => openMenuWorkspace(btn.dataset.openMenu)));
+      }
+
+      function openMenuWorkspace(menuKey) {
+        state.selectedMenuKey = menuKey || state.selectedMenuKey;
+        workspaceTitle.textContent = `Editar ${currentProfileName()}`;
+        workspaceSubtitle.textContent = currentProfileDescription();
+        renderMenuOpenGrid();
+        renderCategories();
+        renderCards();
+        renderExportSummary();
+        menuWorkspaceModal.classList.add('show');
+        menuWorkspaceModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeMenuWorkspace() {
+        menuWorkspaceModal.classList.remove('show');
+        menuWorkspaceModal.setAttribute('aria-hidden', 'true');
       }
 
       function renderDays() {
@@ -291,7 +338,9 @@
         dayTabs.querySelectorAll('[data-day]').forEach((btn) => btn.addEventListener('click', () => {
           state.selectedDay = Number(btn.dataset.day);
           renderDays();
-          renderProfiles();
+          workspaceTitle.textContent = `Editar ${currentProfileName()}`;
+          workspaceSubtitle.textContent = currentProfileDescription();
+          renderMenuOpenGrid();
           renderCategories();
           renderCards();
           renderExportSummary();
@@ -448,6 +497,13 @@
 
       function currentProfileName() {
         return state.profiles.find((profile) => profile.id === state.selectedMenuKey)?.name || state.selectedMenuKey;
+      }
+
+      function currentProfileDescription() {
+        const profile = state.profiles.find((row) => row.id === state.selectedMenuKey);
+        const todayCount = getEnabledItems(state.selectedMenuKey, state.selectedDay).length;
+        const desc = profile?.description ? `${profile.description} · ` : '';
+        return `${desc}${todayCount} prato(s) ativo(s) em ${DAY_LABELS[state.selectedDay]}.`;
       }
 
       function renderExportSummary() {
