@@ -300,16 +300,20 @@
             menu_rules: buildMenuRulesFromForm(),
           };
 
+          let mutationResult = null;
           if (state.selectedId) {
-            await restaurantApi.updateMenuItem(state.selectedId, payload);
-            toast("Prato atualizado.");
+            mutationResult = await restaurantApi.updateMenuItem(state.selectedId, payload);
+            if (mutationResult?.item) mergeItemIntoState(mutationResult.item);
+            toast(activeInput.checked ? "Prato atualizado como ativo/com stock." : "Prato marcado como sem stock/desativado.");
           } else {
-            await restaurantApi.createMenuItem(payload);
-            toast("Prato criado.");
+            mutationResult = await restaurantApi.createMenuItem(payload);
+            if (mutationResult?.item) mergeItemIntoState(mutationResult.item);
+            toast(activeInput.checked ? "Prato criado." : "Prato criado sem stock/desativado.");
           }
 
           closeModal();
-          await refreshAll();
+          renderGrid();
+          await refreshAll({ force: true });
         } catch (error) {
           toast(error.message, true);
         }
@@ -317,9 +321,20 @@
 
       await refreshAll();
 
-      async function refreshAll() {
+      function mergeItemIntoState(item) {
+        if (!item?.id) return;
+        const idx = state.rows.findIndex((row) => String(row.id) === String(item.id));
+        if (idx >= 0) {
+          state.rows[idx] = { ...state.rows[idx], ...item };
+        } else {
+          state.rows.unshift(item);
+        }
+        state.rows = sortMenuRows(state.rows);
+      }
+
+      async function refreshAll({ force = false } = {}) {
         const [items, categories] = await Promise.all([
-          restaurantApi.listMenuItems(),
+          restaurantApi.listMenuItems({ force }),
           restaurantApi.listCategories(),
         ]);
         state.rows = sortMenuRows(Array.isArray(items) ? items : []);
@@ -423,7 +438,7 @@
                     <img src="${escapeHtml(image)}" alt="${escapeHtml(item.name)}" />
                     <div class="dish-head">
                       <div class="dish-name">${escapeHtml(item.name)}</div>
-                      <span class="soft-badge ${item.active === false ? "off" : "ok"}">${item.active === false ? "oculto" : "ativo"}</span>
+                      <span class="soft-badge ${item.active === false ? "off" : "ok"}">${item.active === false ? "sem stock" : "ativo"}</span>
                     </div>
                     <div class="dish-meta">${Number(item.prep_minutes || 0)} min</div>
                     <div class="dish-desc">${escapeHtml(item.description || item.descricao_produto || 'Sem descrição pública.')}</div>
@@ -505,10 +520,12 @@
         if (!ensureOperatorSelected()) return;
         if (!state.selectedId) return toast("Seleciona um prato primeiro.", true);
         try {
-          await restaurantApi.archiveMenuItem(state.selectedId);
+          const result = await restaurantApi.updateMenuItem(state.selectedId, { active: false });
+          if (result?.item) mergeItemIntoState(result.item);
           toast("Prato marcado como sem stock/desativado.");
           closeModal();
-          await refreshAll();
+          renderGrid();
+          await refreshAll({ force: true });
         } catch (error) {
           toast(error.message, true);
         }

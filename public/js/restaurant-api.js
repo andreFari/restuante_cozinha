@@ -560,7 +560,12 @@ export const restaurantApi = {
       }),
     });
   },
-  listMenuItems() {
+  listMenuItems(options = {}) {
+    if (options?.force) {
+      return request(`/api/restaurant/menu-items?_=${Date.now()}`, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     return cachedRequest("menu-items", CACHE_TTL.menuItems, `/api/restaurant/menu-items`);
   },
   listMenuProfiles() {

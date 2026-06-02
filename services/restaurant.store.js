@@ -1808,6 +1808,16 @@ function mapAuthUser(row) {
   };
 }
 
+function normalizeOptionalBoolean(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'sim', 'on', 'ativo', 'active'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'nao', 'não', 'off', 'inativo', 'inactive', 'sem_stock', 'sem stock'].includes(normalized)) return false;
+  return Boolean(value);
+}
+
 async function getMenuItemsFromDb(client) {
   await ensureMenuAvailabilitySchema(client);
 
@@ -4396,7 +4406,7 @@ export class RestaurantStore {
     });
   }
 
-  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], image_url = null, imagem_url = null, image_data_base64 = '', image_mime_type = '', image_filename = '', menu_rules = null, description = '', descricao_produto = '', preparation_details = '', modo_preparo = '' }) {
+  async createMenuItem({ name, category, flow, station, prep_minutes, price, channels = ['sala'], active = true, image_url = null, imagem_url = null, image_data_base64 = '', image_mime_type = '', image_filename = '', menu_rules = null, description = '', descricao_produto = '', preparation_details = '', modo_preparo = '' }) {
     return withTransaction(async (client) => {
       await ensureMenuAvailabilitySchema(client);
       let categoriaId = null;
@@ -4414,6 +4424,7 @@ export class RestaurantStore {
       }
 
       const normalizedFlow = flow || station || 'cozinha';
+      const normalizedActive = normalizeOptionalBoolean(active);
       const imagePayload = decodeImageBase64Payload({ image_data_base64, image_mime_type, image_filename });
       const effectiveImageUrl = imagePayload ? null : (image_url ?? imagem_url ?? null);
       const sortOrderRes = await client.query(
@@ -4465,6 +4476,9 @@ export class RestaurantStore {
       );
 
       const artigoId = artigo.rows[0].id;
+      if (normalizedActive === false) {
+        await client.query(`update artigos set disponivel = false, updated_at = now() where id = $1`, [artigoId]);
+      }
       const derivedMenuKeys = menu_rules && typeof menu_rules === 'object'
         ? Object.entries(menu_rules).filter(([, days]) => Array.isArray(days) && days.length).map(([key]) => key)
         : [];
@@ -4513,6 +4527,7 @@ export class RestaurantStore {
       }
 
       const normalizedFlow = flow ?? station;
+      const normalizedActive = normalizeOptionalBoolean(active);
       const imagePayload = decodeImageBase64Payload({ image_data_base64, image_mime_type, image_filename });
       const rawEffectiveImageUrl = imagePayload ? '' : (image_url !== undefined ? image_url : imagem_url);
       const effectiveImageUrl = isGeneratedMenuImageUrl(rawEffectiveImageUrl) ? undefined : rawEffectiveImageUrl;
@@ -4524,7 +4539,7 @@ export class RestaurantStore {
                 tipo = coalesce($4::tipo_prato, tipo),
                 sitio_prep = coalesce($5::sitio_preparacao, sitio_prep),
                 prep_minutes = coalesce($6, prep_minutes),
-                disponivel = coalesce($7, disponivel),
+                disponivel = case when $7::boolean is null then disponivel else $7::boolean end,
                 imagem_url = case when $8 = '__KEEP__' then imagem_url else nullif($8, '') end,
                 imagem_data = case
                   when $12::boolean then $13::bytea
@@ -4563,7 +4578,7 @@ export class RestaurantStore {
           category !== undefined ? inferTipoFromCategory(category) : null,
           normalizedFlow !== undefined ? inferPrepSiteFromStation(normalizedFlow) : null,
           prep_minutes !== undefined ? Math.max(0, Number(prep_minutes || 0)) : null,
-          active !== undefined ? Boolean(active) : null,
+          normalizedActive,
           effectiveImageUrl !== undefined ? String(effectiveImageUrl || '').trim() : '__KEEP__',
           description !== undefined || descricao_produto !== undefined ? String(description ?? descricao_produto ?? '').trim() : '__KEEP__',
           descricao_produto !== undefined || description !== undefined ? String(descricao_produto ?? description ?? '').trim() : '__KEEP__',
