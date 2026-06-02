@@ -65,16 +65,23 @@
     <header>
       <div class="logo-title"><div class="brand-chip">Restaurant OS</div></div>
       <div class="links-container">
-        <nav id="navLinks">
-          <a href="./takeway.html" class="protected active">Takeway</a>
-          <a href="./rececaoBar.html" class="protected ">Receção Bar</a>
-          <a href="./rececaoCozi.html" class="protected ">Receção Cozinha</a>
-          <a href="./cozinha.html" class="protected ">Cozinha</a>
-          <a href="./faturas.html" class="protected ">Ver Faturas</a>
-          <a href="./artigos.html" class="protected">Gerir Pratos</a>
-          <a href="./menu.html" class="protected">Gestão Menu</a>
-          <a href="./assistente.html" class="protected">Assistente</a>
-          <a href="./gest_mesas.html" class="protected">Gestão Mesas</a>
+        <nav id="navLinks" class="nav-compact">
+          <span class="nav-section-label">Ação</span>
+          <a href="./takeway.html" class="protected" data-nav-key="takeaway">Takeaway</a>
+          <a href="./rececaoBar.html" class="protected" data-nav-key="rececao-bar">Receção Bar</a>
+          <a href="./rececaoCozi.html" class="protected" data-nav-key="rececao-cozinha">Receção Cozinha</a>
+          <a href="./cozinha.html" class="protected" data-nav-key="cozinha">Cozinha</a>
+          <a href="./artigos.html" class="protected" data-nav-key="pratos">Pratos</a>
+          <details class="nav-group admin-nav-group" data-nav-key="gestao">
+            <summary>Gestão</summary>
+            <div class="nav-group-menu">
+              <a href="./assistente.html" class="protected" data-nav-key="assistente">Assistente</a>
+              <a href="./menu.html" class="protected" data-nav-key="menus">Menus</a>
+              <a href="./gest_mesas.html" class="protected" data-nav-key="mesas">Mesas</a>
+              <a href="./faturas.html" class="protected" data-nav-key="faturas">Faturas</a>
+              <a href="./trabalhadores.html" class="protected" data-nav-key="utilizadores">Utilizadores</a>
+            </div>
+          </details>
         </nav>
       </div>
       <div id="tokenDisplay" class="token-status">Sistema operacional</div>

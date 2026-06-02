@@ -1,6 +1,6 @@
 import { restaurantApi, clearOperatorId, setOperatorId } from "./restaurant-api.js";
 
-const ADMIN_ONLY_PAGES = new Set(["/gest_mesas.html", "/trabalhadores.html"]);
+const ADMIN_ONLY_PAGES = new Set(["/assistente.html", "/faturas.html", "/gest_mesas.html", "/menu.html", "/trabalhadores.html"]);
 const AUTH_CACHE_KEY = "restaurant_auth_session_cache";
 const AUTH_CACHE_TTL_MS = 15000;
 
@@ -29,10 +29,10 @@ function clearCachedAuth() {
 
 const ROLE_ALLOWED_PAGES = {
   admin: null,
-  kitchen: new Set(["/cozinha.html", "/artigos.html", "/menu.html"]),
-  employee: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
-  bar: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
-  manager: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/faturas.html"]),
+  kitchen: new Set(["/cozinha.html", "/artigos.html"]),
+  employee: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/artigos.html"]),
+  bar: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/artigos.html"]),
+  manager: new Set(["/rececaoBar.html", "/rececaoCozi.html", "/takeway.html", "/cozinha.html", "/artigos.html"]),
 };
 
 const PROTECTED_PAGES = new Set([
@@ -42,6 +42,7 @@ const PROTECTED_PAGES = new Set([
   "/cozinha.html",
   "/faturas.html",
   "/artigos.html",
+  "/assistente.html",
   "/menu.html",
   "/gest_mesas.html",
   "/trabalhadores.html",
@@ -99,37 +100,57 @@ function ensureLogoutButton(session) {
   }
 }
 
+function isCurrentPath(href) {
+  const path = window.location.pathname === "/" ? "/login.html" : window.location.pathname;
+  return path.endsWith(href.replace(".", ""));
+}
+
+function navLink(href, label, { activeWhen = href, extraClass = "" } = {}) {
+  const active = isCurrentPath(activeWhen);
+  return `<a href="${href}" class="protected${active ? " active" : ""}${extraClass ? ` ${extraClass}` : ""}">${label}</a>`;
+}
+
+function renderGroupedNav(session) {
+  const nav = document.getElementById("navLinks");
+  if (!nav) return;
+  const role = String(session?.user?.role || "").toLowerCase();
+  const isKitchen = role === "kitchen" && !session.is_admin;
+  const managementPaths = ["/assistente.html", "/menu.html", "/gest_mesas.html", "/faturas.html", "/trabalhadores.html"];
+  const managementActive = managementPaths.some((path) => isCurrentPath(path));
+
+  const actionLinks = [
+    !isKitchen ? navLink("./takeway.html", "Takeaway") : "",
+    !isKitchen ? navLink("./rececaoBar.html", "Receção Bar") : "",
+    !isKitchen ? navLink("./rececaoCozi.html", "Receção Cozinha") : "",
+    navLink("./cozinha.html", "Cozinha"),
+    navLink("./artigos.html", "Pratos"),
+  ].filter(Boolean).join("\n          ");
+
+  const managementLinks = session.is_admin ? `
+          <details class="nav-group admin-nav-group"${managementActive ? " open" : ""}>
+            <summary class="${managementActive ? "active" : ""}">Gestão</summary>
+            <div class="nav-group-menu">
+              ${navLink("./assistente.html", "Assistente")}
+              ${navLink("./menu.html", "Menus")}
+              ${navLink("./gest_mesas.html", "Mesas")}
+              ${navLink("./faturas.html", "Faturas")}
+              ${navLink("./trabalhadores.html", "Utilizadores")}
+            </div>
+          </details>` : "";
+
+  nav.classList.add("nav-compact");
+  nav.innerHTML = `
+          <span class="nav-section-label">Ação</span>
+          ${actionLinks}
+          ${managementLinks}`;
+}
+
 function patchNav(session) {
   document.querySelectorAll('a[href="./login.html"], a[href="login.html"], a[href="/login.html"]').forEach((link) => {
     link.setAttribute("href", defaultPageFor(session));
   });
 
-  const nav = document.getElementById("navLinks");
-  if (nav && !nav.querySelector('a[href="./trabalhadores.html"]') && session.is_admin) {
-    const link = document.createElement("a");
-    link.href = "./trabalhadores.html";
-    link.className = "protected";
-    link.textContent = "Trabalhadores";
-    if (window.location.pathname.endsWith("/trabalhadores.html")) link.classList.add("active");
-    nav.appendChild(link);
-  }
-
-  const role = String(session?.user?.role || "").toLowerCase();
-  const visibilityRules = [
-    { selectors: ['a[href="./menu.html"]'], visible: session.is_admin || role === "kitchen" },
-    { selectors: ['a[href="./artigos.html"]'], visible: session.is_admin || role === "kitchen" },
-    { selectors: ['a[href="./gest_mesas.html"]', 'a[href="./trabalhadores.html"]'], visible: session.is_admin },
-    { selectors: ['a[href="./rececaoBar.html"]', 'a[href="./rececaoCozi.html"]', 'a[href="./takeway.html"]', 'a[href="./faturas.html"]'], visible: role !== "kitchen" || session.is_admin },
-    { selectors: ['a[href="./cozinha.html"]'], visible: true },
-  ];
-
-  visibilityRules.forEach(({ selectors, visible }) => {
-    selectors.forEach((selector) => {
-      document.querySelectorAll(selector).forEach((link) => {
-        link.style.display = visible ? "inline-block" : "none";
-      });
-    });
-  });
+  renderGroupedNav(session);
 
   ['seedDemoBtn', 'resetDemoBtn'].forEach((id) => {
     const node = document.getElementById(id);
